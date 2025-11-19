@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { PRODUCTS } from '../constants';
-import { Truck, RefreshCw, ShieldCheck, Plus, Minus } from 'lucide-react';
+import { Truck, RefreshCw, ShieldCheck, Plus, Minus, Check } from 'lucide-react';
+import { useCart } from '../context/CartContext';
 
 const AccordionItem = ({ title, children, isOpen, onClick }: any) => (
   <div className="border-b border-stone-200">
@@ -24,6 +25,8 @@ const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const product = PRODUCTS.find(p => p.id === id) || PRODUCTS[0];
   const [openSection, setOpenSection] = useState<string | null>('description');
+  const [addedToCart, setAddedToCart] = useState(false);
+  const { addToCart } = useCart();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -31,6 +34,12 @@ const ProductDetail = () => {
 
   const toggleSection = (section: string) => {
     setOpenSection(openSection === section ? null : section);
+  };
+
+  const handleAddToCart = () => {
+    addToCart(product);
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 3000);
   };
 
   return (
@@ -70,8 +79,21 @@ const ProductDetail = () => {
             {product.shortDescription}
           </p>
 
-          <button className="w-full bg-stone-900 text-white py-5 uppercase tracking-[0.2em] text-xs font-bold hover:bg-clay transition-colors mb-10 shadow-sm hover:shadow-md">
-            Add to Cart
+          <button
+            onClick={handleAddToCart}
+            className={`w-full py-5 uppercase tracking-[0.2em] text-xs font-bold transition-all mb-10 shadow-sm hover:shadow-md flex items-center justify-center gap-2 ${
+              addedToCart
+                ? 'bg-green-600 text-white'
+                : 'bg-stone-900 text-white hover:bg-clay'
+            }`}
+          >
+            {addedToCart ? (
+              <>
+                <Check size={16} /> Added to Cart
+              </>
+            ) : (
+              'Add to Cart'
+            )}
           </button>
 
           {/* Accordions */}

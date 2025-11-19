@@ -4,11 +4,13 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { ShoppingBag, Menu, X, User, CreditCard, ChevronDown } from 'lucide-react';
 import GlobalBackground from './GlobalBackground';
 import LeadMagnet from './LeadMagnet';
+import { useCart } from '../context/CartContext';
 
 const Layout = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { cartCount } = useCart();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -89,11 +91,15 @@ const Layout = () => {
           </div>
 
           {/* Logo - Centered Absolutely */}
-          <Link 
-            to="/" 
-            className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-base md:text-lg font-serif font-medium tracking-[0.15em] z-50 uppercase text-center text-white hover:opacity-70 transition-opacity duration-300 whitespace-nowrap"
+          <Link
+            to="/"
+            className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 hover:opacity-70 transition-opacity duration-300"
           >
-            Lyne Tilt
+            <img
+              src="https://images.squarespace-cdn.com/content/v1/6182043dd1096334c6d280c8/fac44eed-af07-4260-a870-f990338b731a/Untitled+design+%286%29.png?format=1500w"
+              alt="Lyne Tilt"
+              className="h-20 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Links Right */}
@@ -101,10 +107,12 @@ const Layout = () => {
              <Link to="/contact" className="text-[10px] uppercase tracking-widest font-bold border border-stone-600 text-stone-200 px-5 py-2 hover:bg-stone-200 hover:text-stone-900 transition-all duration-300">
                Book Free Call
              </Link>
-            <button className="relative text-stone-200 hover:text-clay transition-colors group">
+            <Link to="/checkout" className="relative text-stone-200 hover:text-clay transition-colors group">
               <ShoppingBag size={18} />
-              <span className="absolute -top-1 -right-2 bg-stone-700 group-hover:bg-clay transition-colors text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">0</span>
-            </button>
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-2 bg-stone-700 group-hover:bg-clay transition-colors text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{cartCount}</span>
+              )}
+            </Link>
           </div>
 
           {/* Mobile Toggle */}
@@ -163,10 +171,10 @@ const Layout = () => {
           <div>
             <h5 className="text-stone-900 uppercase tracking-widest text-xs font-bold mb-4">Collection</h5>
             <ul className="space-y-2 text-sm font-light">
-              <li><Link to="/shop" className="hover:text-clay transition-colors">All Items</Link></li>
-              <li><Link to="/shop" className="hover:text-clay transition-colors">Earrings</Link></li>
-              <li><Link to="/shop" className="hover:text-clay transition-colors">Brooches</Link></li>
-              <li><Link to="/shop" className="hover:text-clay transition-colors">Limited Edition</Link></li>
+              <li><Link to="/shop" className="hover:text-clay transition-colors link-underline">All Items</Link></li>
+              <li><Link to="/shop" className="hover:text-clay transition-colors link-underline">Earrings</Link></li>
+              <li><Link to="/shop" className="hover:text-clay transition-colors link-underline">Brooches</Link></li>
+              <li><Link to="/shop" className="hover:text-clay transition-colors link-underline">Limited Edition</Link></li>
             </ul>
           </div>
 
@@ -174,10 +182,10 @@ const Layout = () => {
           <div>
             <h5 className="text-stone-900 uppercase tracking-widest text-xs font-bold mb-4">Practice</h5>
             <ul className="space-y-2 text-sm font-light">
-              <li><Link to="/coaching" className="hover:text-clay transition-colors">Clarity Coaching</Link></li>
-              <li><Link to="/learn" className="hover:text-clay transition-colors">Workshops & Courses</Link></li>
-              <li><Link to="/journal" className="hover:text-clay transition-colors">The Blog</Link></li>
-              <li><Link to="/contact" className="hover:text-clay transition-colors">Book Free Call</Link></li>
+              <li><Link to="/coaching" className="hover:text-clay transition-colors link-underline">Clarity Coaching</Link></li>
+              <li><Link to="/learn" className="hover:text-clay transition-colors link-underline">Workshops & Courses</Link></li>
+              <li><Link to="/journal" className="hover:text-clay transition-colors link-underline">The Blog</Link></li>
+              <li><Link to="/contact" className="hover:text-clay transition-colors link-underline">Book Free Call</Link></li>
             </ul>
           </div>
 
@@ -185,10 +193,10 @@ const Layout = () => {
           <div>
             <h5 className="text-stone-900 uppercase tracking-widest text-xs font-bold mb-4">Studio</h5>
             <ul className="space-y-2 text-sm font-light">
-              <li><Link to="/about" className="hover:text-clay transition-colors">About Lyne</Link></li>
-              <li><Link to="/contact" className="hover:text-clay transition-colors">Contact</Link></li>
-              <li><Link to="/faq" className="hover:text-clay transition-colors">FAQ</Link></li>
-              <li><Link to="/shop" className="hover:text-clay transition-colors">Shipping & Returns</Link></li>
+              <li><Link to="/about" className="hover:text-clay transition-colors link-underline">About Lyne</Link></li>
+              <li><Link to="/contact" className="hover:text-clay transition-colors link-underline">Contact</Link></li>
+              <li><Link to="/faq" className="hover:text-clay transition-colors link-underline">FAQ</Link></li>
+              <li><Link to="/shop" className="hover:text-clay transition-colors link-underline">Shipping & Returns</Link></li>
             </ul>
           </div>
         </div>
@@ -196,24 +204,27 @@ const Layout = () => {
         <div className="container mx-auto mt-8 pt-8 border-t border-stone-200 text-[10px] uppercase tracking-widest text-stone-400 flex flex-col md:flex-row justify-between items-center text-center md:text-left leading-loose">
           <p>&copy; 2025 Lyne Tilt Studio. All rights reserved.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
-            <a href="#" className="hover:text-stone-600 transition-colors">Instagram</a>
-            <a href="#" className="hover:text-stone-600 transition-colors">LinkedIn</a>
+            <a href="#" className="hover:text-stone-600 transition-colors link-underline">Instagram</a>
+            <a href="#" className="hover:text-stone-600 transition-colors link-underline">LinkedIn</a>
           </div>
         </div>
       </footer>
 
       {/* Mobile Sticky Bottom Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-stone-200 p-3 z-50 flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <Link to="/shop" className="flex flex-col items-center text-stone-500 hover:text-clay">
+        <Link to="/checkout" className="flex flex-col items-center text-stone-500 hover:text-clay relative">
           <ShoppingBag size={18} />
-          <span className="text-[9px] uppercase tracking-wide mt-1">Shop</span>
+          {cartCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-clay text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{cartCount}</span>
+          )}
+          <span className="text-[9px] uppercase tracking-wide mt-1">Cart</span>
         </Link>
         <Link to="/contact" className="bg-stone-900 text-white px-6 py-2 text-[10px] uppercase tracking-widest font-bold">
           Book Call
         </Link>
-        <Link to="/coaching" className="flex flex-col items-center text-stone-500 hover:text-clay">
+        <Link to="/shop" className="flex flex-col items-center text-stone-500 hover:text-clay">
           <User size={18} />
-          <span className="text-[9px] uppercase tracking-wide mt-1">Coaching</span>
+          <span className="text-[9px] uppercase tracking-wide mt-1">Shop</span>
         </Link>
       </div>
     </div>

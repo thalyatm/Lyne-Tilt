@@ -22,11 +22,11 @@ const About = () => {
           
           {/* Image Section */}
           <div className="w-full md:w-5/12 relative z-10 animate-fade-in-up delay-100 sticky top-32">
-             <div className="relative aspect-[3/4] w-full shadow-xl shadow-stone-200">
-                <img 
-                  src="https://images.unsplash.com/photo-1554244933-d877deb50367?q=80&w=800&auto=format&fit=crop" 
-                  alt="Lyne Tilt" 
-                  className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-1000 ease-out"
+             <div className="relative aspect-[3/4] w-full shadow-xl shadow-stone-200 image-zoom-container">
+                <img
+                  src="https://images.squarespace-cdn.com/content/v1/6182043dd1096334c6d280c8/a2b24cba-294f-4e4f-b4a6-ebaa1b285607/IMG_4502+copy.jpg?format=300w"
+                  alt="Lyne Tilt"
+                  className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-1000 ease-out image-zoom"
                 />
                 <div className="absolute inset-0 border-[1px] border-white/20 pointer-events-none"></div>
              </div>

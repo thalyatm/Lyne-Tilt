@@ -41,7 +41,7 @@ const RevealOnScroll: React.FC<{ children?: React.ReactNode; className?: string 
 };
 
 const Home = () => {
-  const featuredProducts = PRODUCTS;
+  const featuredProducts = PRODUCTS.slice(0, 3);
   const coachingServices = COACHING_PACKAGES;
   const featuredTestimonial = TESTIMONIALS[0]; 
 
@@ -63,11 +63,11 @@ const Home = () => {
             {/* Image Column */}
             <div className="md:col-span-5 relative">
                  <RevealOnScroll>
-                    <div className="relative aspect-[3/4] bg-stone-200 overflow-hidden shadow-2xl shadow-stone-200">
-                        <img 
-                           src="https://images.unsplash.com/photo-1554244933-d877deb50367?q=80&w=800&auto=format&fit=crop" 
-                           alt="Lyne Tilt in Studio" 
-                           className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-1000"
+                    <div className="relative aspect-[3/4] bg-stone-200 overflow-hidden shadow-2xl shadow-stone-200 image-zoom-container">
+                        <img
+                           src="https://images.squarespace-cdn.com/content/v1/6182043dd1096334c6d280c8/a2b24cba-294f-4e4f-b4a6-ebaa1b285607/IMG_4502+copy.jpg?format=300w"
+                           alt="Lyne Tilt in Studio"
+                           className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-1000 image-zoom"
                         />
                         <div className="absolute inset-0 border-[1px] border-white/20 pointer-events-none"></div>
                     </div>
@@ -81,7 +81,7 @@ const Home = () => {
             <div className="md:col-span-7 md:pl-12">
                  <RevealOnScroll>
                     <p className="text-stone-400 text-[10px] uppercase tracking-[0.3em] mb-6">The Founder</p>
-                    <h2 className="text-4xl md:text-6xl font-serif mb-8 text-stone-900">Lyne Tilt</h2>
+                    <h2 className="text-3xl md:text-5xl font-serif mb-8 text-stone-900">Lyne Tilt</h2>
                     
                     <div className="prose prose-stone text-stone-600 leading-loose text-sm mb-10 max-w-lg">
                         <p className="font-serif text-xl text-stone-800 mb-6 italic">
@@ -96,8 +96,8 @@ const Home = () => {
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-8">
-                        <Link to="/about" className="inline-flex items-center gap-3 text-stone-900 uppercase text-[10px] tracking-widest font-bold hover:text-clay transition-colors group border-b border-stone-900 pb-1 hover:border-clay">
-                            Read Full Story <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                        <Link to="/about" className="inline-flex items-center gap-3 text-stone-900 uppercase text-[10px] tracking-widest font-bold hover:text-clay transition-colors group pb-1">
+                            <span className="link-underline">Read Full Story</span> <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                         </Link>
                         <span className="hidden sm:inline-block w-12 h-px bg-stone-200"></span>
                         <span className="font-serif italic text-stone-400">Clarity is power.</span>

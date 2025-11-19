@@ -7,9 +7,18 @@ import ProductCard from '../components/ProductCard';
 const Shop = () => {
   const [filter, setFilter] = useState<ProductCategory>(ProductCategory.All);
 
-  const filteredProducts = filter === ProductCategory.All 
-    ? PRODUCTS 
+  const filteredProducts = filter === ProductCategory.All
+    ? PRODUCTS
     : PRODUCTS.filter(p => p.category === filter);
+
+  // Sort products: in stock first, then sold out
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    const aInStock = a.availability !== 'Sold out';
+    const bInStock = b.availability !== 'Sold out';
+    if (aInStock && !bInStock) return -1;
+    if (!aInStock && bInStock) return 1;
+    return 0;
+  });
 
   const categories = Object.values(ProductCategory);
 
@@ -33,8 +42,8 @@ const Shop = () => {
             key={cat}
             onClick={() => setFilter(cat)}
             className={`text-sm uppercase tracking-widest pb-1 transition-colors ${
-              filter === cat 
-                ? 'border-b border-stone-800 text-stone-900' 
+              filter === cat
+                ? 'border-b border-stone-800 text-stone-900'
                 : 'text-stone-400 hover:text-stone-600'
             }`}
           >
@@ -44,8 +53,8 @@ const Shop = () => {
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
-        {filteredProducts.map(product => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
+        {sortedProducts.map(product => (
           <ProductCard key={product.id} product={product} />
         ))}
       </div>

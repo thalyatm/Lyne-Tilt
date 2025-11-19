@@ -12,7 +12,7 @@ const CoachingCard: React.FC<CoachingCardProps> = ({ item }) => {
   const isPopular = item.badge === 'MOST POPULAR';
 
   return (
-    <div className={`flex flex-col h-full bg-white border relative transition-all duration-300 hover:shadow-xl ${isPopular ? 'border-stone-800 shadow-md z-10' : 'border-stone-200'}`}>
+    <div className={`flex flex-col h-full bg-white border relative card-lift ${isPopular ? 'border-stone-800 shadow-md z-10' : 'border-stone-200'}`}>
       
       {isPopular && (
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-clay text-white text-[10px] uppercase tracking-widest font-bold px-4 py-1.5 shadow-sm">

@@ -13,10 +13,17 @@ const Coaching = () => {
   return (
     <>
       {/* Hero */}
-      <section className="pt-40 pb-20 bg-stone-100 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-7xl font-serif text-stone-900 mb-6 leading-tight">
-            Clear the Path. <br/> 
+      <section className="pt-40 pb-20 bg-stone-100 px-6 relative overflow-hidden">
+        {/* Abstract Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+          <div className="absolute top-10 left-20 w-64 h-64 border border-stone-300 rounded-full" />
+          <div className="absolute bottom-20 right-10 w-96 h-96 border border-stone-300 rounded-full" />
+          <div className="absolute top-1/3 right-1/4 w-2 h-32 bg-stone-300 rotate-45" />
+        </div>
+
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <h1 className="text-4xl md:text-6xl font-serif text-stone-900 mb-6 leading-tight">
+            Clear the Path. <br/>
             <span className="text-clay italic">Create Your Work.</span>
           </h1>
           <p className="text-xl text-stone-600 max-w-2xl mx-auto leading-relaxed mb-10">
