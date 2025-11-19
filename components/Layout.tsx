@@ -25,8 +25,10 @@ const Layout = () => {
     <div className="flex flex-col min-h-screen font-sans text-stone-800 bg-white selection:bg-stone-200 selection:text-stone-900">
       {/* Navigation */}
       <nav 
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${
-          isScrolled || mobileMenuOpen ? 'bg-white/95 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-8'
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out border-b ${
+          isScrolled || mobileMenuOpen 
+            ? 'bg-white/95 backdrop-blur-md border-stone-200 py-3 shadow-sm' 
+            : 'bg-white border-stone-200 py-4 shadow-sm'
         }`}
       >
         <div className="container mx-auto px-6 flex justify-between items-center relative">
@@ -65,7 +67,7 @@ const Layout = () => {
           </div>
 
           {/* Logo */}
-          <Link to="/" className="text-2xl md:text-3xl font-serif font-medium tracking-[0.15em] z-50 relative uppercase text-center hover:opacity-70 transition-opacity duration-300">
+          <Link to="/" className="text-lg md:text-xl font-serif font-medium tracking-[0.15em] z-50 relative uppercase text-center hover:opacity-70 transition-opacity duration-300">
             Lyne Tilt
           </Link>
 
