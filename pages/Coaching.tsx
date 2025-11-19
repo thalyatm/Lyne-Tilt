@@ -1,9 +1,11 @@
+
 import React from 'react';
 import SectionHeading from '../components/SectionHeading';
 import CoachingCard from '../components/CoachingCard';
 import ImpactChart from '../components/ImpactChart';
 import { COACHING_PACKAGES, TESTIMONIALS, FAQS } from '../constants';
 import { CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Coaching = () => {
   const coachingFaqs = FAQS.filter(f => f.category === 'Coaching');
@@ -13,15 +15,16 @@ const Coaching = () => {
       {/* Hero */}
       <section className="pt-40 pb-20 bg-stone-100 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-serif text-stone-900 mb-6">
-            Clear the Path. <br/> Create Your Work.
+          <h1 className="text-5xl md:text-7xl font-serif text-stone-900 mb-6 leading-tight">
+            Clear the Path. <br/> 
+            <span className="text-clay italic">Create Your Work.</span>
           </h1>
           <p className="text-xl text-stone-600 max-w-2xl mx-auto leading-relaxed mb-10">
             Creative coaching for artists, makers, and dreamers who are ready to move from confusion to confident action.
           </p>
-          <button className="bg-stone-800 text-white px-8 py-4 uppercase tracking-widest text-xs font-bold hover:bg-clay transition-colors">
+          <Link to="/contact" className="inline-block bg-stone-800 text-white px-8 py-4 uppercase tracking-widest text-xs font-bold hover:bg-clay transition-colors">
             Book a Free Discovery Call
-          </button>
+          </Link>
         </div>
       </section>
 

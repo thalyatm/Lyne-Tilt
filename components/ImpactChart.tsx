@@ -22,7 +22,7 @@ const ImpactChart = () => {
             contentStyle={{ backgroundColor: '#fff', border: '1px solid #e7e5e4', fontFamily: 'serif' }}
             itemStyle={{ color: '#57534e' }}
           />
-          <Line type="monotone" dataKey="clarity" stroke="#d4a373" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Clarity" />
+          <Line type="monotone" dataKey="clarity" stroke="#8d3038" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Clarity" />
           <Line type="monotone" dataKey="momentum" stroke="#57534e" strokeWidth={2} dot={{ r: 4 }} name="Momentum" />
         </LineChart>
       </ResponsiveContainer>

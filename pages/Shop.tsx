@@ -1,8 +1,8 @@
+
 import React, { useState } from 'react';
 import { PRODUCTS } from '../constants';
 import { ProductCategory } from '../types';
 import ProductCard from '../components/ProductCard';
-import SectionHeading from '../components/SectionHeading';
 
 const Shop = () => {
   const [filter, setFilter] = useState<ProductCategory>(ProductCategory.All);
@@ -15,10 +15,16 @@ const Shop = () => {
 
   return (
     <div className="pt-32 pb-20 px-6 max-w-7xl mx-auto min-h-screen">
-      <SectionHeading 
-        title="The Collection" 
-        subtitle="Wearable artifacts for the modern creative."
-      />
+      {/* Custom Header for Shop Page */}
+      <div className="mb-10 text-center">
+        <h1 className="text-5xl md:text-6xl font-serif font-medium mb-3 text-clay">
+          The Collection
+        </h1>
+        <p className="text-base font-light max-w-2xl mx-auto text-stone-500">
+          Wearable artifacts for the modern creative.
+        </p>
+        <div className="h-px w-12 bg-stone-900 mt-5 mx-auto"></div>
+      </div>
 
       {/* Filter */}
       <div className="flex flex-wrap justify-center gap-6 mb-16">

@@ -1,3 +1,4 @@
+
 export enum ProductCategory {
   Earrings = 'Earrings',
   Brooches = 'Brooches',
@@ -32,6 +33,15 @@ export interface CoachingPackage {
   badge?: string;
 }
 
+export interface LearnItem {
+  id: string;
+  title: string;
+  type: 'ONLINE' | 'WORKSHOP';
+  price: string;
+  image: string;
+  description: string;
+}
+
 export interface Testimonial {
   id: string;
   text: string;
@@ -45,6 +55,7 @@ export interface BlogPost {
   id: string;
   title: string;
   excerpt: string;
+  content: string; // Added content field
   date: string;
   category: string;
   image: string;
