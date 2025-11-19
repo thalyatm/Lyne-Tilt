@@ -2,15 +2,15 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 const ChessKnightIcon = ({ size = 40, className = "" }) => (
-  <svg 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="1" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1"
+    strokeLinecap="round"
+    strokeLinejoin="round"
     className={className}
   >
     {/* Cleaner Knight profile */}
@@ -53,4 +53,29 @@ const SplitPath = () => {
             </div>
             <p className="text-stone-500 text-[10px] uppercase tracking-widest mb-2">Handmade jewellery collection</p>
             <h2 className="text-2xl md:text-3xl font-serif text-stone-900 mb-4">Wearable Art</h2>
-            <div className="w-12 h-px bg-stone-300 mb-4 group-hover:w-24 transition-all duration
+            <div className="w-12 h-px bg-stone-300 mb-4 group-hover:w-24 transition-all duration-500"></div>
+            <p className="text-stone-600 mb-6 max-w-sm leading-relaxed">Discover unique handcrafted pieces that blend artistry with wearability</p>
+            <Link to="/shop" className="inline-block px-8 py-3 bg-clay text-white rounded hover:bg-clay-dark transition-colors duration-300">
+                Explore Collection
+            </Link>
+        </div>
+
+        {/* Coaching Side - Minimalist/Strategic Design */}
+        <div className="relative group flex flex-col items-center justify-center text-center p-10 bg-stone-50 hover:bg-stone-100 transition-colors duration-500">
+            <div className="mb-6 text-stone-400 group-hover:text-stone-700 transition-colors duration-500 transform group-hover:-translate-y-1">
+                <ChessKnightIcon size={48} />
+            </div>
+            <p className="text-stone-500 text-[10px] uppercase tracking-widest mb-2">Strategic creative development</p>
+            <h2 className="text-2xl md:text-3xl font-serif text-stone-900 mb-4">Creative Coaching</h2>
+            <div className="w-12 h-px bg-stone-300 mb-4 group-hover:w-24 transition-all duration-500"></div>
+            <p className="text-stone-600 mb-6 max-w-sm leading-relaxed">Unlock your creative potential through personalized strategic guidance</p>
+            <Link to="/coaching" className="inline-block px-8 py-3 bg-stone-800 text-white rounded hover:bg-stone-900 transition-colors duration-300">
+                Learn More
+            </Link>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default SplitPath;
