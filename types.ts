@@ -27,8 +27,9 @@ export interface CoachingPackage {
   description: string;
   features: string[];
   ctaText: string;
-  image?: string; // Optional now as per new layout might not use it the same way
-  price?: string; // Optional
+  image?: string; 
+  price?: string;
+  badge?: string;
 }
 
 export interface Testimonial {

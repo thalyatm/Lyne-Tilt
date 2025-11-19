@@ -51,41 +51,47 @@ export const PRODUCTS: Product[] = [
 export const COACHING_PACKAGES: CoachingPackage[] = [
   {
     id: 'c1',
-    title: 'Clarity Coaching',
-    description: 'One-on-one coaching for creatives who need direction, strategy, and momentum. Combining creative psychology with practical business outcomes.',
+    title: 'Single Session',
+    price: '$250',
+    description: 'One 90-minute session',
     features: [
-      'Define your creative path',
-      'Build strategic momentum',
-      'Create with confidence',
-      'Navigate creative blocks'
+      '90-minute deep-dive session',
+      'Strategic clarity on one key challenge',
+      'Actionable next steps',
+      'Follow-up email support (1 week)'
     ],
-    ctaText: 'LEARN MORE',
+    ctaText: 'BOOK SINGLE SESSION',
     image: 'https://picsum.photos/id/180/800/600'
   },
   {
     id: 'c2',
-    title: 'Creative Reset Workshop',
-    description: 'A two-part online workshop using Lyne\'s signature framework to move from concept to creation with clarity and intention.',
+    title: 'Monthly Coaching',
+    price: '$800',
+    description: 'per month (3-month minimum)',
+    badge: 'MOST POPULAR',
     features: [
-      'Develop your creative concept',
-      'Learn wearable art techniques',
-      'Build your personal framework',
-      'Connect with other makers'
+      'Two 60-minute sessions per month',
+      'Ongoing email support',
+      'Custom resources & frameworks',
+      'Accountability check-ins',
+      'Priority scheduling'
     ],
-    ctaText: 'RESERVE YOUR SPOT',
+    ctaText: 'START MONTHLY COACHING',
     image: 'https://picsum.photos/id/20/800/600'
   },
   {
     id: 'c3',
-    title: 'The Oxygen Series',
-    description: 'Exclusive three-part workshop series for alumni. Deep-dive sessions on creative practice, business building, and sustainable growth.',
+    title: 'Creative Intensive',
+    price: '$2,200',
+    description: '8-week program',
     features: [
-      'Alumni-only community',
-      'Advanced creative strategies',
-      'Business development focus',
-      'Ongoing support & accountability'
+      'Six 90-minute sessions',
+      'Comprehensive strategic planning',
+      'Daily Voxer/email access',
+      'Custom workbooks & templates',
+      'Complete creative business foundation'
     ],
-    ctaText: 'VIEW DETAILS',
+    ctaText: 'APPLY FOR INTENSIVE',
     image: 'https://picsum.photos/id/26/800/600'
   }
 ];
@@ -95,7 +101,7 @@ export const TESTIMONIALS: Testimonial[] = [
     id: 't1',
     text: "Lyne's coaching gave me the clarity and confidence I needed to finally launch my creative business. Her approach is intelligent, intuitive, and deeply transformative.",
     author: "Sarah Chen",
-    role: "Ceramic Artist & Designer, Melbourne",
+    role: "Ceramic Artist & Designer, Brisbane",
     type: "coaching",
     rating: 5
   },
@@ -144,7 +150,7 @@ export const FAQS: FAQItem[] = [
   },
   {
     question: "Do you offer international shipping?",
-    answer: "Yes, we ship worldwide from our studio in Melbourne, Australia.",
+    answer: "Yes, we ship worldwide from our studio in Brisbane, Australia.",
     category: "Shop"
   },
   {

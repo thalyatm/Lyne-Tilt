@@ -115,7 +115,7 @@ const Layout = () => {
           <div className="md:col-span-1">
             <h4 className="font-serif text-xl text-stone-900 mb-6 tracking-wider">LYNE TILT</h4>
             <p className="text-xs leading-loose mb-6 text-stone-500 font-light uppercase tracking-wide">
-              Melbourne-based studio.<br/>
+              Brisbane-based studio.<br/>
               Est. 2023
             </p>
             <div className="flex items-center gap-2 text-stone-400">

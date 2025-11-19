@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { PRODUCTS } from '../constants';
 import { Truck, RefreshCw, ShieldCheck, Plus, Minus } from 'lucide-react';
@@ -24,6 +24,10 @@ const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const product = PRODUCTS.find(p => p.id === id) || PRODUCTS[0];
   const [openSection, setOpenSection] = useState<string | null>('description');
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id]);
 
   const toggleSection = (section: string) => {
     setOpenSection(openSection === section ? null : section);
@@ -103,7 +107,7 @@ const ProductDetail = () => {
           
           <div className="mt-10 pt-6 border-t border-stone-100 text-center">
             <p className="text-xs text-stone-400 flex items-center justify-center gap-2 uppercase tracking-widest">
-               <ShieldCheck size={14} /> Handmade in Melbourne
+               <ShieldCheck size={14} /> Handmade in Brisbane
             </p>
           </div>
         </div>
