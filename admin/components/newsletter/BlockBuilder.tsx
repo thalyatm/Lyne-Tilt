@@ -26,6 +26,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
+import { Extension } from '@tiptap/core';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { BubbleMenu } from '@tiptap/extension-bubble-menu';
 import { MergeTagNode, MERGE_TAGS } from './MergeTagExtension';
@@ -75,6 +76,10 @@ import {
   Moon,
   Sun,
   Bookmark,
+  Undo,
+  Redo,
+  Smile,
+  ChevronsUpDown,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -327,6 +332,87 @@ const TEMPLATES: EmailTemplate[] = [
 ];
 
 // ─────────────────────────────────────────────
+// Custom extensions for font size & line height
+// ─────────────────────────────────────────────
+
+const CustomTextStyle = TextStyle.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      fontSize: {
+        default: null,
+        parseHTML: element => element.style.fontSize || null,
+        renderHTML: attributes => {
+          if (!attributes.fontSize) return {};
+          return { style: `font-size: ${attributes.fontSize}` };
+        },
+      },
+    };
+  },
+});
+
+const LineHeight = Extension.create({
+  name: 'lineHeight',
+  addOptions() {
+    return { types: ['paragraph', 'heading'], defaultLineHeight: null };
+  },
+  addGlobalAttributes() {
+    return [{
+      types: this.options.types,
+      attributes: {
+        lineHeight: {
+          default: this.options.defaultLineHeight,
+          parseHTML: (element) => element.style.lineHeight || null,
+          renderHTML: (attributes) => {
+            if (!attributes.lineHeight) return {};
+            return { style: `line-height: ${attributes.lineHeight}` };
+          },
+        },
+      },
+    }];
+  },
+  addCommands() {
+    return {
+      setLineHeight: (lineHeight: string) => ({ commands }) =>
+        this.options.types.every((type: string) => commands.updateAttributes(type, { lineHeight })),
+      unsetLineHeight: () => ({ commands }) =>
+        this.options.types.every((type: string) => commands.resetAttributes(type, 'lineHeight')),
+    } as any;
+  },
+});
+
+// Emoji data
+const EMOJI_CATEGORIES: { label: string; emojis: string[] }[] = [
+  { label: 'Smileys', emojis: ['😀', '😃', '😄', '😁', '😊', '🥰', '😍', '🤩', '😘', '😜', '🤗', '🤔', '😎', '🥳', '😇', '🤓', '😱', '😂', '🥺', '😤', '🫶', '🙌', '👏', '✌️'] },
+  { label: 'Nature', emojis: ['🌸', '🌺', '🌻', '🌷', '🌹', '🍀', '🌿', '🌱', '🌳', '🌈', '☀️', '⭐', '🌙', '🔥', '💧', '🌊', '🦋', '🐝', '🐦', '🌎'] },
+  { label: 'Objects', emojis: ['💡', '🎨', '✏️', '📝', '📖', '🎯', '💎', '🏆', '🎉', '🎁', '🔑', '💌', '📌', '🧩', '🪄', '✨', '💫', '🫧', '🎵', '📸'] },
+  { label: 'Symbols', emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🤎', '🖤', '🤍', '💪', '👉', '👈', '☝️', '✅', '❌', '⚡', '💥', '🌟', '➡️', '⬇️'] },
+  { label: 'Hands', emojis: ['👋', '🤚', '✋', '🖐️', '👌', '🤌', '✊', '👊', '🤞', '🫰', '🤟', '🤘', '👍', '👎', '👆', '👇', '☝️', '🫵', '💅', '🙏'] },
+];
+
+function MiniEmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
+  const [activeCategory, setActiveCategory] = useState(0);
+  return (
+    <div className="w-64 bg-white rounded-xl shadow-xl border border-stone-200 overflow-hidden">
+      <div className="flex border-b border-stone-100 px-1">
+        {EMOJI_CATEGORIES.map((cat, i) => (
+          <button key={cat.label} onClick={() => setActiveCategory(i)}
+            className={`flex-1 py-1.5 text-[10px] transition ${activeCategory === i ? 'text-clay border-b-2 border-clay font-medium' : 'text-stone-400 hover:text-stone-600'}`}
+          >{cat.label}</button>
+        ))}
+      </div>
+      <div className="p-1.5 grid grid-cols-8 gap-0.5 max-h-40 overflow-y-auto">
+        {EMOJI_CATEGORIES[activeCategory].emojis.map((emoji, i) => (
+          <button key={`${emoji}-${i}`} onClick={() => onSelect(emoji)}
+            className="p-1 text-lg hover:bg-stone-100 rounded transition" title={emoji}
+          >{emoji}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Mini TipTap Editor for Rich Text blocks
 // ─────────────────────────────────────────────
 
@@ -342,7 +428,9 @@ function MiniTipTapEditor({ content, onChange, placeholder = 'Write here...', mi
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
   const [showMergeTagDropdown, setShowMergeTagDropdown] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [customColor, setCustomColor] = useState('#000000');
+  const emojiRef = useRef<HTMLDivElement>(null);
 
   // Slash command state
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -406,7 +494,8 @@ function MiniTipTapEditor({ content, onChange, placeholder = 'Write here...', mi
       Color,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      TextStyle,
+      CustomTextStyle,
+      LineHeight,
       MergeTagNode,
     ],
     content,
@@ -593,6 +682,53 @@ function MiniTipTapEditor({ content, onChange, placeholder = 'Write here...', mi
             <option value="3">Heading 3</option>
           </select>
 
+          {/* Font size */}
+          <select
+            value={(() => {
+              const fs = editor.getAttributes('textStyle').fontSize;
+              const sizes = [{ l: 'Small', v: '0.875em' }, { l: 'Normal', v: '1em' }, { l: 'Large', v: '1.25em' }, { l: 'XL', v: '1.5em' }];
+              return sizes.find(s => s.v === fs)?.l || 'Normal';
+            })()}
+            onChange={(e) => {
+              const sizes: Record<string, string> = { Small: '0.875em', Normal: '1em', Large: '1.25em', XL: '1.5em' };
+              const v = sizes[e.target.value];
+              if (v === '1em') { editor.chain().focus().unsetMark('textStyle').run(); }
+              else { editor.chain().focus().setMark('textStyle', { fontSize: v }).run(); }
+            }}
+            className="text-xs bg-transparent border border-stone-300 rounded px-1.5 py-1 text-stone-700 focus:outline-none focus:ring-1 focus:ring-clay/40"
+            title="Font size"
+          >
+            <option value="Small">Small</option>
+            <option value="Normal">Normal</option>
+            <option value="Large">Large</option>
+            <option value="XL">X-Large</option>
+          </select>
+
+          {/* Line height */}
+          <select
+            value={(() => {
+              const lh = editor.getAttributes('paragraph').lineHeight;
+              const opts = [{ l: '↕ Tight', v: '1.2' }, { l: '↕ Normal', v: '1.5' }, { l: '↕ Relaxed', v: '1.8' }, { l: '↕ Loose', v: '2' }];
+              return opts.find(o => o.v === lh)?.l || '↕ Normal';
+            })()}
+            onChange={(e) => {
+              const opts: Record<string, string> = { '↕ Tight': '1.2', '↕ Normal': '1.5', '↕ Relaxed': '1.8', '↕ Loose': '2' };
+              const v = opts[e.target.value];
+              if (v === '1.5') { (editor.commands as any).unsetLineHeight(); }
+              else { (editor.commands as any).setLineHeight(v); }
+              editor.commands.focus();
+            }}
+            className="text-xs bg-transparent border border-stone-300 rounded px-1.5 py-1 text-stone-700 focus:outline-none focus:ring-1 focus:ring-clay/40"
+            title="Line spacing"
+          >
+            <option value="↕ Tight">↕ Tight</option>
+            <option value="↕ Normal">↕ Normal</option>
+            <option value="↕ Relaxed">↕ Relaxed</option>
+            <option value="↕ Loose">↕ Loose</option>
+          </select>
+
+          <div className="w-px h-5 bg-stone-300 mx-0.5" />
+
           <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={btnClass(editor.isActive('bold'))} title="Bold">
             <Bold size={14} />
           </button>
@@ -773,6 +909,41 @@ function MiniTipTapEditor({ content, onChange, placeholder = 'Write here...', mi
               </>
             )}
           </div>
+
+          <div className="w-px h-5 bg-stone-300 mx-0.5" />
+
+          {/* Emoji picker */}
+          <div className="relative" ref={emojiRef}>
+            <button
+              type="button"
+              onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowColorPicker(false); setShowHighlightPicker(false); setShowMergeTagDropdown(false); }}
+              className={btnClass(showEmojiPicker)}
+              title="Insert emoji"
+            >
+              <Smile size={14} />
+            </button>
+            {showEmojiPicker && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)} />
+                <div className="absolute top-full right-0 z-50 mt-1">
+                  <MiniEmojiPicker onSelect={(emoji) => {
+                    editor.chain().focus().insertContent(emoji).run();
+                    setShowEmojiPicker(false);
+                  }} />
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="w-px h-5 bg-stone-300 mx-0.5" />
+
+          {/* Undo / Redo */}
+          <button type="button" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} className={`p-1.5 rounded transition-colors ${!editor.can().undo() ? 'text-stone-300' : 'text-stone-600 hover:bg-stone-200'}`} title="Undo">
+            <Undo size={14} />
+          </button>
+          <button type="button" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} className={`p-1.5 rounded transition-colors ${!editor.can().redo() ? 'text-stone-300' : 'text-stone-600 hover:bg-stone-200'}`} title="Redo">
+            <Redo size={14} />
+          </button>
         </div>
       </div>
 
