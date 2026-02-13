@@ -17,6 +17,8 @@ import contactRoutes from './contact.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
 import activityRoutes from './activity.routes.js';
 import automationsRoutes from './automations.routes.js';
+import templatesRoutes from './templates.routes.js';
+import emailSettingsRoutes from './email-settings.routes.js';
 import checkoutRoutes from './checkout.routes.js';
 import webhookRoutes from './webhook.routes.js';
 
@@ -40,6 +42,8 @@ router.use('/contact', contactRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/activity', activityRoutes);
 router.use('/automations', automationsRoutes);
+router.use('/templates', templatesRoutes);
+router.use('/email-settings', emailSettingsRoutes);
 router.use('/checkout', checkoutRoutes);
 router.use('/webhooks', webhookRoutes);
 

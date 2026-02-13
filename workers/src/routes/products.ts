@@ -85,6 +85,7 @@ productsRoutes.get('/', async (c) => {
   const category = c.req.query('category');
   const status = c.req.query('status');
   const search = c.req.query('search');
+  const availability = c.req.query('availability');
   const includeArchived = c.req.query('includeArchived') === 'true';
   const includeDrafts = c.req.query('includeDrafts') === 'true';
   const page = parseInt(c.req.query('page') || '1');
@@ -112,6 +113,10 @@ productsRoutes.get('/', async (c) => {
     conditions.push(or(eq(products.status, 'active'), eq(products.status, 'archived')));
   }
   // If includeDrafts: no status filter (show all non-deleted)
+
+  if (availability) {
+    conditions.push(eq(products.availability, availability));
+  }
 
   if (search) {
     const searchPattern = `%${search}%`;

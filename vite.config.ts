@@ -7,6 +7,12 @@ export default defineConfig({
       port: 3001,
       host: '0.0.0.0',
       allowedHosts: ['.loca.lt', '.trycloudflare.com'],
+      proxy: {
+        '/api': {
+          target: 'http://localhost:8787',
+          changeOrigin: true,
+        },
+      },
     },
     plugins: [react()],
     resolve: {

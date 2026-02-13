@@ -177,6 +177,7 @@ export default function ProductsManager() {
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [availabilityFilter, setAvailabilityFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -219,6 +220,7 @@ export default function ProductsManager() {
       params.set('includeArchived', 'true');
 
       if (statusFilter) params.set('status', statusFilter);
+      if (availabilityFilter) params.set('availability', availabilityFilter);
       if (typeFilter) params.set('productType', typeFilter);
       if (categoryFilter) params.set('category', categoryFilter);
       if (debouncedSearch) params.set('search', debouncedSearch);
@@ -237,7 +239,7 @@ export default function ProductsManager() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, statusFilter, typeFilter, categoryFilter, debouncedSearch]);
+  }, [accessToken, statusFilter, availabilityFilter, typeFilter, categoryFilter, debouncedSearch]);
 
   useEffect(() => {
     fetchProducts(1);
@@ -374,7 +376,7 @@ export default function ProductsManager() {
 
   // ---------- Filter helpers ----------
 
-  const hasActiveFilters = !!categoryFilter || !!typeFilter;
+  const hasActiveFilters = !!categoryFilter || !!typeFilter || !!availabilityFilter;
 
   const clearFilters = () => {
     setCategoryFilter('');
@@ -389,6 +391,11 @@ export default function ProductsManager() {
     { key: 'active', label: 'Active' },
     { key: 'draft', label: 'Drafts' },
     { key: 'archived', label: 'Archived' },
+  ];
+
+  const inventoryTabs = [
+    { key: 'In stock', label: 'In Stock' },
+    { key: 'Sold out', label: 'Sold Out' },
   ];
 
   // ---------- Render ----------
@@ -407,7 +414,7 @@ export default function ProductsManager() {
         </button>
       </div>
 
-      {/* Status tabs */}
+      {/* Status & Inventory tabs */}
       <div className="flex items-center gap-1 mb-4 border-b border-stone-200">
         {statusTabs.map((tab) => (
           <button
@@ -419,6 +426,24 @@ export default function ProductsManager() {
                 : 'border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300'
             }`}
           >
+            {tab.label}
+          </button>
+        ))}
+
+        <span className="mx-2 h-5 w-px bg-stone-200" />
+
+        {inventoryTabs.map((tab) => (
+          <button
+            key={`inv-${tab.key}`}
+            onClick={() => setAvailabilityFilter(availabilityFilter === tab.key ? '' : tab.key)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors inline-flex items-center gap-1.5 ${
+              availabilityFilter === tab.key
+                ? 'border-stone-900 text-stone-900'
+                : 'border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300'
+            }`}
+          >
+            {tab.key === 'In stock' && <span className="w-1.5 h-1.5 rounded-full bg-green-500" />}
+            {tab.key === 'Sold out' && <span className="w-1.5 h-1.5 rounded-full bg-red-500" />}
             {tab.label}
           </button>
         ))}

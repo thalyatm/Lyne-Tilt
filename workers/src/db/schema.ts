@@ -13,7 +13,7 @@ export const users = sqliteTable('users', {
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   name: text('name').notNull(),
-  role: text('role', { enum: ['admin', 'superadmin'] }).notNull().default('admin'),
+  role: text('role', { enum: ['admin', 'superadmin', 'editor'] }).notNull().default('admin'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => ({
@@ -396,20 +396,60 @@ export const blogPosts = sqliteTable('blog_posts', {
   slug: text('slug').notNull().unique(),
   excerpt: text('excerpt'),
   content: text('content').notNull(),
+  contentJson: text('content_json'),
   date: text('date').notNull(),
   category: text('category').notNull(),
   image: text('image'),
+  status: text('status', { enum: ['draft', 'scheduled', 'published', 'archived'] }).notNull().default('draft'),
   published: integer('published', { mode: 'boolean' }).notNull().default(false),
   publishedAt: text('published_at'),
+  scheduledAt: text('scheduled_at'),
   authorId: text('author_id').references(() => users.id, { onDelete: 'set null' }),
+  authorName: text('author_name'),
   metaTitle: text('meta_title'),
   metaDescription: text('meta_description'),
+  ogImageUrl: text('og_image_url'),
+  canonicalUrl: text('canonical_url'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => ({
   slugIdx: uniqueIndex('blog_posts_slug_idx').on(table.slug),
   publishedIdx: index('blog_posts_published_idx').on(table.published),
   categoryIdx: index('blog_posts_category_idx').on(table.category),
+  statusIdx: index('blog_posts_status_idx').on(table.status),
+  dateIdx: index('blog_posts_date_idx').on(table.date),
+}));
+
+// ============================================
+// BLOG POST VERSIONS
+// ============================================
+
+export const blogPostVersions = sqliteTable('blog_post_versions', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  postId: text('post_id').notNull().references(() => blogPosts.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  contentJson: text('content_json'),
+  excerpt: text('excerpt'),
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  savedAt: text('saved_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  postIdIdx: index('blog_post_versions_post_id_idx').on(table.postId),
+  savedAtIdx: index('blog_post_versions_saved_at_idx').on(table.savedAt),
+}));
+
+// ============================================
+// BLOG POST REDIRECTS (SEO slug changes)
+// ============================================
+
+export const blogPostRedirects = sqliteTable('blog_post_redirects', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  fromSlug: text('from_slug').notNull(),
+  toSlug: text('to_slug').notNull(),
+  postId: text('post_id').references(() => blogPosts.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  fromSlugIdx: uniqueIndex('blog_post_redirects_from_slug_idx').on(table.fromSlug),
 }));
 
 // ============================================
@@ -714,6 +754,27 @@ export const siteSettings = sqliteTable('site_settings', {
 }));
 
 // ============================================
+// EMAIL TEMPLATES
+// ============================================
+
+export const emailTemplates = sqliteTable('email_templates', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text('name').notNull(),
+  description: text('description'),
+  blocks: text('blocks', { mode: 'json' }).$type<any[]>().notNull().default([]),
+  thumbnail: text('thumbnail'),
+  isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+  category: text('category').default('Custom'),
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  nameIdx: index('email_templates_name_idx').on(table.name),
+  isDefaultIdx: index('email_templates_is_default_idx').on(table.isDefault),
+  categoryIdx: index('email_templates_category_idx').on(table.category),
+}));
+
+// ============================================
 // EMAIL AUTOMATIONS
 // ============================================
 
@@ -733,6 +794,9 @@ export const emailAutomations = sqliteTable('email_automations', {
   trigger: text('trigger', { enum: ['newsletter_signup', 'purchase', 'coaching_inquiry', 'contact_form', 'manual'] }).notNull().default('manual'),
   status: text('status', { enum: ['active', 'paused'] }).notNull().default('paused'),
   steps: text('steps', { mode: 'json' }).$type<AutomationStep[]>().default([]),
+  lastTriggeredAt: text('last_triggered_at'),
+  totalTriggered: integer('total_triggered').default(0),
+  totalSent: integer('total_sent').default(0),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => ({
@@ -754,6 +818,9 @@ export const automationQueue = sqliteTable('automation_queue', {
   scheduledFor: text('scheduled_for').notNull(),
   sentAt: text('sent_at'),
   error: text('error'),
+  retryCount: integer('retry_count').default(0),
+  maxRetries: integer('max_retries').default(3),
+  lastAttemptAt: text('last_attempt_at'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => ({
   automationIdIdx: index('automation_queue_automation_id_idx').on(table.automationId),
@@ -816,6 +883,21 @@ export const automationQueueRelations = relations(automationQueue, ({ one }) => 
   automation: one(emailAutomations, { fields: [automationQueue.automationId], references: [emailAutomations.id] }),
 }));
 
+export const blogPostsRelations = relations(blogPosts, ({ one, many }) => ({
+  author: one(users, { fields: [blogPosts.authorId], references: [users.id] }),
+  versions: many(blogPostVersions),
+  redirects: many(blogPostRedirects),
+}));
+
+export const blogPostVersionsRelations = relations(blogPostVersions, ({ one }) => ({
+  post: one(blogPosts, { fields: [blogPostVersions.postId], references: [blogPosts.id] }),
+  createdByUser: one(users, { fields: [blogPostVersions.createdBy], references: [users.id] }),
+}));
+
+export const blogPostRedirectsRelations = relations(blogPostRedirects, ({ one }) => ({
+  post: one(blogPosts, { fields: [blogPostRedirects.postId], references: [blogPosts.id] }),
+}));
+
 export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
   createdByUser: one(users, { fields: [campaigns.createdBy], references: [users.id] }),
   events: many(campaignEvents),
@@ -837,6 +919,13 @@ export const segmentsRelations = relations(segments, ({ many }) => ({
 export const importJobsRelations = relations(importJobs, ({ one }) => ({
   importedByUser: one(users, {
     fields: [importJobs.importedBy],
+    references: [users.id],
+  }),
+}));
+
+export const emailTemplatesRelations = relations(emailTemplates, ({ one }) => ({
+  createdByUser: one(users, {
+    fields: [emailTemplates.createdBy],
     references: [users.id],
   }),
 }));

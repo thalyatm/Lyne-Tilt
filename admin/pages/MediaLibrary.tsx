@@ -269,7 +269,7 @@ export default function MediaLibrary() {
                   }`}
                 >
                   <img
-                    src={`http://localhost:3002${file.url}`}
+                    src={`${API_BASE.replace(/\/api$/, '')}${file.url}`}
                     alt={file.filename}
                     className="w-full h-full object-cover"
                   />
@@ -310,7 +310,7 @@ export default function MediaLibrary() {
                     >
                       <td className="px-4 py-3">
                         <img
-                          src={`http://localhost:3002${file.url}`}
+                          src={`${API_BASE.replace(/\/api$/, '')}${file.url}`}
                           alt={file.filename}
                           className="w-12 h-12 object-cover rounded"
                         />
@@ -363,7 +363,7 @@ export default function MediaLibrary() {
             <div className="p-4 flex-1 overflow-y-auto">
               <div className="aspect-square bg-stone-100 rounded-lg overflow-hidden mb-4">
                 <img
-                  src={`http://localhost:3002${selectedFile.url}`}
+                  src={`${API_BASE.replace(/\/api$/, '')}${selectedFile.url}`}
                   alt={selectedFile.filename}
                   className="w-full h-full object-contain"
                 />

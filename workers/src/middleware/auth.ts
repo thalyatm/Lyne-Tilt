@@ -147,6 +147,34 @@ export async function customerAuth(c: Context<{ Bindings: Bindings; Variables: V
   await next();
 }
 
+// Optional admin auth (doesn't fail if no token — sets user if valid admin token present)
+export async function optionalAdminAuth(c: Context<{ Bindings: Bindings; Variables: Variables }>, next: Next) {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    await next();
+    return;
+  }
+
+  const token = authHeader.slice(7);
+  const payload = await verifyJwt(token, c.env.JWT_SECRET);
+
+  if (payload && payload.type === 'admin') {
+    const db = c.get('db');
+    const user = await db.select().from(users).where(eq(users.id, payload.sub)).get();
+
+    if (user) {
+      c.set('user', {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      });
+    }
+  }
+
+  await next();
+}
+
 // Optional customer auth (doesn't fail if no token)
 export async function optionalCustomerAuth(c: Context<{ Bindings: Bindings; Variables: Variables }>, next: Next) {
   const authHeader = c.req.header('Authorization');

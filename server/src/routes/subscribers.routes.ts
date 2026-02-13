@@ -16,8 +16,8 @@ async function logActivity(action: string, entityType: string, entityId: string,
       entityType,
       entityId,
       entityName: entityName || '',
-      userId: req.user?.id,
-      userName: req.user?.name,
+      userId: req.user?.userId,
+      userName: req.user?.email,
       metadata,
       createdAt: new Date(),
     });
@@ -507,7 +507,7 @@ router.post('/import', authMiddleware, async (req: Request, res: Response) => {
       totalRows: rows.length,
       defaultSource: defaultSource || 'csv_import',
       defaultTags: defaultTags || [],
-      importedBy: user?.id || null,
+      importedBy: user?.userId || null,
       createdAt: new Date(),
     }).returning();
 

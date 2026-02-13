@@ -18,7 +18,7 @@ import { relations } from 'drizzle-orm';
 // ENUMS
 // ============================================
 
-export const userRoleEnum = pgEnum('user_role', ['admin', 'superadmin']);
+export const userRoleEnum = pgEnum('user_role', ['admin', 'superadmin', 'editor']);
 export const customerRoleEnum = pgEnum('customer_role', ['customer']);
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']);
 export const productCategoryEnum = pgEnum('product_category', ['Earrings', 'Brooches', 'Necklaces']);
@@ -26,7 +26,7 @@ export const learnItemTypeEnum = pgEnum('learn_item_type', ['ONLINE', 'WORKSHOP'
 export const testimonialTypeEnum = pgEnum('testimonial_type', ['shop', 'coaching', 'learn']);
 export const faqCategoryEnum = pgEnum('faq_category', ['Shop', 'Coaching', 'Learn', 'General']);
 export const contactStatusEnum = pgEnum('contact_status', ['unread', 'read', 'archived']);
-export const activityActionEnum = pgEnum('activity_action', ['create', 'update', 'delete', 'publish', 'unpublish', 'send', 'schedule', 'cancel_schedule', 'import', 'export', 'activate', 'pause', 'suppress', 'unsuppress']);
+export const activityActionEnum = pgEnum('activity_action', ['create', 'update', 'delete', 'publish', 'unpublish', 'send', 'schedule', 'cancel_schedule', 'import', 'export', 'activate', 'pause', 'suppress', 'unsuppress', 'retry', 'cancel', 'duplicate']);
 export const emailAudienceEnum = pgEnum('email_audience', ['all', 'segment']);
 export const campaignStatusEnum = pgEnum('campaign_status', ['draft', 'scheduled', 'sending', 'sent', 'failed']);
 export const emailEventTypeEnum = pgEnum('email_event_type', ['delivered', 'opened', 'clicked', 'bounced', 'complained', 'unsubscribed']);
@@ -576,6 +576,82 @@ export const suppressionList = pgTable('suppression_list', {
 }));
 
 // ============================================
+// EMAIL TEMPLATES
+// ============================================
+
+export const emailTemplates = pgTable('email_templates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  blocks: jsonb('blocks').$type<any[]>().notNull().default([]),
+  thumbnail: text('thumbnail'),
+  isDefault: boolean('is_default').notNull().default(false),
+  category: varchar('category', { length: 100 }).default('Custom'),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  nameIdx: index('email_templates_name_idx').on(table.name),
+  isDefaultIdx: index('email_templates_is_default_idx').on(table.isDefault),
+  categoryIdx: index('email_templates_category_idx').on(table.category),
+}));
+
+// ============================================
+// EMAIL AUTOMATIONS
+// ============================================
+
+export interface AutomationStep {
+  id: string;
+  order: number;
+  delayDays: number;
+  delayHours: number;
+  subject: string;
+  body: string;
+}
+
+export const emailAutomations = pgTable('email_automations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  trigger: varchar('trigger', { length: 50 }).notNull().default('manual'),
+  status: varchar('status', { length: 20 }).notNull().default('paused'),
+  steps: jsonb('steps').$type<AutomationStep[]>().notNull().default([]),
+  lastTriggeredAt: timestamp('last_triggered_at'),
+  totalTriggered: integer('total_triggered').default(0),
+  totalSent: integer('total_sent').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  triggerIdx: index('email_automations_trigger_idx').on(table.trigger),
+  statusIdx: index('email_automations_status_idx').on(table.status),
+}));
+
+export const automationQueue = pgTable('automation_queue', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  automationId: uuid('automation_id').notNull().references(() => emailAutomations.id, { onDelete: 'cascade' }),
+  automationName: varchar('automation_name', { length: 255 }),
+  stepId: varchar('step_id', { length: 100 }).notNull(),
+  stepOrder: integer('step_order').notNull(),
+  recipientEmail: varchar('recipient_email', { length: 255 }).notNull(),
+  recipientName: varchar('recipient_name', { length: 255 }),
+  subject: varchar('subject', { length: 255 }).notNull(),
+  body: text('body').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('scheduled'),
+  scheduledFor: timestamp('scheduled_for').notNull(),
+  sentAt: timestamp('sent_at'),
+  error: text('error'),
+  retryCount: integer('retry_count').default(0),
+  maxRetries: integer('max_retries').default(3),
+  lastAttemptAt: timestamp('last_attempt_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  automationIdIdx: index('automation_queue_automation_id_idx').on(table.automationId),
+  recipientEmailIdx: index('automation_queue_recipient_email_idx').on(table.recipientEmail),
+  statusIdx: index('automation_queue_status_idx').on(table.status),
+  scheduledForIdx: index('automation_queue_scheduled_for_idx').on(table.scheduledFor),
+}));
+
+// ============================================
 // CONTACT SUBMISSIONS
 // ============================================
 
@@ -827,5 +903,23 @@ export const importJobsRelations = relations(importJobs, ({ one }) => ({
   importedByUser: one(users, {
     fields: [importJobs.importedBy],
     references: [users.id],
+  }),
+}));
+
+export const emailTemplatesRelations = relations(emailTemplates, ({ one }) => ({
+  createdByUser: one(users, {
+    fields: [emailTemplates.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const emailAutomationsRelations = relations(emailAutomations, ({ many }) => ({
+  queueItems: many(automationQueue),
+}));
+
+export const automationQueueRelations = relations(automationQueue, ({ one }) => ({
+  automation: one(emailAutomations, {
+    fields: [automationQueue.automationId],
+    references: [emailAutomations.id],
   }),
 }));

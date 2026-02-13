@@ -48,6 +48,55 @@ automationsRoutes.get('/queue', adminAuth, async (c) => {
   return c.json(result);
 });
 
+// GET /queue/all — alias for /queue (frontend calls this path)
+automationsRoutes.get('/queue/all', adminAuth, async (c) => {
+  const db = c.get('db');
+  const result = await db.select().from(automationQueue).orderBy(desc(automationQueue.createdAt)).all();
+  return c.json(result);
+});
+
+// POST /queue/process — stub (actual processing done by scheduled worker)
+automationsRoutes.post('/queue/process', adminAuth, async (c) => {
+  return c.json({ processed: 0, sent: 0, failed: 0 });
+});
+
+// POST /queue/:id/retry — reset failed item to scheduled
+automationsRoutes.post('/queue/:id/retry', adminAuth, async (c) => {
+  const db = c.get('db');
+  const id = c.req.param('id');
+
+  const item = await db.select().from(automationQueue).where(eq(automationQueue.id, id)).get();
+  if (!item) return c.json({ error: 'Queue item not found' }, 404);
+  if (item.status !== 'failed') return c.json({ error: 'Only failed items can be retried' }, 400);
+  if ((item.retryCount ?? 0) >= (item.maxRetries ?? 3)) {
+    return c.json({ error: 'Max retries exceeded' }, 400);
+  }
+
+  const updated = await db.update(automationQueue)
+    .set({ status: 'scheduled', error: null })
+    .where(eq(automationQueue.id, id))
+    .returning().get();
+
+  return c.json(updated);
+});
+
+// DELETE /queue/:id — cancel a scheduled queue item
+automationsRoutes.delete('/queue/:id', adminAuth, async (c) => {
+  const db = c.get('db');
+  const id = c.req.param('id');
+
+  const item = await db.select().from(automationQueue).where(eq(automationQueue.id, id)).get();
+  if (!item) return c.json({ error: 'Queue item not found' }, 404);
+  if (item.status !== 'scheduled') return c.json({ error: 'Only scheduled items can be cancelled' }, 400);
+
+  const updated = await db.update(automationQueue)
+    .set({ status: 'cancelled' })
+    .where(eq(automationQueue.id, id))
+    .returning().get();
+
+  return c.json(updated);
+});
+
 // GET /:id — get single automation
 automationsRoutes.get('/:id', adminAuth, async (c) => {
   const db = c.get('db');

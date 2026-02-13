@@ -1,8 +1,8 @@
 // API Configuration
-// In development, defaults to localhost:3002
-// In production, set VITE_API_BASE environment variable
+// In development, Vite proxies /api to the Workers dev server (see vite.config.ts)
+// In production, set VITE_API_BASE to the full Workers URL
 
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3002/api';
+export const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 // Stripe public key for client-side
 export const STRIPE_PUBLIC_KEY = import.meta.env.VITE_STRIPE_PUBLIC_KEY || '';

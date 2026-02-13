@@ -65,6 +65,8 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
     steps,
     createdAt: now,
     updatedAt: now,
+    totalTriggered: 0,
+    totalSent: 0,
   };
 
   await db.read();
@@ -196,6 +198,72 @@ router.get('/queue/stats', authMiddleware, async (req: Request, res: Response) =
   res.json(stats);
 });
 
+// POST retry a failed queue item (protected)
+router.post('/queue/:id/retry', authMiddleware, async (req: Request, res: Response) => {
+  await db.read();
+  if (!db.data) {
+    throw new AppError('Database error', 500);
+  }
+
+  const itemIndex = db.data.automationQueue.findIndex((item) => item.id === req.params.id);
+
+  if (itemIndex === -1) {
+    throw new AppError('Queue item not found', 404);
+  }
+
+  const item = db.data.automationQueue[itemIndex];
+
+  if (item.status !== 'failed') {
+    throw new AppError('Can only retry failed queue items', 400);
+  }
+
+  const retryCount = (item.retryCount || 0) + 1;
+  const maxRetries = 3;
+
+  if (retryCount > maxRetries) {
+    throw new AppError('Maximum retries exceeded', 400);
+  }
+
+  db.data.automationQueue[itemIndex] = {
+    ...item,
+    status: 'scheduled',
+    retryCount,
+    lastAttemptAt: new Date().toISOString(),
+    error: undefined,
+  };
+
+  await db.write();
+  res.json(db.data.automationQueue[itemIndex]);
+});
+
+// DELETE cancel a scheduled queue item (protected)
+router.delete('/queue/:id', authMiddleware, async (req: Request, res: Response) => {
+  await db.read();
+  if (!db.data) {
+    throw new AppError('Database error', 500);
+  }
+
+  const itemIndex = db.data.automationQueue.findIndex((item) => item.id === req.params.id);
+
+  if (itemIndex === -1) {
+    throw new AppError('Queue item not found', 404);
+  }
+
+  const item = db.data.automationQueue[itemIndex];
+
+  if (item.status !== 'scheduled') {
+    throw new AppError('Can only cancel scheduled queue items', 400);
+  }
+
+  db.data.automationQueue[itemIndex] = {
+    ...item,
+    status: 'cancelled',
+  };
+
+  await db.write();
+  res.json({ message: 'Queue item cancelled' });
+});
+
 // POST manually trigger an automation for a recipient (protected)
 router.post('/:id/trigger', authMiddleware, async (req: Request, res: Response) => {
   const { email, name } = req.body;
@@ -235,10 +303,21 @@ router.post('/:id/trigger', authMiddleware, async (req: Request, res: Response) 
       status: 'scheduled' as const,
       scheduledFor: scheduledDate.toISOString(),
       createdAt: now.toISOString(),
+      retryCount: 0,
+      maxRetries: 3,
     };
   });
 
   db.data.automationQueue.push(...queueItems);
+
+  // Update automation stats
+  const automationIndex = db.data.emailAutomations.findIndex((a) => a.id === req.params.id);
+  if (automationIndex !== -1) {
+    db.data.emailAutomations[automationIndex].lastTriggeredAt = now.toISOString();
+    db.data.emailAutomations[automationIndex].totalTriggered =
+      (db.data.emailAutomations[automationIndex].totalTriggered || 0) + 1;
+  }
+
   await db.write();
 
   res.json({ message: `Automation queued with ${queueItems.length} emails`, queueItems });
@@ -283,10 +362,20 @@ router.post('/queue/process', authMiddleware, async (req: Request, res: Response
 
       const itemIndex = db.data.automationQueue.findIndex((q) => q.id === item.id);
       if (itemIndex !== -1) {
+        db.data.automationQueue[itemIndex].lastAttemptAt = now.toISOString();
         if (success) {
           db.data.automationQueue[itemIndex].status = 'sent';
           db.data.automationQueue[itemIndex].sentAt = now.toISOString();
           results.sent++;
+
+          // Update automation stats
+          const automationIndex = db.data.emailAutomations.findIndex(
+            (a) => a.id === item.automationId
+          );
+          if (automationIndex !== -1) {
+            db.data.emailAutomations[automationIndex].totalSent =
+              (db.data.emailAutomations[automationIndex].totalSent || 0) + 1;
+          }
         } else {
           db.data.automationQueue[itemIndex].status = 'failed';
           db.data.automationQueue[itemIndex].error = 'Email send failed';
@@ -297,6 +386,7 @@ router.post('/queue/process', authMiddleware, async (req: Request, res: Response
       const itemIndex = db.data.automationQueue.findIndex((q) => q.id === item.id);
       if (itemIndex !== -1) {
         db.data.automationQueue[itemIndex].status = 'failed';
+        db.data.automationQueue[itemIndex].lastAttemptAt = now.toISOString();
         db.data.automationQueue[itemIndex].error = error instanceof Error ? error.message : 'Unknown error';
         results.failed++;
       }
@@ -342,6 +432,8 @@ export async function triggerAutomation(
         status: 'scheduled' as const,
         scheduledFor: scheduledDate.toISOString(),
         createdAt: now.toISOString(),
+        retryCount: 0,
+        maxRetries: 3,
       };
     });
 

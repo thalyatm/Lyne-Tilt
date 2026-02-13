@@ -19,6 +19,11 @@ import {
   Bell,
   Zap,
   Megaphone,
+  Contact,
+  Filter,
+  LayoutTemplate,
+  ListOrdered,
+  Mail,
 } from 'lucide-react';
 
 interface NavItem {
@@ -98,8 +103,13 @@ export default function AdminLayout() {
       label: 'Marketing',
       items: [
         { to: '/admin/campaigns', icon: Megaphone, label: 'Campaigns' },
+        { to: '/admin/subscribers', icon: Contact, label: 'Subscribers' },
+        { to: '/admin/segments', icon: Filter, label: 'Segments' },
+        { to: '/admin/templates', icon: LayoutTemplate, label: 'Templates' },
         { to: '/admin/newsletter', icon: Send, label: 'Newsletter' },
         { to: '/admin/automations', icon: Zap, label: 'Automations' },
+        { to: '/admin/automations/queue', icon: ListOrdered, label: 'Queue' },
+        { to: '/admin/email-settings', icon: Mail, label: 'Email Settings' },
       ],
     },
     {

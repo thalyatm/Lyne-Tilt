@@ -41,6 +41,15 @@ import CampaignCompose from './admin/pages/CampaignCompose';
 import CampaignReview from './admin/pages/CampaignReview';
 import CampaignAnalytics from './admin/pages/CampaignAnalytics';
 import ContactInbox from './admin/pages/ContactInbox';
+import SubscriberList from './admin/pages/SubscriberList';
+import SubscriberDetail from './admin/pages/SubscriberDetail';
+import SubscriberImport from './admin/pages/SubscriberImport';
+import SegmentList from './admin/pages/SegmentList';
+import SegmentBuilder from './admin/pages/SegmentBuilder';
+import TemplateLibrary from './admin/pages/TemplateLibrary';
+import TemplateEditor from './admin/pages/TemplateEditor';
+import AutomationQueue from './admin/pages/AutomationQueue';
+import EmailSettings from './admin/pages/EmailSettings';
 import { ToastProvider } from './admin/context/ToastContext';
 
 const App = () => {
@@ -91,6 +100,12 @@ const App = () => {
               <Route path="campaigns/:id" element={<CampaignCompose />} />
               <Route path="campaigns/:id/review" element={<CampaignReview />} />
               <Route path="campaigns/:id/analytics" element={<CampaignAnalytics />} />
+              <Route path="subscribers" element={<SubscriberList />} />
+              <Route path="subscribers/import" element={<SubscriberImport />} />
+              <Route path="subscribers/:id" element={<SubscriberDetail />} />
+              <Route path="segments" element={<SegmentList />} />
+              <Route path="segments/new" element={<SegmentBuilder />} />
+              <Route path="segments/:id" element={<SegmentBuilder />} />
               <Route path="products" element={<ProductsManager />} />
               <Route path="products/new" element={<ProductEditor />} />
               <Route path="products/:id" element={<ProductEditor />} />
@@ -100,8 +115,12 @@ const App = () => {
               <Route path="testimonials" element={<TestimonialsManager />} />
               <Route path="faqs" element={<FAQsManager />} />
               <Route path="settings" element={<SiteSettingsManager />} />
+              <Route path="templates" element={<TemplateLibrary />} />
+              <Route path="templates/new" element={<TemplateEditor />} />
+              <Route path="templates/:id" element={<TemplateEditor />} />
               <Route path="automations" element={<NewsletterManager />} />
-              {/* Automations tab auto-selected via URL */}
+              <Route path="automations/queue" element={<AutomationQueue />} />
+              <Route path="email-settings" element={<EmailSettings />} />
             </Route>
 
               {/* Catch-all route redirects to home */}

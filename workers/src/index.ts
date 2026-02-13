@@ -22,6 +22,9 @@ import { dashboardRoutes } from './routes/dashboard';
 import { wallArtRoutes } from './routes/wallart';
 import { trackingRoutes } from './routes/tracking';
 import { automationsRoutes } from './routes/automations';
+import { emailSettingsRoutes } from './routes/email-settings';
+import { segmentsRoutes } from './routes/segments';
+import { templatesRoutes } from './routes/templates';
 import { processScheduledDrafts, processAutomationQueue } from './utils/scheduled';
 
 // Environment bindings type
@@ -99,6 +102,9 @@ app.route('/api/dashboard', dashboardRoutes);
 app.route('/api/wall-art', wallArtRoutes);
 app.route('/api/newsletter/track', trackingRoutes);
 app.route('/api/automations', automationsRoutes);
+app.route('/api/email-settings', emailSettingsRoutes);
+app.route('/api/segments', segmentsRoutes);
+app.route('/api/templates', templatesRoutes);
 
 // 404 handler
 app.notFound((c) => {

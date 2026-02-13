@@ -11,7 +11,7 @@ const REFRESH_TOKEN_EXPIRY = process.env.JWT_REFRESH_EXPIRY || '7d';
 export interface TokenPayload {
   userId: string;
   email: string;
-  role: 'admin' | 'superadmin';
+  role: 'admin' | 'superadmin' | 'editor';
 }
 
 export function generateAccessToken(payload: TokenPayload): string {

@@ -272,6 +272,9 @@ export interface EmailAutomation {
   trigger: AutomationTrigger;
   status: 'active' | 'paused';
   steps: AutomationStep[];
+  lastTriggeredAt?: string;
+  totalTriggered: number;
+  totalSent: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -291,7 +294,23 @@ export interface AutomationQueueItem {
   scheduledFor: string;
   sentAt?: string;
   error?: string;
+  retryCount: number;
+  maxRetries: number;
+  lastAttemptAt?: string;
   createdAt: string;
+}
+
+export interface EmailTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  blocks: any[];
+  thumbnail?: string;
+  isDefault: boolean;
+  category: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Site Settings Interfaces
@@ -489,6 +508,7 @@ export interface DatabaseSchema {
   activityLog: ActivityLogEntry[];
   emailAutomations: EmailAutomation[];
   automationQueue: AutomationQueueItem[];
+  emailTemplates: EmailTemplate[];
   siteSettings?: SiteSettings;
 }
 
@@ -514,6 +534,7 @@ const defaultData: DatabaseSchema = {
   activityLog: [],
   emailAutomations: [],
   automationQueue: [],
+  emailTemplates: [],
 };
 
 const dbPath = process.env.DATABASE_PATH || join(__dirname, '../../data/db.json');

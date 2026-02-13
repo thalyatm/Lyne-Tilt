@@ -54,26 +54,9 @@ UPDATE products SET status = 'active', published_at = created_at WHERE archived 
 
 -- ============================================
 -- STEP 2: Migrate wall_art_products into products
+-- Skipped: wall_art_products table does not exist on remote D1.
+-- If the table exists locally, run the data migration via application code.
 -- ============================================
-
-INSERT INTO products (
-  id, product_type, name, slug, price, currency, category,
-  short_description, long_description, dimensions, image, detail_images,
-  badge, rating, review_count, availability, archived,
-  stripe_product_id, stripe_price_id, display_order,
-  track_inventory, quantity, continue_selling, taxable, tags,
-  status, published_at, created_at, updated_at
-)
-SELECT
-  id, 'wall-art', name, slug, price, currency, category,
-  short_description, long_description, dimensions, image, detail_images,
-  badge, rating, review_count, availability, archived,
-  stripe_product_id, stripe_price_id, display_order,
-  1, 1, 0, 1, '[]',
-  CASE WHEN archived = 1 THEN 'archived' ELSE 'active' END,
-  CASE WHEN archived = 0 THEN created_at ELSE NULL END,
-  created_at, updated_at
-FROM wall_art_products;
 
 -- ============================================
 -- STEP 3: Create product_media table
