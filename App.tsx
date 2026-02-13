@@ -54,6 +54,8 @@ import TemplateEditor from './admin/pages/TemplateEditor';
 import AutomationsManager from './admin/pages/AutomationsManager';
 import AutomationQueue from './admin/pages/AutomationQueue';
 import EmailSettings from './admin/pages/EmailSettings';
+import CohortsManager from './admin/pages/CohortsManager';
+import CohortEditor from './admin/pages/CohortEditor';
 import AnalyticsHub from './admin/pages/AnalyticsHub';
 import AnalyticsRevenue from './admin/pages/AnalyticsRevenue';
 import AnalyticsEmail from './admin/pages/AnalyticsEmail';
@@ -91,8 +93,8 @@ const App = () => {
                 <Route path="coaching" element={<Coaching />} />
                 <Route path="learn" element={<Learn />} />
                 <Route path="about" element={<About />} />
-                <Route path="journal" element={<Blog />} />
-                <Route path="journal/:id" element={<BlogPostDetail />} />
+                <Route path="oxygennotes" element={<Blog />} />
+                <Route path="oxygennotes/:id" element={<BlogPostDetail />} />
                 <Route path="faq" element={<FAQ />} />
                 <Route path="contact" element={<Contact />} />
                 <Route path="account" element={<Account />} />
@@ -140,6 +142,9 @@ const App = () => {
               <Route path="workshops" element={<WorkshopsManager />} />
               <Route path="workshops/new" element={<WorkshopEditor />} />
               <Route path="workshops/:id" element={<WorkshopEditor />} />
+              <Route path="cohorts" element={<CohortsManager />} />
+              <Route path="cohorts/new" element={<CohortEditor />} />
+              <Route path="cohorts/:id" element={<CohortEditor />} />
               <Route path="blog" element={<BlogManager />} />
               <Route path="testimonials" element={<TestimonialsManager />} />
               <Route path="faqs" element={<FAQsManager />} />

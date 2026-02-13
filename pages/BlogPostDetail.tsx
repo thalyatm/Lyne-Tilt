@@ -101,7 +101,7 @@ const BlogPostDetail = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center pt-20">
         <p className="text-stone-500 mb-4">Article not found.</p>
-        <Link to="/journal" className="text-clay hover:underline">Return to Blog</Link>
+        <Link to="/oxygennotes" className="text-clay hover:underline">Return to Oxygen Notes</Link>
       </div>
     );
   }
@@ -185,8 +185,8 @@ const BlogPostDetail = () => {
 
       <article className="max-w-3xl mx-auto px-6 animate-fade-in-up">
         {/* Back Link */}
-        <Link to="/journal" className="inline-flex items-center gap-2 text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-800 mb-10 transition-colors">
-          <ArrowLeft size={14} /> Back to Blog
+        <Link to="/oxygennotes" className="inline-flex items-center gap-2 text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-800 mb-10 transition-colors">
+          <ArrowLeft size={14} /> Back to Oxygen Notes
         </Link>
 
         {/* Header */}
@@ -241,7 +241,7 @@ const BlogPostDetail = () => {
 
         {/* Footer */}
         <div className="mt-12 pt-8 border-t border-stone-100 flex justify-between items-center">
-           <Link to="/journal" className="text-xs font-bold uppercase tracking-widest text-stone-900 hover:text-clay transition-colors">
+           <Link to="/oxygennotes" className="text-xs font-bold uppercase tracking-widest text-stone-900 hover:text-clay transition-colors">
               ← All Articles
            </Link>
            <button
@@ -260,7 +260,7 @@ const BlogPostDetail = () => {
               <h3 className="text-center font-serif text-xl text-stone-900 mb-10">Continue Reading</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {allPosts.filter(p => p.id !== post.id).slice(0, 2).map(nextPost => (
-                     <Link key={nextPost.id} to={`/journal/${nextPost.id}`} className="group block bg-white p-5 border border-stone-100 hover:border-stone-300 transition-colors">
+                     <Link key={nextPost.id} to={`/oxygennotes/${nextPost.id}`} className="group block bg-white p-5 border border-stone-100 hover:border-stone-300 transition-colors">
                         <div className="flex items-center gap-3 mb-3">
                           <span className="text-[9px] uppercase tracking-widest text-clay">{nextPost.category}</span>
                           <span className="text-[9px] text-stone-400">{formatDate(nextPost.date)}</span>
@@ -280,10 +280,10 @@ const BlogPostDetail = () => {
           Enjoyed this article? Get more essays on creative living delivered to your inbox.
         </p>
         <Link
-          to="/journal"
+          to="/oxygennotes"
           className="inline-block text-[10px] uppercase tracking-widest font-bold text-stone-900 hover:text-clay transition-colors"
         >
-          Subscribe to the Journal →
+          Subscribe to Oxygen Notes →
         </Link>
       </div>
     </div>

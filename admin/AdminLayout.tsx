@@ -25,6 +25,7 @@ import {
   ListOrdered,
   Mail,
   BarChart3,
+  CalendarDays,
 } from 'lucide-react';
 
 interface NavItem {
@@ -91,12 +92,13 @@ export default function AdminLayout() {
       items: [
         { to: '/admin/coaching', icon: Users, label: 'Coaching' },
         { to: '/admin/workshops', icon: BookOpen, label: 'Workshops' },
+        { to: '/admin/cohorts', icon: CalendarDays, label: 'Cohorts' },
       ],
     },
     {
       label: 'Content',
       items: [
-        { to: '/admin/blog', icon: FileText, label: 'Blog' },
+        { to: '/admin/blog', icon: FileText, label: 'Oxygen Notes' },
         { to: '/admin/testimonials', icon: Star, label: 'Testimonials' },
         { to: '/admin/faqs', icon: HelpCircle, label: 'FAQs' },
       ],

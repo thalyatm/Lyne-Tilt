@@ -21,7 +21,7 @@ const getReadingTime = (content: string) => {
 };
 
 const Blog = () => {
-  useEffect(() => { document.title = 'Journal | Lyne Tilt'; }, []);
+  useEffect(() => { document.title = 'Oxygen Notes | Lyne Tilt'; }, []);
 
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +91,7 @@ const Blog = () => {
 
       {/* Header */}
       <div className="mb-10 text-center animate-fade-in-up max-w-2xl mx-auto">
-          <h1 className="text-4xl md:text-5xl font-serif text-clay mb-4">Lyne Tilt Blog</h1>
+          <h1 className="text-4xl md:text-5xl font-serif text-clay mb-4">Oxygen Notes</h1>
           <p className="text-base text-stone-500 font-light">
             Essays on creative living, mindset, and building a meaningful practice.
           </p>
@@ -158,7 +158,7 @@ const Blog = () => {
                   </div>
 
                   <h2 className="text-2xl md:text-3xl font-serif text-stone-900 mb-4 leading-tight hover:text-clay transition-colors">
-                    <Link to={`/journal/${featuredPost.id}`}>
+                    <Link to={`/oxygennotes/${featuredPost.id}`}>
                       {featuredPost.title}
                     </Link>
                   </h2>
@@ -170,7 +170,7 @@ const Blog = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-stone-400">{formatDate(featuredPost.date)}</span>
                     <Link
-                      to={`/journal/${featuredPost.id}`}
+                      to={`/oxygennotes/${featuredPost.id}`}
                       className="inline-flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold text-stone-900 hover:text-clay transition-colors"
                     >
                       Read Article <ArrowRight size={14} />
@@ -202,7 +202,7 @@ const Blog = () => {
                     </div>
 
                     <h3 className="text-lg font-serif text-stone-900 mb-3 leading-snug group-hover:text-clay transition-colors">
-                      <Link to={`/journal/${post.id}`}>
+                      <Link to={`/oxygennotes/${post.id}`}>
                         {post.title}
                       </Link>
                     </h3>
@@ -214,7 +214,7 @@ const Blog = () => {
                     <div className="flex items-center justify-between mt-auto pt-4 border-t border-stone-100">
                       <span className="text-[10px] text-stone-400">{formatDate(post.date)}</span>
                       <Link
-                        to={`/journal/${post.id}`}
+                        to={`/oxygennotes/${post.id}`}
                         className="text-[10px] uppercase tracking-widest font-bold text-stone-900 hover:text-clay transition-colors"
                       >
                         Read →

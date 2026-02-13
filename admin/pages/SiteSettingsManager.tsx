@@ -1091,7 +1091,7 @@ export default function SiteSettingsManager() {
               { key: 'coaching', label: 'Coaching Page', url: 'yoursite.com/coaching' },
               { key: 'learn', label: 'Learn Page', url: 'yoursite.com/learn' },
               { key: 'shop', label: 'Shop Page', url: 'yoursite.com/shop' },
-              { key: 'blog', label: 'Blog Page', url: 'yoursite.com/journal' },
+              { key: 'blog', label: 'Oxygen Notes', url: 'yoursite.com/oxygennotes' },
               { key: 'contact', label: 'Contact Page', url: 'yoursite.com/contact' },
               { key: 'faq', label: 'FAQ Page', url: 'yoursite.com/faq' },
             ].map((page) => (

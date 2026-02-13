@@ -24,7 +24,7 @@ const Layout = () => {
 
   // Active page detection
   const isShopActive = location.pathname === '/shop' || location.pathname.startsWith('/shop/');
-  const isLearnActive = ['/learn', '/journal'].some(p => location.pathname === p || location.pathname.startsWith(p + '/'));
+  const isLearnActive = ['/learn', '/oxygennotes'].some(p => location.pathname === p || location.pathname.startsWith(p + '/'));
   const isCoachingActive = location.pathname === '/coaching';
   const isAboutActive = location.pathname === '/about';
   const isFaqActive = location.pathname === '/faq';
@@ -150,7 +150,7 @@ const Layout = () => {
               {isLearnActive && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-clay" />}
               <div role="menu" className={`absolute top-full left-1/2 -translate-x-1/2 mt-3 w-52 bg-white/95 backdrop-blur-sm rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] ring-1 ring-stone-900/5 py-2 z-50 transition-all duration-300 ease-out ${activeDropdown === 'learn' ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-1 pointer-events-none'}`}>
                 <Link to="/learn" className="block mx-2 px-4 py-2.5 text-sm text-stone-500 rounded-lg hover:text-stone-800 hover:bg-stone-50 transition-colors">Workshops & Courses</Link>
-                <Link to="/journal" className="block mx-2 px-4 py-2.5 text-sm text-stone-500 rounded-lg hover:text-stone-800 hover:bg-stone-50 transition-colors">Blog</Link>
+                <Link to="/oxygennotes" className="block mx-2 px-4 py-2.5 text-sm text-stone-500 rounded-lg hover:text-stone-800 hover:bg-stone-50 transition-colors">Oxygen Notes</Link>
               </div>
             </div>
 
@@ -304,7 +304,7 @@ const Layout = () => {
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${mobileAccordion === 'learn' ? 'max-h-40 opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
               <div className="flex flex-col gap-3 text-base font-sans text-stone-500">
                 <Link to="/learn" onClick={() => setMobileMenuOpen(false)} className="hover:text-clay transition-colors">Workshops & Courses</Link>
-                <Link to="/journal" onClick={() => setMobileMenuOpen(false)} className="hover:text-clay transition-colors">Blog</Link>
+                <Link to="/oxygennotes" onClick={() => setMobileMenuOpen(false)} className="hover:text-clay transition-colors">Oxygen Notes</Link>
               </div>
             </div>
           </div>
@@ -346,7 +346,7 @@ const Layout = () => {
       </main>
 
       {/* Global Lead Magnet (Newsletter Sign up) - Hidden on Blog page which has its own */}
-      {location.pathname !== '/journal' && (
+      {location.pathname !== '/oxygennotes' && (
         <div id="newsletter" className="relative z-10">
           <LeadMagnet />
         </div>
@@ -406,7 +406,7 @@ const Layout = () => {
                 <ul className="space-y-2 text-sm font-light">
                   <li><Link to="/coaching" className="hover:text-clay transition-colors link-underline">Clarity Coaching</Link></li>
                   <li><Link to="/learn" className="hover:text-clay transition-colors link-underline">Workshops & Courses</Link></li>
-                  <li><Link to="/journal" className="hover:text-clay transition-colors link-underline">The Blog</Link></li>
+                  <li><Link to="/oxygennotes" className="hover:text-clay transition-colors link-underline">Oxygen Notes</Link></li>
                   <li><Link to="/contact" className="hover:text-clay transition-colors link-underline">Book Free Call</Link></li>
                 </ul>
               </div>

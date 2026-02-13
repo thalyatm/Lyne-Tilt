@@ -933,7 +933,7 @@ export default function BlogManager() {
     return (
       <div>
         <div className="mb-6">
-          <h1 className="text-lg font-semibold text-stone-900">Blog Posts</h1>
+          <h1 className="text-lg font-semibold text-stone-900">Oxygen Notes</h1>
           <p className="text-sm text-stone-500 mt-1">Write and publish articles for your website.</p>
         </div>
 
@@ -981,7 +981,7 @@ export default function BlogManager() {
         </div>
 
         <DataTable
-          title="Blog Posts"
+          title="Oxygen Notes"
           data={filteredPosts}
           columns={columns}
           loading={loading}
@@ -1373,7 +1373,7 @@ export default function BlogManager() {
                   <div>
                     <label className="text-xs font-medium text-stone-700 mb-1.5 block">URL Slug</label>
                     <div className="flex items-center gap-0 border border-stone-200 rounded-md overflow-hidden bg-white">
-                      <span className="px-2.5 py-2 text-xs text-stone-400 bg-stone-50 border-r border-stone-200 flex-shrink-0">/journal/</span>
+                      <span className="px-2.5 py-2 text-xs text-stone-400 bg-stone-50 border-r border-stone-200 flex-shrink-0">/oxygennotes/</span>
                       <input
                         type="text"
                         value={formValues.slug || ''}
@@ -1472,7 +1472,7 @@ export default function BlogManager() {
                       title={formValues.metaTitle || formValues.title || ''}
                       description={formValues.metaDescription || formValues.excerpt || ''}
                       image={formValues.ogImageUrl || formValues.image || ''}
-                      url={`/journal/${formValues.slug || generateSlug(formValues.title || '')}`}
+                      url={`/oxygennotes/${formValues.slug || generateSlug(formValues.title || '')}`}
                     />
                   </div>
                 </>
