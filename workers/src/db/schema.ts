@@ -324,11 +324,47 @@ export const coachingPackages = sqliteTable('coaching_packages', {
   stripePriceId: text('stripe_price_id'),
   displayOrder: integer('display_order').default(0),
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  // New fields (migration 0005)
+  status: text('status', { enum: ['draft', 'scheduled', 'published', 'archived'] }).notNull().default('draft'),
+  summary: text('summary'),
+  descriptionHtml: text('description_html'),
+  descriptionJson: text('description_json'),
+  coverImageUrl: text('cover_image_url'),
+  priceType: text('price_type', { enum: ['fixed', 'from', 'free', 'inquiry'] }).notNull().default('fixed'),
+  durationMinutes: integer('duration_minutes'),
+  deliveryMode: text('delivery_mode', { enum: ['online', 'in_person', 'hybrid'] }).notNull().default('online'),
+  locationLabel: text('location_label'),
+  bookingUrl: text('booking_url'),
+  seoTitle: text('seo_title'),
+  seoDescription: text('seo_description'),
+  ogImageUrl: text('og_image_url'),
+  canonicalUrl: text('canonical_url'),
+  tags: text('tags', { mode: 'json' }).$type<string[]>().default([]),
+  publishedAt: text('published_at'),
+  scheduledAt: text('scheduled_at'),
+  previousSlugs: text('previous_slugs', { mode: 'json' }).$type<string[]>().default([]),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => ({
   slugIdx: uniqueIndex('coaching_packages_slug_idx').on(table.slug),
   displayOrderIdx: index('coaching_packages_display_order_idx').on(table.displayOrder),
+  statusIdx: index('coaching_packages_status_idx').on(table.status),
+}));
+
+// Coaching Revisions
+export const coachingRevisions = sqliteTable('coaching_revisions', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  coachingId: text('coaching_id').notNull().references(() => coachingPackages.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  summary: text('summary'),
+  descriptionHtml: text('description_html'),
+  descriptionJson: text('description_json'),
+  features: text('features', { mode: 'json' }).$type<string[]>().default([]),
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  savedAt: text('saved_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  coachingIdIdx: index('coaching_revisions_coaching_id_idx').on(table.coachingId),
+  savedAtIdx: index('coaching_revisions_saved_at_idx').on(table.savedAt),
 }));
 
 // ============================================
@@ -359,12 +395,50 @@ export const learnItems = sqliteTable('learn_items', {
   stripePriceId: text('stripe_price_id'),
   displayOrder: integer('display_order').default(0),
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  // New fields (migration 0005)
+  status: text('status', { enum: ['draft', 'scheduled', 'published', 'archived'] }).notNull().default('draft'),
+  summary: text('summary'),
+  contentHtml: text('content_html'),
+  contentJson: text('content_json'),
+  coverImageUrl: text('cover_image_url'),
+  capacity: integer('capacity'),
+  deliveryMode: text('delivery_mode', { enum: ['online', 'in_person', 'hybrid'] }).notNull().default('online'),
+  locationLabel: text('location_label'),
+  startAt: text('start_at'),
+  endAt: text('end_at'),
+  timezone: text('timezone').notNull().default('Australia/Sydney'),
+  ticketingUrl: text('ticketing_url'),
+  evergreen: integer('evergreen', { mode: 'boolean' }).notNull().default(false),
+  seoTitle: text('seo_title'),
+  seoDescription: text('seo_description'),
+  ogImageUrl: text('og_image_url'),
+  canonicalUrl: text('canonical_url'),
+  tags: text('tags', { mode: 'json' }).$type<string[]>().default([]),
+  publishedAt: text('published_at'),
+  scheduledAt: text('scheduled_at'),
+  previousSlugs: text('previous_slugs', { mode: 'json' }).$type<string[]>().default([]),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => ({
   slugIdx: uniqueIndex('learn_items_slug_idx').on(table.slug),
   typeIdx: index('learn_items_type_idx').on(table.type),
   displayOrderIdx: index('learn_items_display_order_idx').on(table.displayOrder),
+  statusIdx: index('learn_items_status_idx').on(table.status),
+}));
+
+// Workshop Revisions
+export const workshopRevisions = sqliteTable('workshop_revisions', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  workshopId: text('workshop_id').notNull().references(() => learnItems.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  summary: text('summary'),
+  contentHtml: text('content_html'),
+  contentJson: text('content_json'),
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  savedAt: text('saved_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  workshopIdIdx: index('workshop_revisions_workshop_id_idx').on(table.workshopId),
+  savedAtIdx: index('workshop_revisions_saved_at_idx').on(table.savedAt),
 }));
 
 // ============================================
@@ -830,6 +904,30 @@ export const automationQueue = sqliteTable('automation_queue', {
 }));
 
 // ============================================
+// ANALYTICS & TRACKING
+// ============================================
+
+export const analyticsEvents = sqliteTable('analytics_events', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  eventType: text('event_type', {
+    enum: ['page_view', 'product_view', 'add_to_cart', 'checkout_start', 'blog_read', 'search'],
+  }).notNull(),
+  entityType: text('entity_type'),
+  entityId: text('entity_id'),
+  sessionId: text('session_id').notNull(),
+  referrer: text('referrer'),
+  pathname: text('pathname').notNull(),
+  metadata: text('metadata', { mode: 'json' }).$type<Record<string, unknown>>(),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  typeIdx: index('analytics_events_type_idx').on(table.eventType),
+  entityIdx: index('analytics_events_entity_idx').on(table.entityType, table.entityId),
+  sessionIdx: index('analytics_events_session_idx').on(table.sessionId),
+  createdAtIdx: index('analytics_events_created_at_idx').on(table.createdAt),
+  pathnameIdx: index('analytics_events_pathname_idx').on(table.pathname),
+}));
+
+// ============================================
 // RELATIONS (for Drizzle query builder)
 // ============================================
 
@@ -928,4 +1026,23 @@ export const emailTemplatesRelations = relations(emailTemplates, ({ one }) => ({
     fields: [emailTemplates.createdBy],
     references: [users.id],
   }),
+}));
+
+export const coachingPackagesRelations = relations(coachingPackages, ({ many }) => ({
+  revisions: many(coachingRevisions),
+}));
+
+export const coachingRevisionsRelations = relations(coachingRevisions, ({ one }) => ({
+  coaching: one(coachingPackages, { fields: [coachingRevisions.coachingId], references: [coachingPackages.id] }),
+  createdByUser: one(users, { fields: [coachingRevisions.createdBy], references: [users.id] }),
+}));
+
+export const learnItemsRelations = relations(learnItems, ({ many }) => ({
+  enrollments: many(enrollments),
+  revisions: many(workshopRevisions),
+}));
+
+export const workshopRevisionsRelations = relations(workshopRevisions, ({ one }) => ({
+  workshop: one(learnItems, { fields: [workshopRevisions.workshopId], references: [learnItems.id] }),
+  createdByUser: one(users, { fields: [workshopRevisions.createdBy], references: [users.id] }),
 }));
