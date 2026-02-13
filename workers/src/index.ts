@@ -25,6 +25,7 @@ import { automationsRoutes } from './routes/automations';
 import { emailSettingsRoutes } from './routes/email-settings';
 import { segmentsRoutes } from './routes/segments';
 import { templatesRoutes } from './routes/templates';
+import { analyticsRoutes } from './routes/analytics';
 import { processScheduledDrafts, processAutomationQueue } from './utils/scheduled';
 
 // Environment bindings type
@@ -105,6 +106,7 @@ app.route('/api/automations', automationsRoutes);
 app.route('/api/email-settings', emailSettingsRoutes);
 app.route('/api/segments', segmentsRoutes);
 app.route('/api/templates', templatesRoutes);
+app.route('/api/analytics', analyticsRoutes);
 
 // 404 handler
 app.notFound((c) => {
