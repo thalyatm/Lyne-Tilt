@@ -865,9 +865,24 @@ export const emailAutomations = sqliteTable('email_automations', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull(),
   description: text('description'),
-  trigger: text('trigger', { enum: ['newsletter_signup', 'purchase', 'coaching_inquiry', 'contact_form', 'manual'] }).notNull().default('manual'),
+  trigger: text('trigger', { enum: [
+    'newsletter_signup', 'purchase', 'coaching_inquiry', 'contact_form', 'manual',
+    'form_submission_received', 'order_placed', 'order_fulfilled_or_delivered', 'cart_abandoned',
+  ] }).notNull().default('manual'),
   status: text('status', { enum: ['active', 'paused'] }).notNull().default('paused'),
   steps: text('steps', { mode: 'json' }).$type<AutomationStep[]>().default([]),
+  subject: text('subject'),
+  previewText: text('preview_text'),
+  bodyText: text('body_text'),
+  bodyHtml: text('body_html'),
+  ctaLabel: text('cta_label'),
+  ctaUrl: text('cta_url'),
+  footerText: text('footer_text'),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  sendDelayDays: integer('send_delay_days').notNull().default(0),
+  sendDelayHours: integer('send_delay_hours').notNull().default(0),
+  isSystem: integer('is_system', { mode: 'boolean' }).notNull().default(false),
+  oneTimePerRecipient: integer('one_time_per_recipient', { mode: 'boolean' }).notNull().default(false),
   lastTriggeredAt: text('last_triggered_at'),
   totalTriggered: integer('total_triggered').default(0),
   totalSent: integer('total_sent').default(0),
@@ -876,6 +891,7 @@ export const emailAutomations = sqliteTable('email_automations', {
 }, (table) => ({
   triggerIdx: index('email_automations_trigger_idx').on(table.trigger),
   statusIdx: index('email_automations_status_idx').on(table.status),
+  enabledIdx: index('email_automations_enabled_idx').on(table.enabled),
 }));
 
 export const automationQueue = sqliteTable('automation_queue', {
@@ -925,6 +941,153 @@ export const analyticsEvents = sqliteTable('analytics_events', {
   sessionIdx: index('analytics_events_session_idx').on(table.sessionId),
   createdAtIdx: index('analytics_events_created_at_idx').on(table.createdAt),
   pathnameIdx: index('analytics_events_pathname_idx').on(table.pathname),
+}));
+
+// ============================================
+// COHORTS (scheduled instances of workshops)
+// ============================================
+
+export const cohorts = sqliteTable('cohorts', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  learnItemId: text('learn_item_id').notNull().references(() => learnItems.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  slug: text('slug').notNull().unique(),
+  status: text('status', { enum: ['draft', 'open', 'closed', 'in_progress', 'completed', 'cancelled'] }).notNull().default('draft'),
+  description: text('description'),
+  internalNotes: text('internal_notes'),
+
+  // Scheduling
+  startAt: text('start_at'),
+  endAt: text('end_at'),
+  timezone: text('timezone').notNull().default('Australia/Sydney'),
+  registrationOpensAt: text('registration_opens_at'),
+  registrationClosesAt: text('registration_closes_at'),
+
+  // Capacity
+  capacity: integer('capacity'),
+  enrolledCount: integer('enrolled_count').notNull().default(0),
+  waitlistEnabled: integer('waitlist_enabled', { mode: 'boolean' }).notNull().default(false),
+  waitlistCapacity: integer('waitlist_capacity'),
+  waitlistCount: integer('waitlist_count').notNull().default(0),
+
+  // Pricing (overrides learn_item when set)
+  price: text('price'),
+  compareAtPrice: text('compare_at_price'),
+  earlyBirdPrice: text('early_bird_price'),
+  earlyBirdEndsAt: text('early_bird_ends_at'),
+  currency: text('currency').notNull().default('AUD'),
+
+  // Delivery (overrides learn_item when set)
+  deliveryMode: text('delivery_mode', { enum: ['online', 'in_person', 'hybrid'] }),
+  locationLabel: text('location_label'),
+  locationAddress: text('location_address'),
+  meetingUrl: text('meeting_url'),
+
+  // Facilitator
+  instructorName: text('instructor_name'),
+  instructorEmail: text('instructor_email'),
+
+  // Duplication tracking
+  duplicatedFromId: text('duplicated_from_id'),
+
+  // Lifecycle timestamps
+  publishedAt: text('published_at'),
+  cancelledAt: text('cancelled_at'),
+  cancellationReason: text('cancellation_reason'),
+  completedAt: text('completed_at'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  learnItemIdIdx: index('cohorts_learn_item_id_idx').on(table.learnItemId),
+  statusIdx: index('cohorts_status_idx').on(table.status),
+  slugIdx: uniqueIndex('cohorts_slug_idx').on(table.slug),
+  startAtIdx: index('cohorts_start_at_idx').on(table.startAt),
+  statusStartIdx: index('cohorts_status_start_idx').on(table.status, table.startAt),
+}));
+
+// ============================================
+// COHORT SESSIONS
+// ============================================
+
+export const cohortSessions = sqliteTable('cohort_sessions', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  cohortId: text('cohort_id').notNull().references(() => cohorts.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  description: text('description'),
+  sessionNumber: integer('session_number').notNull(),
+  startAt: text('start_at').notNull(),
+  endAt: text('end_at'),
+  durationMinutes: integer('duration_minutes'),
+  locationLabel: text('location_label'),
+  meetingUrl: text('meeting_url'),
+  status: text('status', { enum: ['scheduled', 'completed', 'cancelled'] }).notNull().default('scheduled'),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  cohortIdIdx: index('cohort_sessions_cohort_id_idx').on(table.cohortId),
+  startAtIdx: index('cohort_sessions_start_at_idx').on(table.startAt),
+}));
+
+// ============================================
+// COHORT ENROLLMENTS
+// ============================================
+
+export const cohortEnrollments = sqliteTable('cohort_enrollments', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  cohortId: text('cohort_id').notNull().references(() => cohorts.id, { onDelete: 'cascade' }),
+  customerName: text('customer_name').notNull(),
+  customerEmail: text('customer_email').notNull(),
+  customerId: text('customer_id').references(() => customerUsers.id, { onDelete: 'set null' }),
+  orderId: text('order_id').references(() => orders.id, { onDelete: 'set null' }),
+  status: text('status', { enum: ['active', 'waitlisted', 'cancelled', 'refunded', 'completed', 'no_show'] }).notNull().default('active'),
+  pricePaid: text('price_paid'),
+  currency: text('currency').notNull().default('AUD'),
+  paymentMethod: text('payment_method'),
+
+  // Waitlist
+  waitlistPosition: integer('waitlist_position'),
+  waitlistAddedAt: text('waitlist_added_at'),
+  promotedFromWaitlistAt: text('promoted_from_waitlist_at'),
+
+  // Cancellation
+  cancelledAt: text('cancelled_at'),
+  cancellationReason: text('cancellation_reason'),
+  refundedAt: text('refunded_at'),
+  refundAmount: text('refund_amount'),
+
+  // Admin
+  enrolledBy: text('enrolled_by').notNull().default('admin'),
+  internalNotes: text('internal_notes'),
+
+  // Timestamps
+  enrolledAt: text('enrolled_at').notNull().$defaultFn(() => new Date().toISOString()),
+  completedAt: text('completed_at'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  cohortIdIdx: index('cohort_enrollments_cohort_id_idx').on(table.cohortId),
+  customerEmailIdx: index('cohort_enrollments_customer_email_idx').on(table.customerEmail),
+  statusIdx: index('cohort_enrollments_status_idx').on(table.status),
+  cohortEmailIdx: uniqueIndex('cohort_enrollments_cohort_email_idx').on(table.cohortId, table.customerEmail),
+}));
+
+// ============================================
+// COHORT ATTENDANCE
+// ============================================
+
+export const cohortAttendance = sqliteTable('cohort_attendance', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  sessionId: text('session_id').notNull().references(() => cohortSessions.id, { onDelete: 'cascade' }),
+  enrollmentId: text('enrollment_id').notNull().references(() => cohortEnrollments.id, { onDelete: 'cascade' }),
+  status: text('status', { enum: ['present', 'absent', 'late', 'excused'] }).notNull().default('present'),
+  checkedInAt: text('checked_in_at'),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  sessionIdIdx: index('cohort_attendance_session_id_idx').on(table.sessionId),
+  enrollmentIdIdx: index('cohort_attendance_enrollment_id_idx').on(table.enrollmentId),
+  sessionEnrollmentIdx: uniqueIndex('cohort_attendance_session_enrollment_idx').on(table.sessionId, table.enrollmentId),
 }));
 
 // ============================================
@@ -1040,9 +1203,34 @@ export const coachingRevisionsRelations = relations(coachingRevisions, ({ one })
 export const learnItemsRelations = relations(learnItems, ({ many }) => ({
   enrollments: many(enrollments),
   revisions: many(workshopRevisions),
+  cohorts: many(cohorts),
 }));
 
 export const workshopRevisionsRelations = relations(workshopRevisions, ({ one }) => ({
   workshop: one(learnItems, { fields: [workshopRevisions.workshopId], references: [learnItems.id] }),
   createdByUser: one(users, { fields: [workshopRevisions.createdBy], references: [users.id] }),
+}));
+
+// Cohort relations
+export const cohortsRelations = relations(cohorts, ({ one, many }) => ({
+  learnItem: one(learnItems, { fields: [cohorts.learnItemId], references: [learnItems.id] }),
+  sessions: many(cohortSessions),
+  enrollments: many(cohortEnrollments),
+}));
+
+export const cohortSessionsRelations = relations(cohortSessions, ({ one, many }) => ({
+  cohort: one(cohorts, { fields: [cohortSessions.cohortId], references: [cohorts.id] }),
+  attendance: many(cohortAttendance),
+}));
+
+export const cohortEnrollmentsRelations = relations(cohortEnrollments, ({ one, many }) => ({
+  cohort: one(cohorts, { fields: [cohortEnrollments.cohortId], references: [cohorts.id] }),
+  customer: one(customerUsers, { fields: [cohortEnrollments.customerId], references: [customerUsers.id] }),
+  order: one(orders, { fields: [cohortEnrollments.orderId], references: [orders.id] }),
+  attendance: many(cohortAttendance),
+}));
+
+export const cohortAttendanceRelations = relations(cohortAttendance, ({ one }) => ({
+  session: one(cohortSessions, { fields: [cohortAttendance.sessionId], references: [cohortSessions.id] }),
+  enrollment: one(cohortEnrollments, { fields: [cohortAttendance.enrollmentId], references: [cohortEnrollments.id] }),
 }));

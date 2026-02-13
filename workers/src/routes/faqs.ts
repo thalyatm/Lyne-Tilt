@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import { faqs } from '../db/schema';
+import { logActivity } from '../utils/activityLog';
 import { adminAuth } from '../middleware/auth';
 import type { Bindings, Variables } from '../index';
 
@@ -43,6 +44,8 @@ faqsRoutes.post('/', adminAuth, async (c) => {
     published: body.published ?? true,
   }).returning().get();
 
+  await logActivity(db, 'create', 'faq', faq, c.get('user'));
+
   return c.json(faq, 201);
 });
 
@@ -61,6 +64,8 @@ faqsRoutes.put('/:id', adminAuth, async (c) => {
     .returning()
     .get();
 
+  await logActivity(db, 'update', 'faq', faq, c.get('user'));
+
   return c.json(faq);
 });
 
@@ -69,7 +74,12 @@ faqsRoutes.delete('/:id', adminAuth, async (c) => {
   const db = c.get('db');
   const id = c.req.param('id');
 
+  const existing = await db.select().from(faqs).where(eq(faqs.id, id)).get();
   await db.delete(faqs).where(eq(faqs.id, id));
+
+  if (existing) {
+    await logActivity(db, 'delete', 'faq', existing, c.get('user'));
+  }
 
   return c.json({ success: true });
 });

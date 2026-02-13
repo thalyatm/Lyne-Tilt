@@ -26,7 +26,10 @@ const Coaching = () => {
           fetch(`${API_BASE}/testimonials?type=coaching`),
           fetch(`${API_BASE}/faqs?category=Coaching`),
         ]);
-        if (pkgRes.ok) setCoachingPackages(await pkgRes.json());
+        if (pkgRes.ok) {
+          const data = await pkgRes.json();
+          setCoachingPackages(Array.isArray(data) ? data : data.items ?? []);
+        }
         if (testRes.ok) setTestimonials(await testRes.json());
         if (faqRes.ok) setCoachingFaqs(await faqRes.json());
       } catch {
@@ -49,8 +52,8 @@ const Coaching = () => {
     { id: 'overview', label: 'Overview' },
     { id: 'the-shift', label: 'Benefits' },
     { id: 'packages', label: 'Packages' },
-    { id: 'faq', label: 'FAQ' },
-  ], []);
+    ...(coachingFaqs.length > 0 ? [{ id: 'faq', label: 'FAQ' }] : []),
+  ], [coachingFaqs]);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);

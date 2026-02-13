@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { eq, desc, and, or, like, isNull, ne, sql, asc } from 'drizzle-orm';
-import { products, productMedia, slugRedirects, activityLog } from '../db/schema';
+import { products, productMedia, slugRedirects } from '../db/schema';
+import { logActivity } from '../utils/activityLog';
 import { adminAuth } from '../middleware/auth';
 import type { Bindings, Variables } from '../index';
 
@@ -55,24 +56,6 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   discontinued: ['archived'],
 };
 
-async function logActivity(
-  db: any,
-  action: string,
-  product: any,
-  user: any,
-  changedFields?: Record<string, { old: unknown; new: unknown }>,
-) {
-  await db.insert(activityLog).values({
-    action,
-    entityType: 'product',
-    entityId: product.id,
-    entityName: product.name,
-    userId: user?.id,
-    userName: user?.name,
-    changedFields: changedFields || null,
-    entitySnapshot: product,
-  });
-}
 
 // ============================================
 // PUBLIC ENDPOINTS
@@ -218,15 +201,10 @@ productsRoutes.post('/bulk', adminAuth, async (c) => {
     }
   }
 
-  await db.insert(activityLog).values({
-    action: 'update',
-    entityType: 'product',
-    entityId: ids.join(','),
-    entityName: `Bulk ${action} (${ids.length} products)`,
-    userId: user?.id,
-    userName: user?.name,
-    details: `Bulk ${action}: ${results.updated} updated, ${results.failed} failed`,
-  });
+  await logActivity(db, 'update', 'product', {
+    id: ids.join(','),
+    name: `Bulk ${action} (${ids.length} products)`,
+  }, user);
 
   return c.json(results);
 });
@@ -312,7 +290,7 @@ productsRoutes.post('/', adminAuth, async (c) => {
     displayOrder: body.displayOrder || 0,
   }).returning().get();
 
-  await logActivity(db, 'create', result, user);
+  await logActivity(db, 'create', 'product', result, user);
 
   return c.json(result, 201);
 });
@@ -391,7 +369,7 @@ productsRoutes.put('/:id', adminAuth, async (c) => {
     .where(eq(products.id, id))
     .returning().get();
 
-  await logActivity(db, 'update', result, user, changedFields);
+  await logActivity(db, 'update', 'product', result, user, changedFields);
 
   return c.json(result);
 });
@@ -454,7 +432,7 @@ productsRoutes.patch('/:id/status', adminAuth, async (c) => {
     : newStatus === 'draft' ? 'unpublish'
     : 'update';
 
-  await logActivity(db, action, result, user, {
+  await logActivity(db, action, 'product', result, user, {
     status: { old: current.status, new: newStatus },
   });
 
@@ -489,7 +467,7 @@ productsRoutes.delete('/:id', adminAuth, async (c) => {
     .where(eq(products.id, id))
     .returning().get();
 
-  await logActivity(db, 'delete', result, user);
+  await logActivity(db, 'delete', 'product', result, user);
 
   return c.json({ success: true });
 });
@@ -558,7 +536,7 @@ productsRoutes.post('/:id/duplicate', adminAuth, async (c) => {
     });
   }
 
-  await logActivity(db, 'duplicate', result, user, {
+  await logActivity(db, 'duplicate', 'product', result, user, {
     sourceProductId: { old: null, new: source.id },
   });
 

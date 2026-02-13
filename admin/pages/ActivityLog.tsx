@@ -10,13 +10,15 @@ import {
   Filter,
   ChevronDown,
   RefreshCw,
+  Archive,
+  Copy,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../config/api';
 
 interface ActivityEntry {
   id: string;
-  action: 'create' | 'update' | 'delete' | 'publish' | 'unpublish' | 'send';
+  action: 'create' | 'update' | 'delete' | 'publish' | 'unpublish' | 'send' | 'archive' | 'duplicate';
   entityType: string;
   entityId: string;
   entityName: string;
@@ -41,6 +43,8 @@ const actionIcons: Record<string, React.ReactNode> = {
   publish: <Eye size={14} className="text-purple-500" />,
   unpublish: <EyeOff size={14} className="text-amber-500" />,
   send: <Send size={14} className="text-teal-500" />,
+  archive: <Archive size={14} className="text-stone-500" />,
+  duplicate: <Copy size={14} className="text-indigo-500" />,
 };
 
 const actionLabels: Record<string, string> = {
@@ -50,6 +54,8 @@ const actionLabels: Record<string, string> = {
   publish: 'Published',
   unpublish: 'Unpublished',
   send: 'Sent',
+  archive: 'Archived',
+  duplicate: 'Duplicated',
 };
 
 const actionColors: Record<string, string> = {
@@ -59,6 +65,8 @@ const actionColors: Record<string, string> = {
   publish: 'bg-purple-100 text-purple-700',
   unpublish: 'bg-amber-100 text-amber-700',
   send: 'bg-teal-100 text-teal-700',
+  archive: 'bg-stone-100 text-stone-700',
+  duplicate: 'bg-indigo-100 text-indigo-700',
 };
 
 export default function ActivityLog() {
@@ -205,6 +213,8 @@ export default function ActivityLog() {
                 <option value="publish">Published</option>
                 <option value="unpublish">Unpublished</option>
                 <option value="send">Sent</option>
+                <option value="archive">Archived</option>
+                <option value="duplicate">Duplicated</option>
               </select>
             </div>
 

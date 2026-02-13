@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { eq, desc, and, sql, gte, lte } from 'drizzle-orm';
 import { subscribers, emailDrafts, sentEmails, subscriberTags, emailEvents } from '../db/schema';
+import { logActivity } from '../utils/activityLog';
 import { adminAuth } from '../middleware/auth';
 import { sendEmail, sendBulkNewsletter } from '../utils/email';
 import { triggerAutomation } from '../utils/automations';
@@ -137,6 +138,8 @@ newsletterRoutes.post('/drafts', adminAuth, async (c) => {
     segmentFilters: segmentFilters || null,
   }).returning().get();
 
+  await logActivity(db, 'create', 'email_draft', draft, c.get('user'));
+
   return c.json(draft, 201);
 });
 
@@ -164,6 +167,8 @@ newsletterRoutes.put('/drafts/:id', adminAuth, async (c) => {
     return c.json({ error: 'Draft not found' }, 404);
   }
 
+  await logActivity(db, 'update', 'email_draft', result, c.get('user'));
+
   return c.json(result);
 });
 
@@ -172,7 +177,12 @@ newsletterRoutes.delete('/drafts/:id', adminAuth, async (c) => {
   const db = c.get('db');
   const id = c.req.param('id');
 
+  const existing = await db.select().from(emailDrafts).where(eq(emailDrafts.id, id)).get();
   await db.delete(emailDrafts).where(eq(emailDrafts.id, id));
+
+  if (existing) {
+    await logActivity(db, 'delete', 'email_draft', existing, c.get('user'));
+  }
 
   return c.json({ success: true });
 });
@@ -502,6 +512,8 @@ newsletterRoutes.post('/subscribers/import', adminAuth, async (c) => {
     }
   }
 
+  await logActivity(db, 'create', 'subscriber', { id: 'import', name: `Import: ${added} added, ${updated} updated, ${skipped} skipped` }, c.get('user'));
+
   return c.json({ added, skipped, updated });
 });
 
@@ -635,6 +647,8 @@ newsletterRoutes.post('/send', adminAuth, async (c) => {
   if (draftId) {
     await db.delete(emailDrafts).where(eq(emailDrafts.id, draftId));
   }
+
+  await logActivity(db, 'send', 'campaign', sentRecord, c.get('user'));
 
   return c.json({
     success: true,

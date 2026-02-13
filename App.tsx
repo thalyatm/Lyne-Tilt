@@ -51,6 +51,7 @@ import SegmentList from './admin/pages/SegmentList';
 import SegmentBuilder from './admin/pages/SegmentBuilder';
 import TemplateLibrary from './admin/pages/TemplateLibrary';
 import TemplateEditor from './admin/pages/TemplateEditor';
+import ActivityLog from './admin/pages/ActivityLog';
 import AutomationsManager from './admin/pages/AutomationsManager';
 import AutomationQueue from './admin/pages/AutomationQueue';
 import EmailSettings from './admin/pages/EmailSettings';
@@ -149,6 +150,7 @@ const App = () => {
               <Route path="testimonials" element={<TestimonialsManager />} />
               <Route path="faqs" element={<FAQsManager />} />
               <Route path="settings" element={<SiteSettingsManager />} />
+              <Route path="activity" element={<ActivityLog />} />
               <Route path="templates" element={<TemplateLibrary />} />
               <Route path="templates/new" element={<TemplateEditor />} />
               <Route path="templates/:id" element={<TemplateEditor />} />

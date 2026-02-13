@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { eq, desc, asc, and, or, sql, count, like } from 'drizzle-orm';
 import { blogPosts, blogPostVersions, blogPostRedirects, users } from '../db/schema';
+import { logActivity } from '../utils/activityLog';
 import { adminAuth, optionalAdminAuth } from '../middleware/auth';
 import type { Bindings, Variables } from '../index';
 
@@ -224,6 +225,8 @@ blogRoutes.post('/', adminAuth, async (c) => {
     canonicalUrl: body.canonicalUrl || null,
   }).returning().get();
 
+  await logActivity(db, 'create', 'blog_post', post, user);
+
   return c.json(post, 201);
 });
 
@@ -309,11 +312,14 @@ blogRoutes.put('/:id', adminAuth, async (c) => {
     }
   }
 
+  const user = c.get('user');
   const post = await db.update(blogPosts)
     .set(updateData)
     .where(eq(blogPosts.id, id))
     .returning()
     .get();
+
+  await logActivity(db, 'update', 'blog_post', post, user);
 
   return c.json(post);
 });
@@ -353,6 +359,8 @@ blogRoutes.post('/:id/publish', adminAuth, async (c) => {
     createdBy: user?.id || null,
   });
 
+  await logActivity(db, 'publish', 'blog_post', post, user);
+
   return c.json(post);
 });
 
@@ -360,6 +368,7 @@ blogRoutes.post('/:id/publish', adminAuth, async (c) => {
 
 blogRoutes.post('/:id/unpublish', adminAuth, async (c) => {
   const db = c.get('db');
+  const user = c.get('user');
   const id = c.req.param('id');
 
   const existing = await db.select().from(blogPosts).where(eq(blogPosts.id, id)).get();
@@ -378,6 +387,8 @@ blogRoutes.post('/:id/unpublish', adminAuth, async (c) => {
     .returning()
     .get();
 
+  await logActivity(db, 'unpublish', 'blog_post', post, user);
+
   return c.json(post);
 });
 
@@ -385,6 +396,7 @@ blogRoutes.post('/:id/unpublish', adminAuth, async (c) => {
 
 blogRoutes.post('/:id/schedule', adminAuth, async (c) => {
   const db = c.get('db');
+  const user = c.get('user');
   const id = c.req.param('id');
   const body = await c.req.json();
 
@@ -413,6 +425,8 @@ blogRoutes.post('/:id/schedule', adminAuth, async (c) => {
     .returning()
     .get();
 
+  await logActivity(db, 'update', 'blog_post', post, user);
+
   return c.json(post);
 });
 
@@ -420,6 +434,7 @@ blogRoutes.post('/:id/schedule', adminAuth, async (c) => {
 
 blogRoutes.post('/:id/archive', adminAuth, async (c) => {
   const db = c.get('db');
+  const user = c.get('user');
   const id = c.req.param('id');
 
   const existing = await db.select().from(blogPosts).where(eq(blogPosts.id, id)).get();
@@ -437,6 +452,8 @@ blogRoutes.post('/:id/archive', adminAuth, async (c) => {
     .where(eq(blogPosts.id, id))
     .returning()
     .get();
+
+  await logActivity(db, 'archive', 'blog_post', post, user);
 
   return c.json(post);
 });
@@ -501,6 +518,8 @@ blogRoutes.post('/:id/duplicate', adminAuth, async (c) => {
     ogImageUrl: existing.ogImageUrl,
     canonicalUrl: null,
   }).returning().get();
+
+  await logActivity(db, 'duplicate', 'blog_post', post, user);
 
   return c.json(post, 201);
 });
@@ -642,9 +661,13 @@ blogRoutes.delete('/:id', adminAuth, async (c) => {
     return c.json({ error: 'Blog post not found' }, 404);
   }
 
+  const user = c.get('user');
+
   // Clean up redirects pointing to this post
   await db.delete(blogPostRedirects).where(eq(blogPostRedirects.postId, id));
   await db.delete(blogPosts).where(eq(blogPosts.id, id));
+
+  await logActivity(db, 'delete', 'blog_post', existing, user);
 
   return c.json({ message: 'Blog post deleted' });
 });

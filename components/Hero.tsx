@@ -56,8 +56,8 @@ const Hero = () => {
                 to={hero.primaryCta.link}
                 className="group relative overflow-hidden bg-stone-900 text-white px-10 py-4 text-[10px] uppercase tracking-[0.25em] font-bold transition-all shadow-xl shadow-stone-200/50 hover:shadow-stone-300 text-center"
               >
-                <span className="relative z-10 group-hover:text-stone-900 transition-colors duration-500">{hero.primaryCta.text}</span>
-                <div className="absolute inset-0 bg-white transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left cubic-bezier(0.19, 1, 0.22, 1)"></div>
+                <span className="relative z-10 group-hover:text-white transition-colors duration-500">{hero.primaryCta.text}</span>
+                <div className="absolute inset-0 bg-red-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left cubic-bezier(0.19, 1, 0.22, 1)"></div>
               </Link>
 
               <Link

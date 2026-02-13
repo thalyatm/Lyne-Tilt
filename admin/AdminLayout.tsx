@@ -26,6 +26,7 @@ import {
   Mail,
   BarChart3,
   CalendarDays,
+  Clock,
 } from 'lucide-react';
 
 interface NavItem {
@@ -121,6 +122,7 @@ export default function AdminLayout() {
       separator: true,
       items: [
         { to: '/admin/settings', icon: Settings, label: 'Site Settings' },
+        { to: '/admin/activity', icon: Clock, label: 'Activity Log' },
       ],
     },
   ];

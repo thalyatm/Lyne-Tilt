@@ -58,10 +58,16 @@ export interface CoachingPackage {
   id: string;
   title: string;
   description: string;
+  summary?: string;
   features: string[];
   ctaText: string;
-  image?: string; 
+  image?: string;
+  coverImageUrl?: string;
   price?: string;
+  priceAmount?: string;
+  currency?: string;
+  recurring?: boolean;
+  recurringInterval?: string;
   badge?: string;
 }
 

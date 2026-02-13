@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { eq, desc } from 'drizzle-orm';
 import { testimonials } from '../db/schema';
+import { logActivity } from '../utils/activityLog';
 import { adminAuth } from '../middleware/auth';
 import type { Bindings, Variables } from '../index';
 
@@ -46,6 +47,8 @@ testimonialsRoutes.post('/', adminAuth, async (c) => {
     published: body.published ?? true,
   }).returning().get();
 
+  await logActivity(db, 'create', 'testimonial', testimonial, c.get('user'));
+
   return c.json(testimonial, 201);
 });
 
@@ -64,6 +67,8 @@ testimonialsRoutes.put('/:id', adminAuth, async (c) => {
     .returning()
     .get();
 
+  await logActivity(db, 'update', 'testimonial', testimonial, c.get('user'));
+
   return c.json(testimonial);
 });
 
@@ -72,7 +77,12 @@ testimonialsRoutes.delete('/:id', adminAuth, async (c) => {
   const db = c.get('db');
   const id = c.req.param('id');
 
+  const existing = await db.select().from(testimonials).where(eq(testimonials.id, id)).get();
   await db.delete(testimonials).where(eq(testimonials.id, id));
+
+  if (existing) {
+    await logActivity(db, 'delete', 'testimonial', existing, c.get('user'));
+  }
 
   return c.json({ success: true });
 });

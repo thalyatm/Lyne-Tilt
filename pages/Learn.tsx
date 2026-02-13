@@ -37,7 +37,10 @@ const Learn = () => {
           fetch(`${API_BASE}/testimonials?type=learn`),
           fetch(`${API_BASE}/faqs?category=Learn`),
         ]);
-        if (itemsRes.ok) setLearnItems(await itemsRes.json());
+        if (itemsRes.ok) {
+          const data = await itemsRes.json();
+          setLearnItems(Array.isArray(data) ? data : data.items ?? []);
+        }
         if (testRes.ok) setLearnTestimonials(await testRes.json());
         if (faqRes.ok) setLearnFaqs(await faqRes.json());
       } catch {
@@ -56,8 +59,8 @@ const Learn = () => {
   const subNavItems = useMemo(() => [
     { id: 'offerings', label: 'Courses & Workshops' },
     { id: 'testimonials', label: 'Reviews' },
-    { id: 'faq', label: 'FAQ' },
-  ], []);
+    ...(learnFaqs.length > 0 ? [{ id: 'faq', label: 'FAQ' }] : []),
+  ], [learnFaqs]);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -352,24 +355,26 @@ const Learn = () => {
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section id="faq" className="py-16 px-6 bg-stone-50 relative z-10">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-12">
-            <p className="text-xs uppercase tracking-[0.3em] text-stone-400 mb-3">Questions</p>
-            <h2 className="text-3xl font-serif text-stone-900 mb-4">Frequently Asked</h2>
-          </div>
+      {/* FAQ Section - only shown when FAQs exist */}
+      {learnFaqs.length > 0 && (
+        <section id="faq" className="py-16 px-6 bg-stone-50 relative z-10">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-12">
+              <p className="text-xs uppercase tracking-[0.3em] text-stone-400 mb-3">Questions</p>
+              <h2 className="text-3xl font-serif text-stone-900 mb-4">Frequently Asked</h2>
+            </div>
 
-          <div className="space-y-4">
-            {learnFaqs.map((faq, idx) => (
-              <div key={idx} className="bg-white p-6 border border-stone-200 shadow-sm">
-                <h4 className="font-serif text-lg text-stone-900 mb-2">{faq.question}</h4>
-                <p className="text-stone-600 text-sm leading-relaxed">{faq.answer}</p>
-              </div>
-            ))}
+            <div className="space-y-4">
+              {learnFaqs.map((faq, idx) => (
+                <div key={idx} className="bg-white p-6 border border-stone-200 shadow-sm">
+                  <h4 className="font-serif text-lg text-stone-900 mb-2">{faq.question}</h4>
+                  <p className="text-stone-600 text-sm leading-relaxed">{faq.answer}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Email Signup Section */}
       <section className="py-20 px-6 bg-white relative z-10 border-t border-stone-200">

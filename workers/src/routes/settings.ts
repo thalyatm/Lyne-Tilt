@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import { siteSettings } from '../db/schema';
+import { logActivity } from '../utils/activityLog';
 import { adminAuth } from '../middleware/auth';
 import type { Bindings, Variables } from '../index';
 
@@ -77,6 +78,8 @@ settingsRoutes.put('/', adminAuth, async (c) => {
         });
     }
   }
+
+  await logActivity(db, 'update', 'site_setting', { id: 'bulk', key: `${entries.length} settings` }, user);
 
   return c.json({ success: true, updated: entries.length });
 });

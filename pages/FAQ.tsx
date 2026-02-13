@@ -277,7 +277,7 @@ const FAQ = () => {
         </section>
 
         {/* OTHER */}
-        <section className="bg-stone-900 text-stone-300 p-8 md:p-12 text-center mt-12">
+        <section className="bg-stone-900 text-stone-300 p-8 md:p-12 text-center mt-12 rounded-2xl">
           <h4 className="font-serif text-white text-xl mb-1">Other Questions?</h4>
           <p className="text-sm mb-1 max-w-md mx-auto">Reach out anytime through the Contact page or via email. I aim to respond within 3–5 business days.</p>
           <Link
