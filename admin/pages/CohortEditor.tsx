@@ -545,7 +545,7 @@ export default function CohortEditor() {
   const saveCohort = useCallback(async (showFeedback = true): Promise<string | null> => {
     const currentData = JSON.stringify(data);
     if (currentData === lastSavedData.current && cohortId) {
-      if (showFeedback) toast.success('No changes to save.');
+      if (showFeedback) toast.success('All changes saved.');
       return cohortId;
     }
 

@@ -1172,7 +1172,7 @@ export default function RichTextEditor({
   return (
     <div className="border border-stone-300 rounded-lg overflow-hidden bg-white" ref={editorRef}>
       {/* Toolbar */}
-      <div className="border-b border-stone-200 bg-stone-50 p-2 flex flex-wrap items-center gap-1">
+      <div className="border-b border-stone-200 bg-stone-50 p-2 flex flex-wrap items-center gap-1 sticky top-0 z-10">
         {/* Text Style */}
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBold().run()}

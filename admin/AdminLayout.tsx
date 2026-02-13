@@ -27,6 +27,8 @@ import {
   BarChart3,
   CalendarDays,
   Clock,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 interface NavItem {
@@ -46,6 +48,7 @@ export default function AdminLayout() {
   const { user, logout, token } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Fetch unread message count
@@ -127,8 +130,65 @@ export default function AdminLayout() {
     },
   ];
 
+  const headerHeight = 'h-11';
+  const headerOffset = 'top-11';
+
   return (
     <div className="min-h-screen bg-stone-50">
+      {/* Full-width Header */}
+      <header className={`bg-stone-900 fixed top-0 left-0 right-0 z-50 ${headerHeight}`}>
+        <div className="flex items-center justify-between px-4 h-full">
+          <div className="flex items-center gap-3">
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-1.5 hover:bg-stone-800 rounded-md text-stone-300"
+            >
+              <Menu size={20} />
+            </button>
+            {/* Desktop sidebar toggle */}
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="hidden lg:block p-1.5 hover:bg-stone-800 rounded-md text-stone-400 hover:text-stone-200 transition-colors"
+              title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            </button>
+            <div>
+              <h1 className="text-sm font-serif text-white leading-tight">Lyne Tilt</h1>
+              <p className="text-[10px] text-stone-400 tracking-wide">Site Manager</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Messages bell */}
+            <button
+              onClick={() => navigate('/admin/inbox')}
+              className="relative p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-md transition-colors"
+              title="Messages"
+            >
+              <Bell size={18} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* View website link */}
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-stone-300 hover:text-white flex items-center gap-1.5 transition-colors"
+            >
+              <ExternalLink size={14} />
+              <span className="hidden sm:inline">View My Website</span>
+              <span className="sm:hidden">View Site</span>
+            </a>
+          </div>
+        </div>
+      </header>
+
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -139,26 +199,24 @@ export default function AdminLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-60 bg-stone-50 border-r border-stone-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed ${headerOffset} left-0 z-40 h-[calc(100vh-2.75rem)] w-60 bg-stone-50 border-r border-stone-200 transform transition-transform duration-200 ease-in-out ${
+          sidebarOpen
+            ? 'translate-x-0'
+            : '-translate-x-full'
+        } ${sidebarCollapsed ? 'lg:-translate-x-full' : 'lg:translate-x-0'}`}
       >
-        {/* Brand header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-stone-200">
-          <div>
-            <h1 className="text-lg font-serif text-stone-800">Lyne Tilt</h1>
-            <p className="text-xs text-stone-400 mt-0.5">Site Manager</p>
-          </div>
+        {/* Close button (mobile only) */}
+        <div className="flex items-center justify-end px-3 py-2 lg:hidden">
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1.5 hover:bg-stone-100 rounded-md text-stone-400"
+            className="p-1.5 hover:bg-stone-100 rounded-md text-stone-400"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="px-3 py-3 overflow-y-auto h-[calc(100vh-160px)]">
+        <nav className="px-3 py-2 pb-16 overflow-y-auto h-[calc(100%-3.5rem)]">
           {navSections.map((section, sectionIdx) => (
             <div key={sectionIdx}>
               {section.separator && (
@@ -226,47 +284,7 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main content */}
-      <div className="lg:ml-60">
-        {/* Header */}
-        <header className="bg-white border-b border-stone-100 sticky top-0 z-30">
-          <div className="flex items-center justify-between px-4 py-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 hover:bg-stone-100 rounded-md text-stone-600"
-            >
-              <Menu size={22} />
-            </button>
-            <div className="flex-1" />
-            <div className="flex items-center gap-3">
-              {/* Messages bell */}
-              <button
-                onClick={() => navigate('/admin/inbox')}
-                className="relative p-1.5 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-md transition-colors"
-                title="Messages"
-              >
-                <Bell size={18} />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {/* View website link */}
-              <a
-                href="/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-stone-500 hover:text-stone-700 flex items-center gap-1.5"
-              >
-                <ExternalLink size={15} />
-                <span className="hidden sm:inline">View My Website</span>
-                <span className="sm:hidden">View Site</span>
-              </a>
-            </div>
-          </div>
-        </header>
-
+      <div className={`pt-11 transition-all duration-200 ${sidebarCollapsed ? 'lg:ml-0' : 'lg:ml-60'}`}>
         {/* Page content */}
         <main className="p-4 lg:p-6 max-w-7xl mx-auto">
           <Outlet />

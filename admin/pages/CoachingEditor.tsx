@@ -357,7 +357,7 @@ export default function CoachingEditor() {
   const saveCoaching = useCallback(async (showFeedback = true) => {
     const currentData = JSON.stringify(data);
     if (currentData === lastSavedData.current && coachingId) {
-      if (showFeedback) toast.success('No changes to save.');
+      if (showFeedback) toast.success('All changes saved.');
       return coachingId;
     }
 

@@ -511,7 +511,7 @@ export default function ProductEditor() {
   const saveProduct = useCallback(async (showFeedback = true) => {
     const currentData = JSON.stringify(product);
     if (currentData === lastSavedData.current && productId) {
-      if (showFeedback) showToast('success', 'No changes to save.');
+      if (showFeedback) showToast('success', 'All changes saved.');
       return productId;
     }
 

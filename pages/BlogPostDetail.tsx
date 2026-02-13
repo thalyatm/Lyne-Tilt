@@ -109,7 +109,8 @@ const BlogPostDetail = () => {
   return (
     <div className="pt-32 pb-24 bg-white/80 min-h-screen">
       <style>{`
-        .blog-content p:empty {
+        .blog-content p:empty,
+        .blog-content p:has(> br:only-child) {
           min-height: 1.5em;
         }
         .blog-content figure[data-type="resizable-image"] {
@@ -218,6 +219,17 @@ const BlogPostDetail = () => {
              </button>
            </div>
         </header>
+
+        {/* Featured Image */}
+        {post.image && (
+          <div className="mb-10 -mx-6 md:-mx-12">
+            <img
+              src={post.image}
+              alt={post.title}
+              className="w-full max-h-[480px] object-cover rounded-lg"
+            />
+          </div>
+        )}
 
         {/* Content */}
         <div

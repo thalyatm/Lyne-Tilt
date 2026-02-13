@@ -148,6 +148,15 @@ const Blog = () => {
           {/* Featured Post */}
           {featuredPost && (
             <article className="max-w-2xl mx-auto mb-16 animate-fade-in-up">
+              {featuredPost.image && (
+                <Link to={`/oxygennotes/${featuredPost.id}`} className="block mb-6">
+                  <img
+                    src={featuredPost.image}
+                    alt={featuredPost.title}
+                    className="w-full max-h-[400px] object-cover rounded-lg hover:opacity-90 transition-opacity"
+                  />
+                </Link>
+              )}
               <div>
                 <div className="text-left">
                   <div className="flex items-center gap-2 mb-4 flex-wrap">
@@ -195,6 +204,15 @@ const Blog = () => {
                   className="group bg-white border border-stone-100 hover:border-stone-300 transition-all duration-300 flex flex-col h-full animate-fade-in-up"
                   style={{ animationDelay: `${idx * 100}ms` }}
                 >
+                  {post.image && (
+                    <Link to={`/oxygennotes/${post.id}`}>
+                      <img
+                        src={post.image}
+                        alt={post.title}
+                        className="w-full h-40 object-cover"
+                      />
+                    </Link>
+                  )}
                   <div className="flex flex-col flex-grow p-5 text-left">
                     <div className="flex items-center gap-2 mb-3 flex-wrap">
                       {post.category?.split(',').map(c => c.trim()).filter(Boolean).map(cat => (

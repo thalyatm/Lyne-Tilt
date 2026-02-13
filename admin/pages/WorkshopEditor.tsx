@@ -378,7 +378,7 @@ export default function WorkshopEditor() {
   const saveWorkshop = useCallback(async (showFeedback = true) => {
     const currentData = JSON.stringify(data);
     if (currentData === lastSavedData.current && workshopId) {
-      if (showFeedback) toast.success('No changes to save.');
+      if (showFeedback) toast.success('All changes saved.');
       return workshopId;
     }
 
