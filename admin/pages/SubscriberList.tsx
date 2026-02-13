@@ -111,6 +111,13 @@ export default function SubscriberList() {
   const [showRemoveTagDropdown, setShowRemoveTagDropdown] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'unsubscribe' | 'delete' | null>(null);
 
+  // Add subscriber modal
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addEmail, setAddEmail] = useState('');
+  const [addName, setAddName] = useState('');
+  const [addSource, setAddSource] = useState('manual');
+  const [addLoading, setAddLoading] = useState(false);
+
   // ------------------------------------------------------------------
   // Debounce search
   // ------------------------------------------------------------------
@@ -265,6 +272,42 @@ export default function SubscriberList() {
   }
 
   // ------------------------------------------------------------------
+  // Add subscriber manually
+  // ------------------------------------------------------------------
+  async function handleAddSubscriber() {
+    if (!addEmail.trim()) { toast.error('Email is required'); return; }
+    setAddLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/subscribers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          email: addEmail.trim(),
+          name: addName.trim() || undefined,
+          source: addSource || 'manual',
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to add subscriber');
+      }
+      toast.success(`${addEmail.trim()} added`);
+      setShowAddModal(false);
+      setAddEmail('');
+      setAddName('');
+      setAddSource('manual');
+      fetchSubscribers();
+    } catch (err: any) {
+      toast.error(err.message ?? 'Failed to add subscriber');
+    } finally {
+      setAddLoading(false);
+    }
+  }
+
+  // ------------------------------------------------------------------
   // Filter helpers
   // ------------------------------------------------------------------
   const hasActiveFilters = debouncedSearch || status !== 'all' || source || tag || engagement;
@@ -294,6 +337,13 @@ export default function SubscriberList() {
           Subscribers
         </h1>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-stone-200 bg-white text-stone-700 hover:bg-stone-50 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add
+          </button>
           <button
             onClick={() => navigate('/admin/subscribers/import')}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-stone-200 bg-white text-stone-700 hover:bg-stone-50 transition-colors"
@@ -751,6 +801,71 @@ export default function SubscriberList() {
           </div>
         )}
       </div>
+
+      {/* ---- Add Subscriber Modal ---- */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl border border-stone-200 max-w-md w-full mx-4 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-stone-800">Add Subscriber</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-stone-400 hover:text-stone-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Email *</label>
+                <input
+                  type="email"
+                  value={addEmail}
+                  onChange={(e) => setAddEmail(e.target.value)}
+                  placeholder="email@example.com"
+                  className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8d3038]/20 focus:border-[#8d3038]"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                  placeholder="Full name (optional)"
+                  className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8d3038]/20 focus:border-[#8d3038]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Source</label>
+                <input
+                  type="text"
+                  value={addSource}
+                  onChange={(e) => setAddSource(e.target.value)}
+                  placeholder="e.g. manual, referral, event"
+                  className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8d3038]/20 focus:border-[#8d3038]"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowAddModal(false)}
+                disabled={addLoading}
+                className="px-4 py-2 rounded-lg text-sm font-medium border border-stone-200 text-stone-700 hover:bg-stone-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddSubscriber}
+                disabled={addLoading || !addEmail.trim()}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50"
+                style={{ backgroundColor: '#8d3038' }}
+              >
+                {addLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                Add Subscriber
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Click-away listener for tag dropdowns */}
       {(showAddTagDropdown || showRemoveTagDropdown) && (
