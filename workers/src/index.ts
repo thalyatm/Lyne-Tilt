@@ -28,6 +28,7 @@ import { templatesRoutes } from './routes/templates';
 import { analyticsRoutes } from './routes/analytics';
 import { cohortsRoutes } from './routes/cohorts';
 import { activityRoutes } from './routes/activity';
+import { campaignsRoutes } from './routes/campaigns';
 import { processScheduledDrafts, processAutomationQueue } from './utils/scheduled';
 
 // Environment bindings type
@@ -111,6 +112,7 @@ app.route('/api/templates', templatesRoutes);
 app.route('/api/analytics', analyticsRoutes);
 app.route('/api/cohorts', cohortsRoutes);
 app.route('/api/activity', activityRoutes);
+app.route('/api/campaigns', campaignsRoutes);
 
 // 404 handler
 app.notFound((c) => {
