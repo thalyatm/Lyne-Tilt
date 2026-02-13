@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <text x="4" y="46" font-family="Georgia, 'Times New Roman', serif" font-size="38" font-weight="600" fill="#1c1917" letter-spacing="-3">
+    <tspan>LT</tspan>
+  </text>
+  <line x1="4" y1="52" x2="56" y2="52" stroke="#1c1917" stroke-width="2" stroke-linecap="round"/>
+</svg>

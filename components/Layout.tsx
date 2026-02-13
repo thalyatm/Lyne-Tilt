@@ -1,16 +1,62 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, Menu, X, User, CreditCard, ChevronDown } from 'lucide-react';
+import { ShoppingBag, Menu, X, User, ChevronDown, LogOut, Package, Heart, MapPin } from 'lucide-react';
 import GlobalBackground from './GlobalBackground';
 import LeadMagnet from './LeadMagnet';
+import AuthModal from './AuthModal';
 import { useCart } from '../context/CartContext';
+import { useSettings } from '../context/SettingsContext';
+import { useCustomerAuth } from '../context/CustomerAuthContext';
 
 const Layout = () => {
+  const { settings } = useSettings();
+  const { footer } = settings;
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [mobileAccordion, setMobileAccordion] = useState<string | null>(null);
+  const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const location = useLocation();
   const { cartCount } = useCart();
+  const { user, isAuthenticated, logout, openAuthModal } = useCustomerAuth();
+
+  // Active page detection
+  const isShopActive = location.pathname === '/shop' || location.pathname.startsWith('/shop/');
+  const isLearnActive = ['/learn', '/journal'].some(p => location.pathname === p || location.pathname.startsWith(p + '/'));
+  const isCoachingActive = location.pathname === '/coaching';
+  const isAboutActive = location.pathname === '/about';
+  const isFaqActive = location.pathname === '/faq';
+
+  // Dropdown hover management with delay to prevent flicker
+  const openDropdown = (name: string) => {
+    if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
+    setActiveDropdown(name);
+  };
+
+  const closeDropdown = () => {
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setActiveDropdown(null);
+    }, 150);
+  };
+
+  const toggleMobileAccordion = (section: string) => {
+    setMobileAccordion(prev => prev === section ? null : section);
+  };
+
+  // Close dropdowns on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveDropdown(null);
+        setUserMenuOpen(false);
+        if (mobileMenuOpen) setMobileMenuOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -20,93 +66,174 @@ const Layout = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close mobile menu on route change
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
+    };
+  }, []);
+
+  // Close all menus on route change
   useEffect(() => {
     setMobileMenuOpen(false);
+    setUserMenuOpen(false);
+    setActiveDropdown(null);
+    setMobileAccordion(null);
     window.scrollTo(0, 0);
-  }, [location]);
+  }, [location.pathname]);
 
   return (
     <div className="flex flex-col min-h-screen font-sans text-stone-800 bg-white selection:bg-stone-200 selection:text-stone-900 relative">
-      
+
       {/* Global Abstract Background Lines */}
       <GlobalBackground />
 
       {/* Navigation */}
-      <nav 
+      <nav
+        aria-label="Main navigation"
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out border-b ${
-          isScrolled || mobileMenuOpen 
-            ? 'bg-stone-900 border-stone-800 py-3 shadow-md' 
-            : 'bg-stone-900 border-stone-800 py-4 shadow-sm'
+          isScrolled || mobileMenuOpen
+            ? 'bg-stone-900 border-stone-800 py-2 shadow-md'
+            : 'bg-stone-900 border-stone-800 py-2 shadow-sm'
         }`}
       >
-        <div className="container mx-auto px-6 flex justify-between items-center relative">
-          {/* Desktop Links Left - With Dropdowns */}
-          <div className="hidden md:flex gap-8 items-center">
-            
-            {/* Shop Dropdown */}
-            <div className="group relative h-full py-2">
-              <Link to="/shop" className="flex items-center gap-1 text-sm uppercase tracking-widest font-medium text-stone-200 hover:text-clay transition-colors">
-                Shop <ChevronDown size={10} className="text-stone-400" />
-              </Link>
-              <div className="dropdown-menu absolute top-full left-0 mt-0 w-48 bg-white border border-stone-200 shadow-xl pt-2 pb-4 px-0 z-50">
-                <div className="w-full h-1 bg-clay absolute top-0 left-0"></div>
-                <Link to="/shop" className="block px-6 py-2 text-sm text-stone-500 hover:text-stone-900 hover:bg-stone-50 transition-colors">All Collection</Link>
-                <Link to="/shop" className="block px-6 py-2 text-sm text-stone-500 hover:text-stone-900 hover:bg-stone-50 transition-colors">Earrings</Link>
-                <Link to="/shop" className="block px-6 py-2 text-sm text-stone-500 hover:text-stone-900 hover:bg-stone-50 transition-colors">Brooches</Link>
-                <Link to="/shop" className="block px-6 py-2 text-sm text-stone-500 hover:text-stone-900 hover:bg-stone-50 transition-colors">Necklaces</Link>
-              </div>
-            </div>
-
-            {/* Coaching Dropdown */}
-            <div className="group relative h-full py-2">
-              <Link to="/coaching" className="flex items-center gap-1 text-sm uppercase tracking-widest font-medium text-stone-200 hover:text-clay transition-colors">
-                Coaching <ChevronDown size={10} className="text-stone-400" />
-              </Link>
-              <div className="dropdown-menu absolute top-full left-0 mt-0 w-56 bg-white border border-stone-200 shadow-xl pt-2 pb-4 px-0 z-50">
-                <div className="w-full h-1 bg-stone-900 absolute top-0 left-0"></div>
-                <Link to="/coaching" className="block px-6 py-2 text-sm text-stone-500 hover:text-stone-900 hover:bg-stone-50 transition-colors">Overview</Link>
-                <Link to="/coaching" className="block px-6 py-2 text-sm text-stone-500 hover:text-stone-900 hover:bg-stone-50 transition-colors">Clarity Sessions</Link>
-                <Link to="/coaching" className="block px-6 py-2 text-sm text-stone-500 hover:text-stone-900 hover:bg-stone-50 transition-colors">The Oxygen Series</Link>
-                <Link to="/coaching" className="block px-6 py-2 text-sm text-stone-500 hover:text-stone-900 hover:bg-stone-50 transition-colors">Workshops</Link>
-              </div>
-            </div>
-
-             {/* Learn Dropdown */}
-             <div className="group relative h-full py-2">
-              <Link to="/learn" className="flex items-center gap-1 text-sm uppercase tracking-widest font-medium text-stone-200 hover:text-clay transition-colors">
-                Learn <ChevronDown size={10} className="text-stone-400" />
-              </Link>
-              <div className="dropdown-menu absolute top-full left-0 mt-0 w-56 bg-white border border-stone-200 shadow-xl pt-2 pb-4 px-0 z-50">
-                <div className="w-full h-1 bg-stone-900 absolute top-0 left-0"></div>
-                <Link to="/learn" className="block px-6 py-2 text-sm text-stone-500 hover:text-stone-900 hover:bg-stone-50 transition-colors">Workshops & Courses</Link>
-              </div>
-            </div>
-
-            <Link to="/about" className="text-sm uppercase tracking-widest font-medium text-stone-200 hover:text-clay transition-colors py-2">About</Link>
-            
-            <Link to="/journal" className="text-sm uppercase tracking-widest font-medium text-stone-200 hover:text-clay transition-colors py-2">Blog</Link>
-
-            <Link to="/faq" className="text-sm uppercase tracking-widest font-medium text-stone-200 hover:text-clay transition-colors py-2">FAQ</Link>
-          </div>
-
-          {/* Logo - Centered Absolutely */}
+        <div className="container mx-auto px-6 flex items-center justify-between">
+          {/* Logo - Left */}
           <Link
             to="/"
-            className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 hover:opacity-70 transition-opacity duration-300"
+            className="z-50 hover:opacity-70 transition-opacity duration-300 flex-shrink-0"
           >
             <img
               src="https://images.squarespace-cdn.com/content/v1/6182043dd1096334c6d280c8/fac44eed-af07-4260-a870-f990338b731a/Untitled+design+%286%29.png?format=1500w"
               alt="Lyne Tilt"
-              className="h-20 w-auto object-contain"
+              className="h-14 w-auto object-contain"
             />
           </Link>
 
+          {/* Desktop Links - Center */}
+          <div className="hidden lg:flex gap-6 xl:gap-8 items-center flex-shrink-0">
+
+            {/* Shop Dropdown */}
+            <div
+              className="relative h-full py-2"
+              onMouseEnter={() => openDropdown('shop')}
+              onMouseLeave={closeDropdown}
+            >
+              <Link to="/shop" aria-haspopup="true" aria-expanded={activeDropdown === 'shop'} className={`flex items-center gap-1 text-xs xl:text-sm uppercase tracking-wider xl:tracking-widest font-medium transition-colors relative z-10 whitespace-nowrap ${isShopActive ? 'text-clay' : 'text-stone-200 hover:text-clay'}`}>
+                Shop <ChevronDown size={10} className={`transition-transform duration-200 ${activeDropdown === 'shop' ? 'rotate-180' : ''} ${isShopActive ? 'text-clay' : 'text-stone-400'}`} />
+              </Link>
+              {isShopActive && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-clay" />}
+              <div role="menu" className={`absolute top-full left-1/2 -translate-x-1/2 mt-3 w-52 bg-white/95 backdrop-blur-sm rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] ring-1 ring-stone-900/5 py-2 z-50 transition-all duration-300 ease-out ${activeDropdown === 'shop' ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-1 pointer-events-none'}`}>
+                <Link to="/shop" className="block mx-2 px-4 py-2.5 text-sm font-medium text-stone-800 rounded-lg hover:bg-stone-50 transition-colors">View All</Link>
+                <div className="h-px bg-stone-100 mx-4 my-1.5"></div>
+                <p className="px-6 pt-2 pb-1 text-[10px] uppercase tracking-[0.2em] text-stone-400 font-medium">Wearable Art</p>
+                <Link to="/shop?category=Earrings" className="block mx-2 px-4 py-2 text-sm text-stone-500 rounded-lg hover:text-stone-800 hover:bg-stone-50 transition-colors">Earrings</Link>
+                <Link to="/shop?category=Brooches" className="block mx-2 px-4 py-2 text-sm text-stone-500 rounded-lg hover:text-stone-800 hover:bg-stone-50 transition-colors">Brooches</Link>
+                <Link to="/shop?category=Necklaces" className="block mx-2 px-4 py-2 text-sm text-stone-500 rounded-lg hover:text-stone-800 hover:bg-stone-50 transition-colors">Necklaces</Link>
+              </div>
+            </div>
+
+            <Link to="/coaching" className={`text-xs xl:text-sm uppercase tracking-wider xl:tracking-widest font-medium transition-colors py-2 whitespace-nowrap relative ${isCoachingActive ? 'text-clay' : 'text-stone-200 hover:text-clay'}`}>
+              Coaching
+              {isCoachingActive && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-clay" />}
+            </Link>
+
+             {/* Learn Dropdown */}
+             <div
+              className="relative h-full py-2"
+              onMouseEnter={() => openDropdown('learn')}
+              onMouseLeave={closeDropdown}
+            >
+              <Link to="/learn" aria-haspopup="true" aria-expanded={activeDropdown === 'learn'} className={`flex items-center gap-1 text-xs xl:text-sm uppercase tracking-wider xl:tracking-widest font-medium transition-colors relative z-10 whitespace-nowrap ${isLearnActive ? 'text-clay' : 'text-stone-200 hover:text-clay'}`}>
+                Learn <ChevronDown size={10} className={`transition-transform duration-200 ${activeDropdown === 'learn' ? 'rotate-180' : ''} ${isLearnActive ? 'text-clay' : 'text-stone-400'}`} />
+              </Link>
+              {isLearnActive && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-clay" />}
+              <div role="menu" className={`absolute top-full left-1/2 -translate-x-1/2 mt-3 w-52 bg-white/95 backdrop-blur-sm rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] ring-1 ring-stone-900/5 py-2 z-50 transition-all duration-300 ease-out ${activeDropdown === 'learn' ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-1 pointer-events-none'}`}>
+                <Link to="/learn" className="block mx-2 px-4 py-2.5 text-sm text-stone-500 rounded-lg hover:text-stone-800 hover:bg-stone-50 transition-colors">Workshops & Courses</Link>
+                <Link to="/journal" className="block mx-2 px-4 py-2.5 text-sm text-stone-500 rounded-lg hover:text-stone-800 hover:bg-stone-50 transition-colors">Blog</Link>
+              </div>
+            </div>
+
+            <Link to="/about" className={`text-xs xl:text-sm uppercase tracking-wider xl:tracking-widest font-medium transition-colors py-2 whitespace-nowrap relative ${isAboutActive ? 'text-clay' : 'text-stone-200 hover:text-clay'}`}>
+              About
+              {isAboutActive && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-clay" />}
+            </Link>
+
+            <Link to="/faq" className={`text-xs xl:text-sm uppercase tracking-wider xl:tracking-widest font-medium transition-colors py-2 whitespace-nowrap relative ${isFaqActive ? 'text-clay' : 'text-stone-200 hover:text-clay'}`}>
+              Policies
+              {isFaqActive && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-clay" />}
+            </Link>
+
+          </div>
+
           {/* Desktop Links Right */}
-          <div className="hidden md:flex gap-6 items-center">
-             <Link to="/contact" className="text-[10px] uppercase tracking-widest font-bold border border-stone-600 text-stone-200 px-5 py-2 hover:bg-stone-200 hover:text-stone-900 transition-all duration-300">
+          <div className="hidden lg:flex gap-3 xl:gap-4 items-center flex-shrink-0">
+             <Link to="/contact" className="text-[10px] uppercase tracking-wider xl:tracking-widest font-bold border border-stone-600 text-stone-200 px-3 xl:px-5 py-2 hover:bg-stone-200 hover:text-stone-900 transition-all duration-300 whitespace-nowrap">
                Book Free Call
              </Link>
+
+            {/* Login / User Menu */}
+            {isAuthenticated ? (
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2 text-stone-200 hover:text-clay transition-colors"
+                >
+                  <User size={18} />
+                  <span className="text-xs">Hi, {user?.firstName}</span>
+                  <ChevronDown size={12} className={`transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* User Dropdown */}
+                {userMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-3 w-56 bg-white/95 backdrop-blur-sm rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] ring-1 ring-stone-900/5 py-2 z-50">
+                      <div className="px-5 py-3 border-b border-stone-100 mx-2">
+                        <p className="text-sm font-medium text-stone-900">{user?.firstName} {user?.lastName}</p>
+                        <p className="text-xs text-stone-400 truncate mt-0.5">{user?.email}</p>
+                      </div>
+                      <div className="py-1.5">
+                        <Link to="/account" className="flex items-center gap-3 mx-2 px-3 py-2.5 text-sm text-stone-600 rounded-lg hover:text-stone-800 hover:bg-stone-50 transition-colors">
+                          <User size={15} className="text-stone-400" />
+                          My Account
+                        </Link>
+                        <Link to="/account?tab=orders" className="flex items-center gap-3 mx-2 px-3 py-2.5 text-sm text-stone-600 rounded-lg hover:text-stone-800 hover:bg-stone-50 transition-colors">
+                          <Package size={15} className="text-stone-400" />
+                          Order History
+                        </Link>
+                        <Link to="/account?tab=wishlist" className="flex items-center gap-3 mx-2 px-3 py-2.5 text-sm text-stone-600 rounded-lg hover:text-stone-800 hover:bg-stone-50 transition-colors">
+                          <Heart size={15} className="text-stone-400" />
+                          Wishlist
+                        </Link>
+                        <Link to="/account?tab=addresses" className="flex items-center gap-3 mx-2 px-3 py-2.5 text-sm text-stone-600 rounded-lg hover:text-stone-800 hover:bg-stone-50 transition-colors">
+                          <MapPin size={15} className="text-stone-400" />
+                          Addresses
+                        </Link>
+                      </div>
+                      <div className="border-t border-stone-100 mx-2 pt-1.5">
+                        <button
+                          onClick={() => { logout(); setUserMenuOpen(false); }}
+                          className="flex items-center gap-3 mx-2 px-3 py-2.5 text-sm text-stone-600 rounded-lg hover:text-stone-800 hover:bg-stone-50 transition-colors w-[calc(100%-16px)]"
+                        >
+                          <LogOut size={15} className="text-stone-400" />
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => openAuthModal('login')}
+                className="flex items-center gap-2 text-stone-200 hover:text-clay transition-colors"
+              >
+                <User size={18} />
+                <span className="text-xs uppercase tracking-widest">Login</span>
+              </button>
+            )}
+
             <Link to="/checkout" className="relative text-stone-200 hover:text-clay transition-colors group">
               <ShoppingBag size={18} />
               {cartCount > 0 && (
@@ -116,8 +243,10 @@ const Layout = () => {
           </div>
 
           {/* Mobile Toggle */}
-          <button 
-            className="md:hidden z-50 text-stone-200 hover:text-white ml-auto"
+          <button
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileMenuOpen}
+            className="lg:hidden z-50 text-stone-200 hover:text-white ml-auto"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -126,16 +255,88 @@ const Layout = () => {
       </nav>
 
       {/* Mobile Fullscreen Menu */}
-      <div className={`fixed inset-0 bg-white z-40 flex flex-col items-center justify-center transition-all duration-700 cubic-bezier(0.16, 1, 0.3, 1) md:hidden ${mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <div className="flex flex-col gap-8 text-center text-2xl font-serif text-stone-900">
-          <Link to="/" onClick={() => setMobileMenuOpen(false)}>Home</Link>
-          <Link to="/shop" onClick={() => setMobileMenuOpen(false)}>Shop Collection</Link>
-          <Link to="/coaching" onClick={() => setMobileMenuOpen(false)}>Coaching</Link>
-          <Link to="/learn" onClick={() => setMobileMenuOpen(false)}>Learn</Link>
-          <Link to="/about" onClick={() => setMobileMenuOpen(false)}>About Lyne</Link>
-          <Link to="/journal" onClick={() => setMobileMenuOpen(false)}>Blog</Link>
-          <Link to="/faq" onClick={() => setMobileMenuOpen(false)}>FAQ</Link>
-          <Link to="/contact" className="text-lg mt-4 border border-stone-900 px-6 py-3" onClick={() => setMobileMenuOpen(false)}>Book Free Call</Link>
+      <div className={`fixed inset-0 bg-white z-40 flex flex-col items-center justify-center transition-all duration-700 lg:hidden ${mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <div className="flex flex-col gap-6 text-center text-2xl font-serif text-stone-900 w-full max-w-xs">
+          <Link
+            to="/"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`transition-colors ${location.pathname === '/' ? 'text-clay' : ''}`}
+          >
+            Home
+          </Link>
+
+          {/* Shop Accordion */}
+          <div>
+            <button
+              onClick={() => toggleMobileAccordion('shop')}
+              className={`flex items-center justify-center gap-2 w-full text-2xl font-serif transition-colors ${isShopActive ? 'text-clay' : 'text-stone-900'}`}
+            >
+              Shop
+              <ChevronDown size={18} className={`transition-transform duration-300 ${mobileAccordion === 'shop' ? 'rotate-180' : ''}`} />
+            </button>
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${mobileAccordion === 'shop' ? 'max-h-80 opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
+              <div className="flex flex-col gap-3 text-base font-sans text-stone-500">
+                <Link to="/shop" onClick={() => setMobileMenuOpen(false)} className="hover:text-clay transition-colors">All Wearable Art</Link>
+                <Link to="/shop?category=Earrings" onClick={() => setMobileMenuOpen(false)} className="hover:text-clay transition-colors">Earrings</Link>
+                <Link to="/shop?category=Brooches" onClick={() => setMobileMenuOpen(false)} className="hover:text-clay transition-colors">Brooches</Link>
+                <Link to="/shop?category=Necklaces" onClick={() => setMobileMenuOpen(false)} className="hover:text-clay transition-colors">Necklaces</Link>
+              </div>
+            </div>
+          </div>
+
+          <Link
+            to="/coaching"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`transition-colors ${isCoachingActive ? 'text-clay' : ''}`}
+          >
+            Coaching & Mentoring
+          </Link>
+
+          {/* Learn Accordion */}
+          <div>
+            <button
+              onClick={() => toggleMobileAccordion('learn')}
+              className={`flex items-center justify-center gap-2 w-full text-2xl font-serif transition-colors ${isLearnActive ? 'text-clay' : 'text-stone-900'}`}
+            >
+              Learn & Create
+              <ChevronDown size={18} className={`transition-transform duration-300 ${mobileAccordion === 'learn' ? 'rotate-180' : ''}`} />
+            </button>
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${mobileAccordion === 'learn' ? 'max-h-40 opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
+              <div className="flex flex-col gap-3 text-base font-sans text-stone-500">
+                <Link to="/learn" onClick={() => setMobileMenuOpen(false)} className="hover:text-clay transition-colors">Workshops & Courses</Link>
+                <Link to="/journal" onClick={() => setMobileMenuOpen(false)} className="hover:text-clay transition-colors">Blog</Link>
+              </div>
+            </div>
+          </div>
+
+          <Link
+            to="/about"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`transition-colors ${isAboutActive ? 'text-clay' : ''}`}
+          >
+            About Lyne
+          </Link>
+          <Link
+            to="/faq"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`transition-colors ${isFaqActive ? 'text-clay' : ''}`}
+          >
+            Policies
+          </Link>
+          {isAuthenticated ? (
+            <Link
+              to="/account"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`transition-colors ${location.pathname === '/account' ? 'text-clay' : ''}`}
+            >
+              My Account
+            </Link>
+          ) : (
+            <button onClick={() => { setMobileMenuOpen(false); openAuthModal('login'); }} className="text-clay">
+              Login / Register
+            </button>
+          )}
+          <Link to="/contact" className="text-lg mt-4 border border-stone-900 px-6 py-3 hover:bg-stone-900 hover:text-white transition-colors" onClick={() => setMobileMenuOpen(false)}>Book Free Call</Link>
         </div>
       </div>
 
@@ -144,74 +345,105 @@ const Layout = () => {
         <Outlet />
       </main>
 
-      {/* Global Lead Magnet (Newsletter Sign up) */}
-      <div className="relative z-10">
-        <LeadMagnet />
-      </div>
+      {/* Global Lead Magnet (Newsletter Sign up) - Hidden on Blog page which has its own */}
+      {location.pathname !== '/journal' && (
+        <div id="newsletter" className="relative z-10">
+          <LeadMagnet />
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="bg-stone-50 text-stone-600 py-10 px-6 border-t border-stone-200 relative z-10">
         <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
-          
+
           {/* Brand Column */}
           <div className="md:col-span-1">
-            <h4 className="font-serif text-xl text-stone-900 mb-4 tracking-wider">LYNE TILT</h4>
+            <h4 className="font-serif text-xl text-stone-900 mb-4 tracking-wider">{footer.tagline}</h4>
             <p className="text-xs leading-loose mb-4 text-stone-500 font-light uppercase tracking-wide">
-              Brisbane-based studio.<br/>
-              Est. 2023
+              {footer.location}<br/>
+              {footer.established}
             </p>
-            <div className="flex items-center gap-2 text-stone-400">
-               <span className="text-xs font-bold border border-stone-300 px-2 py-1 rounded-sm flex items-center gap-1">
-                 PayPal <CreditCard size={12} />
-               </span>
+            <div className="flex flex-wrap items-center gap-2 text-stone-400">
+               <span className="text-[10px] font-medium border border-stone-300 px-2 py-1 rounded-sm">Visa</span>
+               <span className="text-[10px] font-medium border border-stone-300 px-2 py-1 rounded-sm">Mastercard</span>
+               <span className="text-[10px] font-medium border border-stone-300 px-2 py-1 rounded-sm">Amex</span>
+               <span className="text-[10px] font-medium border border-stone-300 px-2 py-1 rounded-sm">Apple Pay</span>
+               <span className="text-[10px] font-medium border border-stone-300 px-2 py-1 rounded-sm">Google Pay</span>
+               <span className="text-[10px] font-medium border border-stone-300 px-2 py-1 rounded-sm">PayPal</span>
             </div>
           </div>
-          
-          {/* Shop Column */}
-          <div>
-            <h5 className="text-stone-900 uppercase tracking-widest text-xs font-bold mb-4">Collection</h5>
-            <ul className="space-y-2 text-sm font-light">
-              <li><Link to="/shop" className="hover:text-clay transition-colors link-underline">All Items</Link></li>
-              <li><Link to="/shop" className="hover:text-clay transition-colors link-underline">Earrings</Link></li>
-              <li><Link to="/shop" className="hover:text-clay transition-colors link-underline">Brooches</Link></li>
-              <li><Link to="/shop" className="hover:text-clay transition-colors link-underline">Limited Edition</Link></li>
-            </ul>
-          </div>
 
-          {/* Learn Column */}
-          <div>
-            <h5 className="text-stone-900 uppercase tracking-widest text-xs font-bold mb-4">Practice</h5>
-            <ul className="space-y-2 text-sm font-light">
-              <li><Link to="/coaching" className="hover:text-clay transition-colors link-underline">Clarity Coaching</Link></li>
-              <li><Link to="/learn" className="hover:text-clay transition-colors link-underline">Workshops & Courses</Link></li>
-              <li><Link to="/journal" className="hover:text-clay transition-colors link-underline">The Blog</Link></li>
-              <li><Link to="/contact" className="hover:text-clay transition-colors link-underline">Book Free Call</Link></li>
-            </ul>
-          </div>
+          {/* Dynamic Columns from Settings */}
+          {footer.columns.length > 0 ? (
+            footer.columns.map((column, idx) => (
+              <div key={idx}>
+                <h5 className="text-stone-900 uppercase tracking-widest text-xs font-bold mb-4">{column.title}</h5>
+                <ul className="space-y-2 text-sm font-light">
+                  {column.links.map((link, linkIdx) => (
+                    <li key={linkIdx}>
+                      <Link to={link.url} className="hover:text-clay transition-colors link-underline">{link.label}</Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          ) : (
+            <>
+              {/* Shop Column - Default */}
+              <div>
+                <h5 className="text-stone-900 uppercase tracking-widest text-xs font-bold mb-4">Collection</h5>
+                <ul className="space-y-2 text-sm font-light">
+                  <li><Link to="/shop" className="hover:text-clay transition-colors link-underline">All Items</Link></li>
+                  <li><Link to="/shop?category=Earrings" className="hover:text-clay transition-colors link-underline">Earrings</Link></li>
+                  <li><Link to="/shop?category=Brooches" className="hover:text-clay transition-colors link-underline">Brooches</Link></li>
+                  <li><Link to="/shop?category=Necklaces" className="hover:text-clay transition-colors link-underline">Necklaces</Link></li>
+                </ul>
+              </div>
 
-          {/* About Column */}
-          <div>
-            <h5 className="text-stone-900 uppercase tracking-widest text-xs font-bold mb-4">Studio</h5>
-            <ul className="space-y-2 text-sm font-light">
-              <li><Link to="/about" className="hover:text-clay transition-colors link-underline">About Lyne</Link></li>
-              <li><Link to="/contact" className="hover:text-clay transition-colors link-underline">Contact</Link></li>
-              <li><Link to="/faq" className="hover:text-clay transition-colors link-underline">FAQ</Link></li>
-              <li><Link to="/shop" className="hover:text-clay transition-colors link-underline">Shipping & Returns</Link></li>
-            </ul>
-          </div>
+              {/* Learn Column - Default */}
+              <div>
+                <h5 className="text-stone-900 uppercase tracking-widest text-xs font-bold mb-4">Practice</h5>
+                <ul className="space-y-2 text-sm font-light">
+                  <li><Link to="/coaching" className="hover:text-clay transition-colors link-underline">Clarity Coaching</Link></li>
+                  <li><Link to="/learn" className="hover:text-clay transition-colors link-underline">Workshops & Courses</Link></li>
+                  <li><Link to="/journal" className="hover:text-clay transition-colors link-underline">The Blog</Link></li>
+                  <li><Link to="/contact" className="hover:text-clay transition-colors link-underline">Book Free Call</Link></li>
+                </ul>
+              </div>
+
+              {/* About Column - Default */}
+              <div>
+                <h5 className="text-stone-900 uppercase tracking-widest text-xs font-bold mb-4">Studio</h5>
+                <ul className="space-y-2 text-sm font-light">
+                  <li><Link to="/about" className="hover:text-clay transition-colors link-underline">About Lyne</Link></li>
+                  <li><Link to="/contact" className="hover:text-clay transition-colors link-underline">Contact</Link></li>
+                  <li><Link to="/faq" className="hover:text-clay transition-colors link-underline">Policies & FAQs</Link></li>
+                  <li><Link to="/admin" className="hover:text-clay transition-colors link-underline">Admin</Link></li>
+                </ul>
+              </div>
+            </>
+          )}
         </div>
-        
+
         <div className="container mx-auto mt-8 pt-8 border-t border-stone-200 text-[10px] uppercase tracking-widest text-stone-400 flex flex-col md:flex-row justify-between items-center text-center md:text-left leading-loose">
-          <p>&copy; 2025 Lyne Tilt Studio. All rights reserved.</p>
+          <p>{footer.copyright}</p>
           <div className="flex gap-6 mt-4 md:mt-0">
-            <a href="#" className="hover:text-stone-600 transition-colors link-underline">Instagram</a>
-            <a href="#" className="hover:text-stone-600 transition-colors link-underline">LinkedIn</a>
+            {footer.socialLinks.length > 0 ? (
+              footer.socialLinks.map((social, idx) => (
+                <a key={idx} href={social.url} target="_blank" rel="noopener noreferrer" className="hover:text-stone-600 transition-colors link-underline capitalize">{social.platform}</a>
+              ))
+            ) : (
+              <>
+                <a href="#" className="hover:text-stone-600 transition-colors link-underline">Instagram</a>
+                <a href="#" className="hover:text-stone-600 transition-colors link-underline">LinkedIn</a>
+              </>
+            )}
           </div>
         </div>
       </footer>
 
       {/* Mobile Sticky Bottom Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-stone-200 p-3 z-50 flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-stone-200 p-3 z-50 flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <Link to="/checkout" className="flex flex-col items-center text-stone-500 hover:text-clay relative">
           <ShoppingBag size={18} />
           {cartCount > 0 && (
@@ -222,11 +454,21 @@ const Layout = () => {
         <Link to="/contact" className="bg-stone-900 text-white px-6 py-2 text-[10px] uppercase tracking-widest font-bold">
           Book Call
         </Link>
-        <Link to="/shop" className="flex flex-col items-center text-stone-500 hover:text-clay">
-          <User size={18} />
-          <span className="text-[9px] uppercase tracking-wide mt-1">Shop</span>
-        </Link>
+        {isAuthenticated ? (
+          <Link to="/account" className="flex flex-col items-center text-stone-500 hover:text-clay">
+            <User size={18} />
+            <span className="text-[9px] uppercase tracking-wide mt-1">Account</span>
+          </Link>
+        ) : (
+          <button onClick={() => openAuthModal('login')} className="flex flex-col items-center text-stone-500 hover:text-clay">
+            <User size={18} />
+            <span className="text-[9px] uppercase tracking-wide mt-1">Login</span>
+          </button>
+        )}
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal />
     </div>
   );
 };

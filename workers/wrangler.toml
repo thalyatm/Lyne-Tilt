@@ -1,0 +1,29 @@
+name = "lyne-tilt-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "lyne-tilt-db"
+database_id = "96781b4a-469a-476d-b54c-c1f22e72725a"
+
+# R2 Bucket for file uploads
+[[r2_buckets]]
+binding = "UPLOADS"
+bucket_name = "lyne-tilt-uploads"
+
+# Environment variables (set via wrangler secret)
+# STRIPE_SECRET_KEY
+# STRIPE_WEBHOOK_SECRET
+# JWT_SECRET
+# RESEND_API_KEY
+# ADMIN_EMAIL
+# ADMIN_PASSWORD
+
+[vars]
+FRONTEND_URL = "https://lyne-tilt.pages.dev"
+
+[triggers]
+crons = ["*/5 * * * *"]

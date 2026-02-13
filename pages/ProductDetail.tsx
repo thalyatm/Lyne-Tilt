@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { PRODUCTS } from '../constants';
-import { Truck, RefreshCw, ShieldCheck, Plus, Minus, Check } from 'lucide-react';
+import { useParams, useLocation, Link } from 'react-router-dom';
+import { Truck, RefreshCw, ShieldCheck, Plus, Minus, Check, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useSettings } from '../context/SettingsContext';
+import { API_BASE } from '../config/api';
+import { Product, ProductCategory } from '../types';
 
 const AccordionItem = ({ title, children, isOpen, onClick }: any) => (
   <div className="border-b border-stone-200">
-    <button 
+    <button
       className="w-full py-5 flex justify-between items-center text-left group outline-none"
       onClick={onClick}
     >
@@ -23,13 +25,65 @@ const AccordionItem = ({ title, children, isOpen, onClick }: any) => (
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const product = PRODUCTS.find(p => p.id === id) || PRODUCTS[0];
+  const location = useLocation();
+  const isWallArt = location.pathname.startsWith('/wall-art');
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
   const [openSection, setOpenSection] = useState<string | null>('description');
   const [addedToCart, setAddedToCart] = useState(false);
   const { addToCart } = useCart();
+  const { settings } = useSettings();
+  const { productDetail } = settings;
+
+  useEffect(() => {
+    if (product) document.title = `${product.name} | Lyne Tilt`;
+  }, [product]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    const fetchProduct = async () => {
+      try {
+        // Use unified products endpoint for both types
+        const response = await fetch(`${API_BASE}/products/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+
+          // Handle slug redirects
+          if (data.redirect) {
+            const basePath = isWallArt ? '/wall-art' : '/shop';
+            window.location.hash = `${basePath}/${data.slug}`;
+            return;
+          }
+
+          // Use media array if available, fall back to detailImages
+          const images = data.media?.length
+            ? data.media.map((m: any) => m.url)
+            : (data.detailImages || []);
+
+          setProduct({
+            id: data.slug || data.id,
+            name: data.name,
+            price: parseFloat(data.price),
+            currency: data.currency || 'AUD',
+            category: data.category as ProductCategory,
+            colours: [],
+            shortDescription: data.shortDescription || '',
+            longDescription: data.longDescription || '',
+            image: data.image,
+            detailImages: images,
+            badge: data.badge,
+            availability: data.availability || 'In stock',
+          });
+        } else {
+          throw new Error('API error');
+        }
+      } catch (error) {
+        // Product will remain null, showing "not found" state
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProduct();
   }, [id]);
 
   const toggleSection = (section: string) => {
@@ -42,13 +96,30 @@ const ProductDetail = () => {
     setTimeout(() => setAddedToCart(false), 3000);
   };
 
+  if (loading) {
+    return (
+      <div className="pt-32 pb-24 px-6 max-w-7xl mx-auto flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="animate-spin text-stone-400" size={32} />
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="pt-32 pb-24 px-6 max-w-7xl mx-auto text-center">
+        <h1 className="text-2xl font-serif text-stone-900 mb-4">Product not found</h1>
+        <Link to={isWallArt ? "/wall-art" : "/shop"} className="text-clay hover:underline">{isWallArt ? 'Back to Wall Art' : 'Back to Shop'}</Link>
+      </div>
+    );
+  }
+
   return (
     <div className="pt-32 pb-24 px-6 max-w-7xl mx-auto">
       {/* Breadcrumbs */}
       <div className="mb-10 text-[10px] uppercase tracking-[0.2em] text-stone-400">
-        <Link to="/" className="hover:text-stone-800 transition-colors">Home</Link> 
+        <Link to="/" className="hover:text-stone-800 transition-colors">Home</Link>
         <span className="mx-2">/</span>
-        <Link to="/shop" className="hover:text-stone-800 transition-colors">Shop</Link> 
+        <Link to={isWallArt ? "/wall-art" : "/shop"} className="hover:text-stone-800 transition-colors">{isWallArt ? 'Wall Art' : 'Shop'}</Link>
         <span className="mx-2">/</span>
         <span className="text-stone-800">{product.category}</span>
       </div>
@@ -106,24 +177,28 @@ const ProductDetail = () => {
               {product.longDescription}
             </AccordionItem>
 
-            <AccordionItem 
-              title="Materials & Care" 
-              isOpen={openSection === 'materials'} 
+            <AccordionItem
+              title="Materials & Care"
+              isOpen={openSection === 'materials'}
               onClick={() => toggleSection('materials')}
             >
-              <p>Handcrafted with intention using ethically sourced materials. To maintain the unique finish of your piece, avoid direct contact with perfumes, lotions, and water. Store in a dry place when not in use.</p>
+              <p>{productDetail.materialsAndCare || "Handcrafted with intention using ethically sourced materials. To maintain the unique finish of your piece, avoid direct contact with perfumes, lotions, and water. Store in a dry place when not in use."}</p>
             </AccordionItem>
 
-            <AccordionItem 
-              title="Shipping & Returns" 
-              isOpen={openSection === 'shipping'} 
+            <AccordionItem
+              title="Shipping & Returns"
+              isOpen={openSection === 'shipping'}
               onClick={() => toggleSection('shipping')}
             >
-              <ul className="space-y-3">
-                <li className="flex items-center gap-3"><Truck size={16} className="text-stone-400" /> Free shipping within Australia (1-3 days).</li>
-                <li className="flex items-center gap-3"><Truck size={16} className="text-stone-400" /> International shipping available via DHL.</li>
-                <li className="flex items-center gap-3"><RefreshCw size={16} className="text-stone-400" /> 14-day change of mind returns.</li>
-              </ul>
+              {productDetail.shippingAndReturns ? (
+                <p>{productDetail.shippingAndReturns}</p>
+              ) : (
+                <ul className="space-y-3">
+                  <li className="flex items-center gap-3"><Truck size={16} className="text-stone-400" /> Free shipping within Australia (1-3 days).</li>
+                  <li className="flex items-center gap-3"><Truck size={16} className="text-stone-400" /> International shipping available via DHL.</li>
+                  <li className="flex items-center gap-3"><RefreshCw size={16} className="text-stone-400" /> 14-day change of mind returns.</li>
+                </ul>
+              )}
             </AccordionItem>
           </div>
           

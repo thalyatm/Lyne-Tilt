@@ -1,97 +1,145 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowRight, Hand, Compass, BookOpen } from 'lucide-react';
+import { useSettings } from '../context/SettingsContext';
 
-// Custom Aesthetic Icons
+interface PathCardProps {
+  icon: React.ReactNode;
+  label: string;
+  title: string;
+  description: string;
+  linkText: string;
+  linkTo: string;
+  variant: 'light' | 'dark' | 'accent';
+}
 
-const ChessPawnIcon = ({ size = 40, className = "" }) => (
-  <svg 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="1.2" 
-    strokeLinecap="square" 
-    strokeLinejoin="miter" 
-    className={className}
-  >
-    {/* Minimalist Geometric Pawn */}
-    <circle cx="12" cy="5" r="2.5" />
-    <path d="M12 7.5V10" />
-    <path d="M9 10H15" />
-    <path d="M9.5 10L8 18H16L14.5 10" />
-    <path d="M6 21H18" />
-    <path d="M8 18L6 21" />
-    <path d="M16 18L18 21" />
-  </svg>
-);
+const PathCard: React.FC<PathCardProps> = ({
+  icon,
+  label,
+  title,
+  description,
+  linkText,
+  linkTo,
+  variant
+}) => {
+  const variants = {
+    light: {
+      bg: 'bg-stone-100',
+      hoverBg: 'hover:bg-stone-200',
+      cardBorder: 'border-stone-300',
+      labelColor: 'text-stone-500',
+      titleColor: 'text-stone-900',
+      descColor: 'text-stone-600',
+      iconColor: 'text-stone-400 group-hover:text-stone-600',
+      lineColor: 'bg-stone-300',
+      buttonBorder: 'border-stone-400',
+      buttonText: 'text-stone-700',
+      buttonHover: 'hover:bg-stone-900 hover:text-white hover:border-stone-900',
+    },
+    dark: {
+      bg: 'bg-stone-900',
+      hoverBg: 'hover:bg-stone-800',
+      cardBorder: 'border-stone-950',
+      labelColor: 'text-stone-500',
+      titleColor: 'text-stone-100',
+      descColor: 'text-stone-400',
+      iconColor: 'text-stone-600 group-hover:text-stone-400',
+      lineColor: 'bg-stone-700',
+      buttonBorder: 'border-stone-600',
+      buttonText: 'text-stone-300',
+      buttonHover: 'hover:bg-white hover:text-stone-900 hover:border-white',
+    },
+    accent: {
+      bg: 'bg-clay',
+      hoverBg: 'hover:bg-clay-dark',
+      cardBorder: 'border-clay-dark',
+      labelColor: 'text-white/60',
+      titleColor: 'text-white',
+      descColor: 'text-white/80',
+      iconColor: 'text-white/50 group-hover:text-white/80',
+      lineColor: 'bg-white/30',
+      buttonBorder: 'border-white/50',
+      buttonText: 'text-white',
+      buttonHover: 'hover:bg-white hover:text-clay hover:border-white',
+    }
+  };
 
-const WearableArtIcon = ({ size = 40, className = "" }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.2" 
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    {/* Structured Mobile / Earring Art */}
-    <path d="M12 2V5" />
-    <circle cx="12" cy="8" r="3" />
-    <path d="M12 11V15" />
-    <path d="M9 18C9 16.3431 10.3431 15 12 15C13.6569 15 15 16.3431 15 18V21" />
-  </svg>
-);
+  const v = variants[variant];
+
+  return (
+    <div className={`group relative flex flex-col items-center justify-center text-center p-8 md:p-12 ${v.bg} ${v.hoverBg} transition-all duration-500 shadow-lg hover:shadow-xl rounded-2xl border ${v.cardBorder}`}>
+      {/* Icon */}
+      <div className={`mb-6 ${v.iconColor} transition-all duration-500 transform group-hover:-translate-y-1`}>
+        {icon}
+      </div>
+
+      {/* Label */}
+      <p className={`${v.labelColor} text-[9px] uppercase tracking-[0.3em] mb-3`}>
+        {label}
+      </p>
+
+      {/* Title */}
+      <h2 className={`text-2xl md:text-3xl font-serif ${v.titleColor} mb-4`}>
+        {title}
+      </h2>
+
+      {/* Decorative Line */}
+      <div className={`w-10 h-px ${v.lineColor} mb-5 group-hover:w-16 transition-all duration-500`}></div>
+
+      {/* Description */}
+      <p className={`${v.descColor} mb-8 max-w-xs font-light leading-relaxed text-sm`}>
+        {description}
+      </p>
+
+      {/* CTA Button */}
+      <Link
+        to={linkTo}
+        className={`inline-flex items-center gap-2 border ${v.buttonBorder} ${v.buttonText} px-6 py-3 text-[9px] uppercase tracking-[0.2em] font-bold ${v.buttonHover} transition-all duration-300 group-hover:scale-105`}
+      >
+        {linkText}
+        <ArrowRight size={12} className="transition-transform group-hover:translate-x-1" />
+      </Link>
+    </div>
+  );
+};
 
 const SplitPath = () => {
-  return (
-    <section className="w-full">
-      {/* Reduced min-height to make it approx 1/3 shorter */}
-      <div className="grid grid-cols-1 md:grid-cols-2 min-h-[380px]">
-        {/* Shop Side - Stone 500 background */}
-        <div className="relative group flex flex-col items-center justify-center text-center p-10 bg-stone-500 hover:bg-stone-600 transition-colors duration-700 border-b md:border-b-0 md:border-r border-stone-400/20">
-            <div className="mb-6 text-stone-200 group-hover:text-white transition-colors duration-500 transform group-hover:-translate-y-2 scale-110">
-                <WearableArtIcon size={56} />
-            </div>
-            <p className="text-stone-300 text-[9px] uppercase tracking-[0.3em] mb-3">Handmade jewellery collection</p>
-            <h2 className="text-3xl md:text-4xl font-serif text-stone-100 mb-4">Wearable Art</h2>
-            <div className="w-12 h-px bg-stone-300/50 mb-6 group-hover:w-24 transition-all duration-700"></div>
-            <p className="text-stone-200 mb-8 max-w-xs font-light leading-loose text-sm md:text-base">
-              Objects of contemplation. <br/>Earth-toned ceramics and structured metals.
-            </p>
-            <Link
-              to="/shop"
-              className="inline-block border border-stone-300 text-stone-100 px-8 py-3 text-[9px] uppercase tracking-[0.25em] font-bold hover:bg-white hover:text-stone-900 transition-all hover:scale-105"
-            >
-              View Collection
-            </Link>
-        </div>
+  const { settings } = useSettings();
+  const { splitPath } = settings;
 
-        {/* Coaching Side - Dark Stone 900 */}
-        <div className="relative group flex flex-col items-center justify-center text-center p-10 bg-stone-900 hover:bg-[#111] transition-colors duration-700">
-            <div className="mb-6 text-stone-400 group-hover:text-clay transition-colors duration-500 transform group-hover:-translate-y-2 scale-110">
-               <ChessPawnIcon size={56} />
-            </div>
-             {/* Lightened text for better readability */}
-             <p className="text-stone-400 text-[9px] uppercase tracking-[0.3em] mb-3">For creative founders</p>
-            <h2 className="text-3xl md:text-4xl font-serif text-stone-100 mb-4">Strategic Coaching</h2>
-            <div className="w-12 h-px bg-stone-700 mb-6 group-hover:w-24 transition-all duration-700"></div>
-            {/* Lightened description text */}
-            <p className="text-stone-300 mb-8 max-w-xs font-light leading-loose text-sm md:text-base">
-              Move from chaos to clarity. <br/>Systems and psychology for the artist.
-            </p>
-             {/* Lighter button text and border */}
-             <Link
-              to="/coaching"
-              className="inline-block border border-stone-600 text-stone-300 px-8 py-3 text-[9px] uppercase tracking-[0.25em] font-bold hover:border-clay hover:text-clay transition-all hover:scale-105"
-            >
-              Explore Coaching
-            </Link>
-        </div>
+  // Icons mapped to card index
+  const icons = [
+    <Hand size={40} strokeWidth={1} />,
+    <Compass size={40} strokeWidth={1} />,
+    <BookOpen size={40} strokeWidth={1} />
+  ];
+
+  const variants: ('light' | 'dark' | 'accent')[] = ['light', 'dark', 'accent'];
+
+  return (
+    <section className="w-full bg-white">
+      {/* Section Header */}
+      <div className="py-10 text-center">
+        <h2 className="text-2xl md:text-3xl font-serif text-stone-800">
+          {splitPath.title}
+        </h2>
+      </div>
+
+      {/* Three Columns */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-6 pb-12 max-w-7xl mx-auto">
+        {splitPath.cards.map((card, index) => (
+          <PathCard
+            key={index}
+            icon={icons[index] || icons[0]}
+            label={card.label}
+            title={card.title}
+            description={card.description}
+            linkText={card.linkText}
+            linkTo={card.linkUrl}
+            variant={variants[index] || 'light'}
+          />
+        ))}
       </div>
     </section>
   );

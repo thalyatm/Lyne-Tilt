@@ -1,0 +1,46 @@
+import { Router } from 'express';
+import authRoutes from './auth.routes.js';
+import customerAuthRoutes from './customer-auth.routes.js';
+import productsRoutes from './products.routes.js';
+import coachingRoutes from './coaching.routes.js';
+import learnRoutes from './learn.routes.js';
+import blogRoutes from './blog.routes.js';
+import testimonialsRoutes from './testimonials.routes.js';
+import faqsRoutes from './faqs.routes.js';
+import settingsRoutes from './settings.routes.js';
+import newsletterRoutes from './newsletter.routes.js';
+import campaignsRoutes from './campaigns.routes.js';
+import subscribersRoutes from './subscribers.routes.js';
+import segmentsRoutes from './segments.routes.js';
+import uploadRoutes from './upload.routes.js';
+import contactRoutes from './contact.routes.js';
+import dashboardRoutes from './dashboard.routes.js';
+import activityRoutes from './activity.routes.js';
+import automationsRoutes from './automations.routes.js';
+import checkoutRoutes from './checkout.routes.js';
+import webhookRoutes from './webhook.routes.js';
+
+const router = Router();
+
+router.use('/auth', authRoutes);
+router.use('/customer', customerAuthRoutes);
+router.use('/products', productsRoutes);
+router.use('/coaching', coachingRoutes);
+router.use('/learn', learnRoutes);
+router.use('/blog', blogRoutes);
+router.use('/testimonials', testimonialsRoutes);
+router.use('/faqs', faqsRoutes);
+router.use('/settings', settingsRoutes);
+router.use('/newsletter', newsletterRoutes);
+router.use('/campaigns', campaignsRoutes);
+router.use('/subscribers', subscribersRoutes);
+router.use('/segments', segmentsRoutes);
+router.use('/upload', uploadRoutes);
+router.use('/contact', contactRoutes);
+router.use('/dashboard', dashboardRoutes);
+router.use('/activity', activityRoutes);
+router.use('/automations', automationsRoutes);
+router.use('/checkout', checkoutRoutes);
+router.use('/webhooks', webhookRoutes);
+
+export default router;

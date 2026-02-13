@@ -35,16 +35,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addToCart = (product: Product) => {
     setCart(prevCart => {
+      // Each piece is one of a kind - only allow 1 in cart
       const existingItem = prevCart.find(item => item.id === product.id);
-
       if (existingItem) {
-        return prevCart.map(item =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
+        return prevCart; // Already in cart, don't add again
       }
-
       return [...prevCart, { ...product, quantity: 1 }];
     });
   };
