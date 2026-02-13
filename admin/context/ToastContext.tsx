@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, X, Send } from 'lucide-react';
+import { API_BASE } from '../config/api';
 
 interface Toast {
   id: string;
   type: 'success' | 'error' | 'warning';
   message: string;
+  shared?: boolean;
+  sharing?: boolean;
 }
 
 interface ToastContextType {
@@ -28,7 +31,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const id = crypto.randomUUID();
     setToasts(prev => [...prev, { id, type, message }]);
 
-    const duration = type === 'error' ? 8000 : type === 'warning' ? 6000 : 4000;
+    const duration = type === 'error' ? 12000 : type === 'warning' ? 6000 : 4000;
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, duration);
@@ -36,6 +39,27 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const shareError = useCallback(async (id: string, message: string) => {
+    setToasts(prev => prev.map(t => t.id === id ? { ...t, sharing: true } : t));
+    try {
+      const page = window.location.hash || window.location.pathname;
+      await fetch(`${API_BASE}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'error',
+          message,
+          page,
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+      setToasts(prev => prev.map(t => t.id === id ? { ...t, shared: true, sharing: false } : t));
+    } catch {
+      setToasts(prev => prev.map(t => t.id === id ? { ...t, sharing: false } : t));
+    }
   }, []);
 
   const value: ToastContextType = {
@@ -65,17 +89,39 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`bg-white rounded-lg shadow-lg border border-stone-200 border-l-4 ${borderMap[toast.type]} p-3 flex items-start gap-2.5 animate-in slide-in-from-right`}
+            className={`bg-white rounded-lg shadow-lg border border-stone-200 border-l-4 ${borderMap[toast.type]} p-3 flex flex-col gap-2 animate-in slide-in-from-right`}
             style={{ animation: 'slideIn 0.2s ease-out' }}
           >
-            {iconMap[toast.type]}
-            <p className="text-sm text-stone-700 flex-1">{toast.message}</p>
-            <button
-              onClick={() => removeToast(toast.id)}
-              className="text-stone-400 hover:text-stone-600 shrink-0"
-            >
-              <X size={14} />
-            </button>
+            <div className="flex items-start gap-2.5">
+              {iconMap[toast.type]}
+              <p className="text-sm text-stone-700 flex-1">{toast.message}</p>
+              <button
+                onClick={() => removeToast(toast.id)}
+                className="text-stone-400 hover:text-stone-600 shrink-0"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Share with Thalya — error toasts only */}
+            {toast.type === 'error' && (
+              <div className="pl-7">
+                {toast.shared ? (
+                  <span className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle size={12} /> Sent to Thalya
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => shareError(toast.id, toast.message)}
+                    disabled={toast.sharing}
+                    className="text-xs text-stone-400 hover:text-clay flex items-center gap-1 transition-colors disabled:opacity-50"
+                  >
+                    <Send size={12} />
+                    {toast.sharing ? 'Sending...' : 'Share with Thalya'}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -64,6 +64,7 @@ import AnalyticsContent from './admin/pages/AnalyticsContent';
 import AnalyticsCustomers from './admin/pages/AnalyticsCustomers';
 import AnalyticsServices from './admin/pages/AnalyticsServices';
 import { ToastProvider } from './admin/context/ToastContext';
+import FeedbackWidget from './components/FeedbackWidget';
 
 const PageTracker = () => {
   const location = useLocation();
@@ -81,6 +82,7 @@ const App = () => {
           <CartProvider>
             <Router>
             <PageTracker />
+            <FeedbackWidget />
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Layout />}>
