@@ -109,6 +109,9 @@ const BlogPostDetail = () => {
   return (
     <div className="pt-32 pb-24 bg-white/80 min-h-screen">
       <style>{`
+        .blog-content p:empty {
+          min-height: 1.5em;
+        }
         .blog-content figure[data-type="resizable-image"] {
           margin: 2rem auto;
         }
@@ -191,10 +194,12 @@ const BlogPostDetail = () => {
 
         {/* Header */}
         <header className="mb-10">
-           <div className="flex items-center gap-4 mb-6">
-             <span className="text-[10px] uppercase tracking-widest text-clay font-medium bg-clay/10 px-2 py-1 rounded">
-               {post.category}
-             </span>
+           <div className="flex items-center gap-2 mb-6 flex-wrap">
+             {post.category?.split(',').map(c => c.trim()).filter(Boolean).map(cat => (
+               <span key={cat} className="text-[10px] uppercase tracking-widest text-clay font-medium bg-clay/10 px-2 py-1 rounded">
+                 {cat}
+               </span>
+             ))}
              <span className="text-[10px] text-stone-400 flex items-center gap-1">
                <Clock size={10} />
                {getReadingTime(post.content)}

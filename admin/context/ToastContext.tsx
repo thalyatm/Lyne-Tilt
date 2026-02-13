@@ -29,11 +29,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts(prev => [...prev, { id, type, message }]);
 
     const duration = type === 'error' ? 8000 : type === 'warning' ? 6000 : 4000;
-    if (type !== 'error') {
-      setTimeout(() => {
-        setToasts(prev => prev.filter(t => t.id !== id));
-      }, duration);
-    }
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, duration);
   }, []);
 
   const removeToast = useCallback((id: string) => {

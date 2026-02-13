@@ -161,18 +161,15 @@ coachingRoutes.get('/:idOrSlug', optionalAdminAuth, async (c) => {
 
   await autoPublishScheduled(db);
 
-  // UUID pattern: contains dashes and hex chars (e.g. 550e8400-e29b-41d4-a716-446655440000)
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+  // Try by ID first, then by slug
+  let item = await db.select().from(coachingPackages).where(eq(coachingPackages.id, idOrSlug)).get();
 
-  let item;
-  if (isUuid) {
-    item = await db.select().from(coachingPackages).where(eq(coachingPackages.id, idOrSlug)).get();
-  } else {
+  if (!item) {
     item = await db.select().from(coachingPackages).where(eq(coachingPackages.slug, idOrSlug)).get();
   }
 
   // If not found by primary lookup, also check previousSlugs for old slug redirects
-  if (!item && !isUuid) {
+  if (!item) {
     const allItems = await db
       .select()
       .from(coachingPackages)

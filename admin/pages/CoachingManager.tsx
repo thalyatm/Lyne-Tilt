@@ -519,7 +519,7 @@ export default function CoachingManager() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border border-stone-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-stone-200">
         {loading ? (
           <div className="overflow-x-auto">
             <table className="w-full">

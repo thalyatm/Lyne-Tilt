@@ -214,16 +214,10 @@ productsRoutes.get('/:idOrSlug', async (c) => {
   const db = c.get('db');
   const param = c.req.param('idOrSlug');
 
-  // Try by ID first (UUID pattern), then by slug
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(param)
-    || /^[0-9a-f]{32}$/i.test(param);
-
-  let product;
-  if (isUuid) {
-    product = await db.select().from(products)
-      .where(and(eq(products.id, param), isNull(products.deletedAt)))
-      .get();
-  }
+  // Try by ID first, then by slug
+  let product = await db.select().from(products)
+    .where(and(eq(products.id, param), isNull(products.deletedAt)))
+    .get();
 
   if (!product) {
     product = await db.select().from(products)

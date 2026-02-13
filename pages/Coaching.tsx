@@ -321,60 +321,39 @@ const Coaching = () => {
         </div>
       </section>
 
-      {/* FAQ */}
-      <section id="faq" className="py-20 px-6 bg-stone-50/80 backdrop-blur-sm relative z-10">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-center font-serif text-2xl md:text-3xl text-stone-900 mb-4">Questions You Might Have</h2>
-          <p className="text-center text-stone-500 mb-12">
-            If your question isn't answered here, let's chat on a discovery call.
-          </p>
-          <div className="space-y-4">
-            {/* Custom FAQ items for better coaching context */}
-            {[
-              {
-                question: "How do I know if coaching is right for me?",
-                answer: "If you're feeling stuck and ready to do something about it, book a free discovery call  - it's designed to help us both figure out if we're a good fit."
-              },
-              {
-                question: "What happens on a discovery call?",
-                answer: "A relaxed 15-minute chat about where you are, what's blocking you, and what you're hoping to achieve. No pressure, no hard sell."
-              },
-              {
-                question: "Not sure I can commit to monthly coaching?",
-                answer: "You set your own frequency with a 2-year window to use your sessions. Many clients start with a single session and decide later if they want ongoing support."
-              },
-              {
-                question: "What kind of results can I expect?",
-                answer: "Greater clarity within the first session or two. Over time: sustainable habits, finished projects, and confidence in your creative direction."
-              },
-              {
-                question: "How is this different from therapy?",
-                answer: "Coaching is action-oriented and forward-focused. I'm not a therapist - I'm a creative mentor and accountability partner."
-              },
-              ...coachingFaqs.map(faq => ({ question: faq.question, answer: faq.answer }))
-            ].slice(0, 6).map((faq, idx) => (
-              <div key={idx} className="bg-white border border-stone-100 hover:border-stone-200 transition-colors overflow-hidden">
-                <button
-                  onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                  className="w-full p-6 flex items-center justify-between text-left"
-                >
-                  <h4 className="font-serif text-lg text-stone-900 pr-4">{faq.question}</h4>
-                  <ChevronDown
-                    size={20}
-                    className={`text-stone-400 shrink-0 transition-transform duration-300 ${openFaq === idx ? 'rotate-180' : ''}`}
-                  />
-                </button>
-                <div className={`transition-all duration-300 ease-in-out ${openFaq === idx ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-                  <p className="text-stone-600 text-sm leading-relaxed px-6 pb-6">{faq.answer}</p>
+      {/* FAQ - only shown when FAQs exist */}
+      {coachingFaqs.length > 0 && (
+        <section id="faq" className="py-20 px-6 bg-stone-50/80 backdrop-blur-sm relative z-10">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-center font-serif text-2xl md:text-3xl text-stone-900 mb-4">Questions You Might Have</h2>
+            <p className="text-center text-stone-500 mb-12">
+              If your question isn't answered here, let's chat on a discovery call.
+            </p>
+            <div className="space-y-4">
+              {coachingFaqs.map((faq, idx) => (
+                <div key={idx} className="bg-white border border-stone-100 hover:border-stone-200 transition-colors overflow-hidden">
+                  <button
+                    onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                    className="w-full p-6 flex items-center justify-between text-left"
+                  >
+                    <h4 className="font-serif text-lg text-stone-900 pr-4">{faq.question}</h4>
+                    <ChevronDown
+                      size={20}
+                      className={`text-stone-400 shrink-0 transition-transform duration-300 ${openFaq === idx ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                  <div className={`transition-all duration-300 ease-in-out ${openFaq === idx ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <p className="text-stone-600 text-sm leading-relaxed px-6 pb-6">{faq.answer}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            <p className="text-center mt-10 text-stone-500 text-sm">
+              Still have questions? <button onClick={() => handleApply()} className="text-clay font-medium hover:underline">Book a free call</button> and let's talk it through.
+            </p>
           </div>
-          <p className="text-center mt-10 text-stone-500 text-sm">
-            Still have questions? <button onClick={() => handleApply()} className="text-clay font-medium hover:underline">Book a free call</button> and let's talk it through.
-          </p>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Final CTA */}
       <section className="py-16 px-6 bg-stone-900 text-white relative z-10">

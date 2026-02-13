@@ -273,15 +273,46 @@ export default function TemplateEditor() {
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">
-                Image URL
+                Image
               </label>
-              <input
-                type="url"
-                value={block.url || ''}
-                onChange={(e) => updateBlock(block.id, { url: e.target.value })}
-                className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-400 focus:border-transparent"
-                placeholder="https://example.com/image.jpg"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={block.url || ''}
+                  onChange={(e) => updateBlock(block.id, { url: e.target.value })}
+                  className="flex-1 px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-400 focus:border-transparent"
+                  placeholder="https://example.com/image.jpg"
+                />
+                <label className="shrink-0 px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg transition-colors cursor-pointer flex items-center gap-2 text-sm font-medium">
+                  <ImageIcon className="w-4 h-4" />
+                  Upload
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="sr-only"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const formData = new FormData();
+                        formData.append('image', file);
+                        const res = await fetch(`${API_BASE}/upload`, {
+                          method: 'POST',
+                          headers: { Authorization: `Bearer ${token}` },
+                          body: formData,
+                        });
+                        if (!res.ok) throw new Error('Upload failed');
+                        const data = await res.json();
+                        updateBlock(block.id, { url: data.url });
+                        toast.success('Image uploaded');
+                      } catch {
+                        toast.error('Failed to upload image');
+                      }
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">

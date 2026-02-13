@@ -15,6 +15,55 @@ templatesRoutes.get('/', adminAuth, async (c) => {
   return c.json(result);
 });
 
+// GET /:id — get single template
+templatesRoutes.get('/:id', adminAuth, async (c) => {
+  const db = c.get('db');
+  const id = c.req.param('id');
+  const template = await db.select().from(emailTemplates).where(eq(emailTemplates.id, id)).get();
+  if (!template) return c.json({ error: 'Template not found' }, 404);
+  return c.json(template);
+});
+
+// POST / — create new template
+templatesRoutes.post('/', adminAuth, async (c) => {
+  const db = c.get('db');
+  const body = await c.req.json();
+
+  const template = await db.insert(emailTemplates).values({
+    name: body.name,
+    description: body.description || '',
+    blocks: body.blocks || [],
+    category: body.category || 'Custom',
+    isDefault: false,
+  }).returning().get();
+
+  return c.json(template, 201);
+});
+
+// PUT /:id — update existing template
+templatesRoutes.put('/:id', adminAuth, async (c) => {
+  const db = c.get('db');
+  const id = c.req.param('id');
+  const body = await c.req.json();
+
+  const existing = await db.select().from(emailTemplates).where(eq(emailTemplates.id, id)).get();
+  if (!existing) return c.json({ error: 'Template not found' }, 404);
+
+  const template = await db.update(emailTemplates)
+    .set({
+      name: body.name ?? existing.name,
+      description: body.description ?? existing.description,
+      blocks: body.blocks ?? existing.blocks,
+      category: body.category ?? existing.category,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(emailTemplates.id, id))
+    .returning()
+    .get();
+
+  return c.json(template);
+});
+
 // POST /seed — seed default templates if none exist
 templatesRoutes.post('/seed', adminAuth, async (c) => {
   const db = c.get('db');

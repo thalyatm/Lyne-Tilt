@@ -47,13 +47,16 @@ const Blog = () => {
     fetchPosts();
   }, []);
 
-  // Extract unique categories for filters
-  const categories = ['All', ...Array.from(new Set(posts.map(post => post.category)))];
+  // Extract unique categories for filters (split comma-separated values)
+  const categories = ['All', ...Array.from(new Set(
+    posts.flatMap(post => post.category?.split(',').map(c => c.trim()).filter(Boolean) || [])
+  )).sort()];
 
   const filteredPosts = posts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           post.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || post.category === selectedCategory;
+    const postCategories = post.category?.split(',').map(c => c.trim()) || [];
+    const matchesCategory = selectedCategory === 'All' || postCategories.includes(selectedCategory);
 
     return matchesSearch && matchesCategory;
   });
@@ -147,10 +150,12 @@ const Blog = () => {
             <article className="max-w-2xl mx-auto mb-16 animate-fade-in-up">
               <div>
                 <div className="text-left">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-[10px] uppercase tracking-widest text-clay font-medium bg-clay/10 px-2 py-1 rounded">
-                      {featuredPost.category}
-                    </span>
+                  <div className="flex items-center gap-2 mb-4 flex-wrap">
+                    {featuredPost.category?.split(',').map(c => c.trim()).filter(Boolean).map(cat => (
+                      <span key={cat} className="text-[10px] uppercase tracking-widest text-clay font-medium bg-clay/10 px-2 py-1 rounded">
+                        {cat}
+                      </span>
+                    ))}
                     <span className="text-[10px] text-stone-400 flex items-center gap-1">
                       <Clock size={10} />
                       {getReadingTime(featuredPost.content)}
@@ -191,10 +196,12 @@ const Blog = () => {
                   style={{ animationDelay: `${idx * 100}ms` }}
                 >
                   <div className="flex flex-col flex-grow p-5 text-left">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="text-[9px] uppercase tracking-widest text-clay font-medium">
-                        {post.category}
-                      </span>
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      {post.category?.split(',').map(c => c.trim()).filter(Boolean).map(cat => (
+                        <span key={cat} className="text-[9px] uppercase tracking-widest text-clay font-medium">
+                          {cat}
+                        </span>
+                      ))}
                       <span className="text-[9px] text-stone-400 flex items-center gap-1">
                         <Clock size={9} />
                         {getReadingTime(post.content)}
