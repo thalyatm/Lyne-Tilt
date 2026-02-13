@@ -51,8 +51,15 @@ import SegmentList from './admin/pages/SegmentList';
 import SegmentBuilder from './admin/pages/SegmentBuilder';
 import TemplateLibrary from './admin/pages/TemplateLibrary';
 import TemplateEditor from './admin/pages/TemplateEditor';
+import AutomationsManager from './admin/pages/AutomationsManager';
 import AutomationQueue from './admin/pages/AutomationQueue';
 import EmailSettings from './admin/pages/EmailSettings';
+import AnalyticsHub from './admin/pages/AnalyticsHub';
+import AnalyticsRevenue from './admin/pages/AnalyticsRevenue';
+import AnalyticsEmail from './admin/pages/AnalyticsEmail';
+import AnalyticsContent from './admin/pages/AnalyticsContent';
+import AnalyticsCustomers from './admin/pages/AnalyticsCustomers';
+import AnalyticsServices from './admin/pages/AnalyticsServices';
 import { ToastProvider } from './admin/context/ToastContext';
 
 const PageTracker = () => {
@@ -105,6 +112,12 @@ const App = () => {
               }
             >
               <Route index element={<Dashboard />} />
+              <Route path="analytics" element={<AnalyticsHub />} />
+              <Route path="analytics/revenue" element={<AnalyticsRevenue />} />
+              <Route path="analytics/email" element={<AnalyticsEmail />} />
+              <Route path="analytics/content" element={<AnalyticsContent />} />
+              <Route path="analytics/customers" element={<AnalyticsCustomers />} />
+              <Route path="analytics/services" element={<AnalyticsServices />} />
               <Route path="inbox" element={<ContactInbox />} />
               <Route path="newsletter" element={<NewsletterManager />} />
               <Route path="campaigns" element={<CampaignList />} />
@@ -134,7 +147,7 @@ const App = () => {
               <Route path="templates" element={<TemplateLibrary />} />
               <Route path="templates/new" element={<TemplateEditor />} />
               <Route path="templates/:id" element={<TemplateEditor />} />
-              <Route path="automations" element={<NewsletterManager />} />
+              <Route path="automations" element={<AutomationsManager />} />
               <Route path="automations/queue" element={<AutomationQueue />} />
               <Route path="email-settings" element={<EmailSettings />} />
             </Route>

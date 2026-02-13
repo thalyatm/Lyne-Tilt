@@ -24,6 +24,7 @@ import {
   LayoutTemplate,
   ListOrdered,
   Mail,
+  BarChart3,
 } from 'lucide-react';
 
 interface NavItem {
@@ -76,6 +77,7 @@ export default function AdminLayout() {
       // OVERVIEW — no label for first group
       items: [
         { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
+        { to: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
       ],
     },
     {
@@ -88,7 +90,7 @@ export default function AdminLayout() {
       label: 'Services',
       items: [
         { to: '/admin/coaching', icon: Users, label: 'Coaching' },
-        { to: '/admin/learn', icon: BookOpen, label: 'Workshops' },
+        { to: '/admin/workshops', icon: BookOpen, label: 'Workshops' },
       ],
     },
     {
