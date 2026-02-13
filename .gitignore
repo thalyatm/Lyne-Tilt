@@ -20,6 +20,13 @@ dist
 dist-ssr
 *.local
 
+# Wrangler / Cloudflare Workers
+workers/.wrangler/
+workers/.dev.vars
+
+# SQLite databases
+*.sqlite
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
