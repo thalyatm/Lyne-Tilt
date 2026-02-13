@@ -55,7 +55,7 @@ function formatPrice(price: string | null): string {
   const num = parseFloat(price);
   if (isNaN(num)) return price;
   if (num === 0) return 'Free';
-  return `\u00a3${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatChartDate(dateStr: string): string {

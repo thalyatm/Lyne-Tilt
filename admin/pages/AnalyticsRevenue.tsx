@@ -46,11 +46,11 @@ type SortDir = 'asc' | 'desc';
 // --- Formatting helpers ---
 
 function formatCurrency(amount: number): string {
-  if (amount === 0) return '\u00a30';
+  if (amount === 0) return '$0';
   if (Number.isInteger(amount)) {
-    return `\u00a3${amount.toLocaleString()}`;
+    return `$${amount.toLocaleString()}`;
   }
-  return `\u00a3${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatNumber(n: number): string {
@@ -373,7 +373,7 @@ export default function AnalyticsRevenue() {
                   axisLine={false}
                   tickLine={false}
                   width={50}
-                  tickFormatter={(v) => `\u00a3${v.toLocaleString()}`}
+                  tickFormatter={(v) => `$${v.toLocaleString()}`}
                 />
                 <Tooltip content={<RevenueChartTooltip />} />
                 <Area
@@ -417,7 +417,7 @@ export default function AnalyticsRevenue() {
                   axisLine={false}
                   tickLine={false}
                   width={50}
-                  tickFormatter={(v) => `\u00a3${v.toLocaleString()}`}
+                  tickFormatter={(v) => `$${v.toLocaleString()}`}
                 />
                 <Tooltip content={<AovChartTooltip />} />
                 <Area

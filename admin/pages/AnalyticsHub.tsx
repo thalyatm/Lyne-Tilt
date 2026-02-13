@@ -52,11 +52,11 @@ type DateRange = '7d' | '30d' | '90d' | 'all';
 // ─── Formatting helpers ────────────────────────────────────
 
 function formatCurrency(amount: number): string {
-  if (amount === 0) return '\u00a30';
+  if (amount === 0) return '$0';
   if (Number.isInteger(amount)) {
-    return `\u00a3${amount.toLocaleString()}`;
+    return `$${amount.toLocaleString()}`;
   }
-  return `\u00a3${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatNumber(n: number): string {
@@ -94,7 +94,7 @@ function ChartTooltip({ active, payload, label }: any) {
     <div className="bg-white border border-stone-200 rounded-lg shadow-sm px-3 py-2 text-xs">
       <p className="text-stone-500 mb-0.5">{formatChartDate(label)}</p>
       <p className="font-medium text-stone-800">
-        {'\u00a3'}{typeof payload[0].value === 'number' ? payload[0].value.toLocaleString() : payload[0].value}
+        {'$'}{typeof payload[0].value === 'number' ? payload[0].value.toLocaleString() : payload[0].value}
       </p>
     </div>
   );
@@ -381,7 +381,7 @@ export default function AnalyticsHub() {
                 axisLine={false}
                 tickLine={false}
                 width={50}
-                tickFormatter={(v) => `\u00a3${v.toLocaleString()}`}
+                tickFormatter={(v) => `$${v.toLocaleString()}`}
               />
               <Tooltip content={<ChartTooltip />} />
               <Area
