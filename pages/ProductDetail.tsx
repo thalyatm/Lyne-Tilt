@@ -4,6 +4,7 @@ import { Truck, RefreshCw, ShieldCheck, Plus, Minus, Check, Loader2 } from 'luci
 import { useCart } from '../context/CartContext';
 import { useSettings } from '../context/SettingsContext';
 import { API_BASE } from '../config/api';
+import { trackEvent } from '../lib/analytics';
 import { Product, ProductCategory } from '../types';
 
 const AccordionItem = ({ title, children, isOpen, onClick }: any) => (
@@ -74,6 +75,7 @@ const ProductDetail = () => {
             badge: data.badge,
             availability: data.availability || 'In stock',
           });
+          trackEvent('product_view', { entityType: 'product', entityId: data.slug || data.id });
         } else {
           throw new Error('API error');
         }

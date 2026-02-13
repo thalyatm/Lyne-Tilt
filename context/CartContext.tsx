@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product } from '../types';
+import { trackEvent } from '../lib/analytics';
 
 interface CartItem extends Product {
   quantity: number;
@@ -40,6 +41,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (existingItem) {
         return prevCart; // Already in cart, don't add again
       }
+      // Track outside the updater would lose the duplicate check,
+      // so we track here — safe because this only runs when item is actually new
+      trackEvent('add_to_cart', {
+        entityType: 'product',
+        entityId: product.id,
+        metadata: { quantity: 1 },
+      });
       return [...prevCart, { ...product, quantity: 1 }];
     });
   };

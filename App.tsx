@@ -1,9 +1,10 @@
 
-import React from 'react';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { CustomerAuthProvider } from './context/CustomerAuthContext';
+import { trackPageView } from './lib/analytics';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Shop from './pages/Shop';
@@ -30,7 +31,9 @@ import Dashboard from './admin/pages/Dashboard';
 import ProductsManager from './admin/pages/ProductsManager';
 import ProductEditor from './admin/pages/ProductEditor';
 import CoachingManager from './admin/pages/CoachingManager';
-import LearnManager from './admin/pages/LearnManager';
+import CoachingEditor from './admin/pages/CoachingEditor';
+import WorkshopsManager from './admin/pages/WorkshopsManager';
+import WorkshopEditor from './admin/pages/WorkshopEditor';
 import BlogManager from './admin/pages/BlogManager';
 import TestimonialsManager from './admin/pages/TestimonialsManager';
 import FAQsManager from './admin/pages/FAQsManager';
@@ -52,6 +55,14 @@ import AutomationQueue from './admin/pages/AutomationQueue';
 import EmailSettings from './admin/pages/EmailSettings';
 import { ToastProvider } from './admin/context/ToastContext';
 
+const PageTracker = () => {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView();
+  }, [location.pathname]);
+  return null;
+};
+
 const App = () => {
   return (
     <AuthProvider>
@@ -59,6 +70,7 @@ const App = () => {
         <CustomerAuthProvider>
           <CartProvider>
             <Router>
+            <PageTracker />
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Layout />}>
@@ -110,7 +122,11 @@ const App = () => {
               <Route path="products/new" element={<ProductEditor />} />
               <Route path="products/:id" element={<ProductEditor />} />
               <Route path="coaching" element={<CoachingManager />} />
-              <Route path="learn" element={<LearnManager />} />
+              <Route path="coaching/new" element={<CoachingEditor />} />
+              <Route path="coaching/:id" element={<CoachingEditor />} />
+              <Route path="workshops" element={<WorkshopsManager />} />
+              <Route path="workshops/new" element={<WorkshopEditor />} />
+              <Route path="workshops/:id" element={<WorkshopEditor />} />
               <Route path="blog" element={<BlogManager />} />
               <Route path="testimonials" element={<TestimonialsManager />} />
               <Route path="faqs" element={<FAQsManager />} />

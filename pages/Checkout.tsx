@@ -4,6 +4,7 @@ import { useCustomerAuth } from '../context/CustomerAuthContext';
 import { Link } from 'react-router-dom';
 import { Trash2, ShoppingBag, Lock, AlertCircle, Mail, Loader2, CreditCard } from 'lucide-react';
 import { API_BASE, STRIPE_PUBLIC_KEY, isStripeConfigured } from '../config/api';
+import { trackEvent } from '../lib/analytics';
 import { loadStripe } from '@stripe/stripe-js';
 
 // Initialize Stripe
@@ -14,6 +15,7 @@ const Checkout = () => {
   const { user, isAuthenticated, isVerified, resendVerification } = useCustomerAuth();
 
   useEffect(() => { document.title = 'Checkout | Lyne Tilt'; }, []);
+  useEffect(() => { trackEvent('checkout_start'); }, []);
 
   const [verificationSent, setVerificationSent] = useState(false);
   const [sendingVerification, setSendingVerification] = useState(false);

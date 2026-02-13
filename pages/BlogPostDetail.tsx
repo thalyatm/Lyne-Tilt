@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Clock, Share2, Check, Feather, Loader2 } from 'lucide-react';
 import { API_BASE } from '../config/api';
+import { trackEvent } from '../lib/analytics';
 import { BlogPost } from '../types';
 
 // Helper to format date
@@ -41,6 +42,7 @@ const BlogPostDetail = () => {
         if (postRes.ok) {
           const postData = await postRes.json();
           setPost(postData);
+          trackEvent('blog_read', { entityType: 'blog_post', entityId: postData.id || postData.slug });
         }
         if (allRes.ok) {
           const allData = await allRes.json();
