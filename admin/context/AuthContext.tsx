@@ -80,6 +80,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, [refreshAccessToken, fetchUser]);
 
+  // Proactively refresh the access token every 12 minutes (token expires at 15m)
+  useEffect(() => {
+    if (!accessToken) return;
+
+    const interval = setInterval(() => {
+      refreshAccessToken();
+    }, 12 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [accessToken, refreshAccessToken]);
+
   const login = async (email: string, password: string) => {
     const response = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',

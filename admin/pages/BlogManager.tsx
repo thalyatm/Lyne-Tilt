@@ -224,7 +224,7 @@ function SocialPreviewCard({ title, description, image, url }: {
 
 // ─── Cover Image Banner ─────────────────────────────────
 
-function CoverImageBanner({ image, onChange }: { image: string; onChange: (url: string) => void }) {
+function CoverImageBanner({ image, onChange, onError }: { image: string; onChange: (url: string) => void; onError?: (msg: string) => void }) {
   const { accessToken } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -240,12 +240,15 @@ function CoverImageBanner({ image, onChange }: { image: string; onChange: (url: 
         headers: { Authorization: `Bearer ${accessToken}` },
         body: form,
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Upload failed (${res.status})`);
+      }
       const data = await res.json();
       const baseUrl = API_BASE.replace('/api', '');
       onChange(`${baseUrl}${data.url}`);
-    } catch {
-      // silently fail
+    } catch (err) {
+      onError?.(err instanceof Error ? err.message : 'Image upload failed');
     } finally {
       setUploading(false);
     }
@@ -564,7 +567,7 @@ export default function BlogManager() {
 
     setSaveStatus('saving');
     try {
-      await fetch(`${API_BASE}/blog/${editingItem.id}`, {
+      const res = await fetch(`${API_BASE}/blog/${editingItem.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -572,6 +575,10 @@ export default function BlogManager() {
         },
         body: JSON.stringify(formValues),
       });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Save failed (${res.status})`);
+      }
       lastSavedContent.current = contentHash;
       setSaveStatus('saved');
 
@@ -580,8 +587,9 @@ export default function BlogManager() {
       if (sidebarTab === 'history') {
         fetchVersions(editingItem.id);
       }
-    } catch {
+    } catch (err) {
       setSaveStatus('error');
+      showError(err instanceof Error ? err.message : 'Auto-save failed');
     }
   }, [editingItem, formValues, accessToken, createVersionSnapshot, sidebarTab]);
 
@@ -772,6 +780,11 @@ export default function BlogManager() {
         body: JSON.stringify(payload),
       });
 
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Save failed (${res.status})`);
+      }
+
       const saved = await res.json();
 
       lastSavedContent.current = JSON.stringify({
@@ -788,9 +801,9 @@ export default function BlogManager() {
         setFormValues(saved);
         fetchVersions(saved.id);
       }
-    } catch {
+    } catch (err) {
       setSaveStatus('error');
-      showError('Could not save post.');
+      showError(err instanceof Error ? err.message : 'Could not save post.');
     } finally {
       setSaving(false);
     }
@@ -1152,6 +1165,7 @@ export default function BlogManager() {
             <CoverImageBanner
               image={formValues.image || ''}
               onChange={(url) => updateFormValue('image', url)}
+              onError={showError}
             />
 
             {/* Title */}
