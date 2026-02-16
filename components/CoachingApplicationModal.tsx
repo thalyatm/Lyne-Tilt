@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Send, CheckCircle } from 'lucide-react';
+import { X, Send, CheckCircle, AlertCircle } from 'lucide-react';
+import { API_BASE } from '../config/api';
 
 interface CoachingApplicationModalProps {
   isOpen: boolean;
@@ -12,9 +13,13 @@ const CoachingApplicationModal: React.FC<CoachingApplicationModalProps> = ({ isO
     name: '',
     email: '',
     phone: '',
+    creativeWork: '',
     reason: '',
+    package: 'Not sure yet',
   });
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   // Update package when modal opens with preselected value
   useEffect(() => {
@@ -23,14 +28,40 @@ const CoachingApplicationModal: React.FC<CoachingApplicationModalProps> = ({ isO
     }
   }, [isOpen, preselectedPackage]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate API call
-    setTimeout(() => setSubmitted(true), 500);
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${API_BASE}/coaching/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          reason: formData.reason,
+          package: formData.package,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Something went wrong');
+      }
+
+      setSubmitted(true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to submit. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleClose = () => {
     setSubmitted(false);
+    setError('');
     setFormData({ name: '', email: '', phone: '', creativeWork: '', reason: '', package: 'Not sure yet' });
     onClose();
   };
@@ -38,7 +69,7 @@ const CoachingApplicationModal: React.FC<CoachingApplicationModalProps> = ({ isO
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 pt-24 pb-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 pt-24 pb-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm"
@@ -46,7 +77,7 @@ const CoachingApplicationModal: React.FC<CoachingApplicationModalProps> = ({ isO
       />
 
       {/* Modal */}
-      <div className="relative bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl animate-fade-in-up">
+      <div className="relative bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl animate-fade-in-up rounded-2xl">
         {/* Close Button */}
         <button
           onClick={handleClose}
@@ -85,6 +116,13 @@ const CoachingApplicationModal: React.FC<CoachingApplicationModalProps> = ({ isO
                 To ensure we're the right fit, all coaching engagements begin with a 15-minute discovery call. Tell me a little about yourself so I can make our conversation as valuable as possible.
               </p>
             </div>
+
+            {formData.package && formData.package !== 'Not sure yet' && (
+              <div className="bg-stone-50 border border-stone-200 rounded-lg p-3 mb-2">
+                <p className="text-[10px] uppercase tracking-widest text-stone-400">Enquiring about</p>
+                <p className="text-sm font-medium text-stone-900">{formData.package}</p>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Name, Email & Phone */}
@@ -147,13 +185,22 @@ const CoachingApplicationModal: React.FC<CoachingApplicationModalProps> = ({ isO
                 />
               </div>
 
+              {/* Error */}
+              {error && (
+                <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 border border-red-200">
+                  <AlertCircle size={16} />
+                  {error}
+                </div>
+              )}
+
               {/* Submit */}
               <button
                 type="submit"
-                className="w-full bg-stone-900 text-white py-4 uppercase tracking-[0.2em] text-xs font-bold hover:bg-clay transition-colors flex items-center justify-center gap-2 mt-6"
+                disabled={submitting}
+                className="w-full bg-stone-900 text-white py-4 uppercase tracking-[0.2em] text-xs font-bold hover:bg-clay transition-colors flex items-center justify-center gap-2 mt-6 disabled:opacity-50 disabled:cursor-not-allowed rounded-full"
               >
                 <Send size={14} />
-                Request Discovery Call
+                {submitting ? 'Submitting...' : 'Request Discovery Call'}
               </button>
 
               <p className="text-center text-[10px] text-stone-400 mt-4">

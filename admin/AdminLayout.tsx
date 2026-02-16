@@ -29,6 +29,16 @@ import {
   Clock,
   PanelLeftClose,
   PanelLeftOpen,
+  Tag,
+  Package,
+  Image,
+  MessageSquare,
+  ShoppingCart,
+  Gift,
+  BellRing,
+  Database,
+  Moon,
+  Sun,
 } from 'lucide-react';
 
 interface NavItem {
@@ -50,6 +60,14 @@ export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('admin-dark-mode') === 'true');
+
+  const toggleDarkMode = () => {
+    setDarkMode((prev) => {
+      localStorage.setItem('admin-dark-mode', String(!prev));
+      return !prev;
+    });
+  };
 
   // Fetch unread message count
   useEffect(() => {
@@ -88,13 +106,21 @@ export default function AdminLayout() {
     {
       label: 'Shop',
       items: [
+        { to: '/admin/orders', icon: Package, label: 'Orders' },
         { to: '/admin/products', icon: ShoppingBag, label: 'Products' },
+        { to: '/admin/inventory', icon: BarChart3, label: 'Inventory' },
+        { to: '/admin/reviews', icon: MessageSquare, label: 'Reviews' },
+        { to: '/admin/promotions', icon: Tag, label: 'Promotions' },
+        { to: '/admin/abandoned-carts', icon: ShoppingCart, label: 'Abandoned Carts' },
+        { to: '/admin/gift-cards', icon: Gift, label: 'Gift Cards' },
+        { to: '/admin/waitlist', icon: BellRing, label: 'Waitlist' },
       ],
     },
     {
       label: 'Services',
       items: [
         { to: '/admin/coaching', icon: Users, label: 'Coaching' },
+        { to: '/admin/bookings', icon: Clock, label: 'Bookings' },
         { to: '/admin/workshops', icon: BookOpen, label: 'Workshops' },
         { to: '/admin/cohorts', icon: CalendarDays, label: 'Cohorts' },
       ],
@@ -105,6 +131,7 @@ export default function AdminLayout() {
         { to: '/admin/blog', icon: FileText, label: 'Oxygen Notes' },
         { to: '/admin/testimonials', icon: Star, label: 'Testimonials' },
         { to: '/admin/faqs', icon: HelpCircle, label: 'FAQs' },
+        { to: '/admin/media', icon: Image, label: 'Media Library' },
       ],
     },
     {
@@ -124,8 +151,10 @@ export default function AdminLayout() {
       // SETTINGS — no label, separator above
       separator: true,
       items: [
+        { to: '/admin/customers', icon: Users, label: 'Customers' },
         { to: '/admin/settings', icon: Settings, label: 'Site Settings' },
         { to: '/admin/activity', icon: Clock, label: 'Activity Log' },
+        { to: '/admin/data-export', icon: Database, label: 'Data Export' },
       ],
     },
   ];
@@ -134,7 +163,7 @@ export default function AdminLayout() {
   const headerOffset = 'top-11';
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className={`min-h-screen bg-stone-50 ${darkMode ? 'admin-dark' : ''}`}>
       {/* Full-width Header */}
       <header className={`bg-stone-900 fixed top-0 left-0 right-0 z-50 ${headerHeight}`}>
         <div className="flex items-center justify-between px-4 h-full">
@@ -160,6 +189,15 @@ export default function AdminLayout() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggleDarkMode}
+              className="p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-md transition-colors"
+              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
             {/* Messages bell */}
             <button
               onClick={() => navigate('/admin/inbox')}
@@ -263,7 +301,7 @@ export default function AdminLayout() {
         </nav>
 
         {/* User section at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-stone-200 bg-stone-50">
+        <div className={`absolute bottom-0 left-0 right-0 p-3 border-t border-stone-200 ${darkMode ? 'bg-[#151413]' : 'bg-stone-50'}`}>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-stone-200 rounded-full flex items-center justify-center text-xs font-medium text-stone-600">
               {user?.name?.charAt(0) || 'A'}

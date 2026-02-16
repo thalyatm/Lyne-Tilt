@@ -1,27 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from 'recharts';
 import {
   DollarSign,
   ShoppingCart,
   Users,
-  TrendingUp,
-  Mail,
-  Eye,
-  MousePointerClick,
   ShoppingBag,
   FileText,
-  Megaphone,
   Contact,
   Filter,
   Zap,
@@ -30,20 +14,16 @@ import {
   Info,
   ArrowRight,
   RefreshCw,
-  Plus,
   Package,
   BookOpen,
   Sparkles,
+  CalendarDays,
+  CheckCircle,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../config/api';
 
 // ─── Types ─────────────────────────────────────────────────
-
-interface TimeSeriesPoint {
-  date: string;
-  value: number;
-}
 
 interface RecentEntity {
   type: 'blog' | 'product' | 'campaign' | 'coaching' | 'workshop';
@@ -54,19 +34,30 @@ interface RecentEntity {
   href: string;
 }
 
-interface ActiveCampaign {
-  id: string;
-  name: string;
-  status: string;
-  updated_at: string;
-  href: string;
-}
-
 interface Warning {
   id: string;
   kind: string;
   severity: 'high' | 'medium' | 'low';
   message: string;
+  href: string;
+}
+
+interface UpcomingBooking {
+  id: string;
+  customer_name: string;
+  session_date: string;
+  start_time: string;
+  status: string;
+  href: string;
+}
+
+interface PendingOrder {
+  id: string;
+  order_number: string;
+  customer_name: string;
+  total: string;
+  status: string;
+  created_at: string;
   href: string;
 }
 
@@ -81,9 +72,9 @@ interface DashboardOverview {
     click_rate_30d: number;
   };
   timeSeries: {
-    revenue_daily_30d: TimeSeriesPoint[];
-    subscribers_daily_30d: TimeSeriesPoint[];
-    email_sends_daily_30d: TimeSeriesPoint[];
+    revenue_daily_30d: { date: string; value: number }[];
+    subscribers_daily_30d: { date: string; value: number }[];
+    email_sends_daily_30d: { date: string; value: number }[];
   };
   content: {
     drafts_count_by_type: {
@@ -95,7 +86,7 @@ interface DashboardOverview {
     recently_updated: RecentEntity[];
   };
   marketing: {
-    active_campaigns: ActiveCampaign[];
+    active_campaigns: { id: string; name: string; status: string; updated_at: string; href: string }[];
     automations_health: {
       active: number;
       paused: number;
@@ -105,6 +96,10 @@ interface DashboardOverview {
   ops: {
     warnings: Warning[];
   };
+  schedule: {
+    upcoming_bookings: UpcomingBooking[];
+  };
+  pendingOrders: PendingOrder[];
 }
 
 // ─── Formatting helpers ────────────────────────────────────
@@ -133,11 +128,6 @@ function formatPercent(rate: number): string {
   return `${(rate * 100).toFixed(1)}%`;
 }
 
-function formatChartDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
-}
-
 function timeAgo(dateString: string): string {
   const now = new Date();
   const date = new Date(dateString);
@@ -152,10 +142,19 @@ function timeAgo(dateString: string): string {
   return date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
 }
 
+function formatSessionDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-AU', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 const ENTITY_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   blog: FileText,
   product: ShoppingBag,
-  campaign: Megaphone,
+  campaign: ShoppingBag,
   coaching: Users,
   workshop: BookOpen,
 };
@@ -170,6 +169,9 @@ const STATUS_STYLES: Record<string, string> = {
   archived: 'bg-stone-100 text-stone-500',
   paused: 'bg-stone-100 text-stone-500',
   failed: 'bg-red-50 text-red-700',
+  confirmed: 'bg-emerald-50 text-emerald-700',
+  pending: 'bg-amber-50 text-amber-700',
+  cancelled: 'bg-red-50 text-red-700',
 };
 
 const SEVERITY_STYLES: Record<string, { border: string; icon: React.ComponentType<{ size?: number; className?: string }>; iconColor: string }> = {
@@ -178,36 +180,25 @@ const SEVERITY_STYLES: Record<string, { border: string; icon: React.ComponentTyp
   low: { border: 'border-l-blue-300', icon: Info, iconColor: 'text-blue-400' },
 };
 
-// ─── Chart tooltip ─────────────────────────────────────────
-
-function ChartTooltip({ active, payload, label, prefix = '', suffix = '' }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm px-3 py-2 text-xs">
-      <p className="text-stone-500 mb-0.5">{formatChartDate(label)}</p>
-      <p className="font-medium text-stone-800">
-        {prefix}{typeof payload[0].value === 'number' ? payload[0].value.toLocaleString() : payload[0].value}{suffix}
-      </p>
-    </div>
-  );
-}
-
 // ─── Skeleton loader ───────────────────────────────────────
 
 function DashboardSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
       <div className="h-7 w-56 bg-stone-100 rounded-md" />
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
+      <div className="space-y-2">
+        <div className="bg-stone-100 rounded-lg h-12" />
+        <div className="bg-stone-100 rounded-lg h-12" />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[1, 2, 3, 4].map((i) => (
           <div key={i} className="bg-stone-100 rounded-lg h-[88px]" />
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-stone-100 rounded-lg h-56" />
         <div className="bg-stone-100 rounded-lg h-56" />
       </div>
-      <div className="bg-stone-100 rounded-lg h-48" />
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2 bg-stone-100 rounded-lg h-56" />
         <div className="lg:col-span-3 bg-stone-100 rounded-lg h-56" />
@@ -261,14 +252,6 @@ export default function Dashboard() {
     fetchDashboard();
   };
 
-  // Memoize chart tick formatter to show every ~5th label
-  const chartTickFormatter = useMemo(() => {
-    return (value: string, index: number) => {
-      if (index % 7 === 0) return formatChartDate(value);
-      return '';
-    };
-  }, []);
-
   // ─── Loading state ───
 
   if (loading) return <DashboardSkeleton />;
@@ -297,10 +280,10 @@ export default function Dashboard() {
   if (!data) return null;
 
   const kpis = data.kpis;
-  const ts = data.timeSeries;
   const content = data.content;
-  const marketing = data.marketing;
   const ops = data.ops;
+  const upcomingBookings = data.schedule?.upcoming_bookings ?? [];
+  const pendingOrders = data.pendingOrders ?? [];
 
   // ─── KPI card definitions ───
 
@@ -332,28 +315,12 @@ export default function Dashboard() {
       bg: 'bg-indigo-50',
     },
     {
-      label: 'Emails sent',
-      value: formatNumber(kpis.emails_sent_30d),
-      subtitle: '30 days',
-      icon: Mail,
-      color: 'text-amber-600',
-      bg: 'bg-amber-50',
-    },
-    {
-      label: 'Open rate',
-      value: formatPercent(kpis.open_rate_30d),
-      subtitle: '30 days',
-      icon: Eye,
+      label: 'Upcoming Bookings',
+      value: formatNumber(upcomingBookings.length),
+      subtitle: 'next 7 days',
+      icon: CalendarDays,
       color: 'text-violet-600',
       bg: 'bg-violet-50',
-    },
-    {
-      label: 'Click rate',
-      value: formatPercent(kpis.click_rate_30d),
-      subtitle: '30 days',
-      icon: MousePointerClick,
-      color: 'text-rose-600',
-      bg: 'bg-rose-50',
     },
   ];
 
@@ -362,10 +329,10 @@ export default function Dashboard() {
   const quickActions = [
     { label: 'New Product', icon: ShoppingBag, to: '/admin/products/new' },
     { label: 'New Blog Post', icon: FileText, to: '/admin/blog' },
-    { label: 'New Campaign', icon: Megaphone, to: '/admin/campaigns/new' },
     { label: 'Import Subscribers', icon: Contact, to: '/admin/subscribers/import' },
     { label: 'Create Segment', icon: Filter, to: '/admin/segments/new' },
     { label: 'Create Automation', icon: Zap, to: '/admin/automations' },
+    { label: 'New Workshop', icon: BookOpen, to: '/admin/workshops/new' },
   ];
 
   return (
@@ -405,150 +372,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ─── KPI Cards ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {kpiCards.map((card) => (
-          <div
-            key={card.label}
-            className="bg-white border border-stone-200 rounded-lg p-4 hover:border-stone-300 transition"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">
-                {card.label}
-              </span>
-              <div className={`${card.bg} p-1.5 rounded-md`}>
-                <card.icon size={14} className={card.color} />
-              </div>
-            </div>
-            <p className="text-2xl font-semibold text-stone-900 leading-none">
-              {card.value}
-            </p>
-            <p className="text-xs text-stone-400 mt-1.5">{card.subtitle}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* ─── Charts ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Revenue chart */}
-        <div className="bg-white border border-stone-200 rounded-lg p-4">
-          <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">
-            Revenue (30 days)
-          </h3>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={ts.revenue_daily_30d} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
-                <defs>
-                  <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#059669" stopOpacity={0.15} />
-                    <stop offset="100%" stopColor="#059669" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={chartTickFormatter}
-                  tick={{ fontSize: 11, fill: '#a8a29e' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: '#a8a29e' }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={45}
-                  tickFormatter={(v) => `$${v}`}
-                />
-                <Tooltip content={<ChartTooltip prefix="$" />} />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#059669"
-                  strokeWidth={2}
-                  fill="url(#revGrad)"
-                  dot={false}
-                  activeDot={{ r: 4, fill: '#059669' }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Subscribers chart */}
-        <div className="bg-white border border-stone-200 rounded-lg p-4">
-          <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">
-            New Subscribers (30 days)
-          </h3>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={ts.subscribers_daily_30d} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
-                <defs>
-                  <linearGradient id="subGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#4f46e5" stopOpacity={0.15} />
-                    <stop offset="100%" stopColor="#4f46e5" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={chartTickFormatter}
-                  tick={{ fontSize: 11, fill: '#a8a29e' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: '#a8a29e' }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={30}
-                  allowDecimals={false}
-                />
-                <Tooltip content={<ChartTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#4f46e5"
-                  strokeWidth={2}
-                  fill="url(#subGrad)"
-                  dot={false}
-                  activeDot={{ r: 4, fill: '#4f46e5' }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Email sends bar chart (full width) */}
-      <div className="bg-white border border-stone-200 rounded-lg p-4">
-        <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">
-          Email Activity (30 days)
-        </h3>
-        <div className="h-40">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={ts.email_sends_daily_30d} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" vertical={false} />
-              <XAxis
-                dataKey="date"
-                tickFormatter={chartTickFormatter}
-                tick={{ fontSize: 11, fill: '#a8a29e' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: '#a8a29e' }}
-                axisLine={false}
-                tickLine={false}
-                width={30}
-                allowDecimals={false}
-              />
-              <Tooltip content={<ChartTooltip suffix=" emails" />} />
-              <Bar dataKey="value" fill="#d97706" radius={[2, 2, 0, 0]} maxBarSize={16} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
       {/* ─── Attention Needed ─── */}
       {ops.warnings.length > 0 && (
         <div className="space-y-2">
@@ -576,6 +399,117 @@ export default function Dashboard() {
             })}
         </div>
       )}
+
+      {/* ─── KPI Cards ─── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {kpiCards.map((card) => (
+          <div
+            key={card.label}
+            className="bg-white border border-stone-200 rounded-lg p-4 hover:border-stone-300 transition"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">
+                {card.label}
+              </span>
+              <div className={`${card.bg} p-1.5 rounded-md`}>
+                <card.icon size={14} className={card.color} />
+              </div>
+            </div>
+            <p className="text-2xl font-semibold text-stone-900 leading-none">
+              {card.value}
+            </p>
+            <p className="text-xs text-stone-400 mt-1.5">{card.subtitle}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ─── Pending Orders + Upcoming Schedule ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Pending Orders */}
+        <div>
+          <h2 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">
+            Pending orders
+          </h2>
+          <div className="bg-white border border-stone-200 rounded-lg divide-y divide-stone-100">
+            {pendingOrders.length > 0 ? (
+              pendingOrders.map((order) => (
+                <Link
+                  key={order.id}
+                  to={order.href}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition"
+                >
+                  <ShoppingCart size={14} className="text-stone-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-stone-700">
+                        #{order.order_number}
+                      </span>
+                      <span className="text-sm text-stone-500 truncate">
+                        {order.customer_name}
+                      </span>
+                    </div>
+                    <span className="text-xs text-stone-400">
+                      {timeAgo(order.created_at)}
+                    </span>
+                  </div>
+                  <span className="text-sm font-medium text-stone-700 flex-shrink-0">
+                    ${order.total}
+                  </span>
+                  <ArrowRight size={14} className="text-stone-300 flex-shrink-0" />
+                </Link>
+              ))
+            ) : (
+              <div className="px-4 py-8 text-center">
+                <CheckCircle size={18} className="mx-auto mb-2 text-emerald-300" />
+                <p className="text-xs text-stone-400">No pending orders</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Upcoming Schedule */}
+        <div>
+          <h2 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">
+            Upcoming schedule
+          </h2>
+          <div className="bg-white border border-stone-200 rounded-lg divide-y divide-stone-100">
+            {upcomingBookings.length > 0 ? (
+              upcomingBookings.map((booking) => {
+                const statusStyle = STATUS_STYLES[booking.status] || 'bg-stone-100 text-stone-600';
+                return (
+                  <Link
+                    key={booking.id}
+                    to={booking.href}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition"
+                  >
+                    <CalendarDays size={14} className="text-stone-400 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-stone-700 truncate">
+                        {booking.customer_name}
+                      </p>
+                      <p className="text-xs text-stone-400">
+                        {formatSessionDate(booking.session_date)}
+                        {booking.start_time ? ` at ${booking.start_time}` : ''}
+                      </p>
+                    </div>
+                    <span
+                      className={`text-[11px] px-2 py-0.5 rounded-full font-medium capitalize ${statusStyle}`}
+                    >
+                      {booking.status}
+                    </span>
+                    <ArrowRight size={14} className="text-stone-300 flex-shrink-0" />
+                  </Link>
+                );
+              })
+            ) : (
+              <div className="px-4 py-8 text-center">
+                <CheckCircle size={18} className="mx-auto mb-2 text-emerald-300" />
+                <p className="text-xs text-stone-400">No upcoming sessions</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* ─── Quick Actions + Recent Activity ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -639,110 +573,6 @@ export default function Dashboard() {
                 <p className="text-xs text-stone-400">No recent activity</p>
               </div>
             )}
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Marketing Overview ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Active Campaigns */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-medium text-stone-500 uppercase tracking-wider">
-              Active campaigns
-            </h2>
-            <Link
-              to="/admin/campaigns"
-              className="text-xs text-stone-400 hover:text-stone-600 transition"
-            >
-              View all <ArrowRight size={12} className="inline ml-0.5" />
-            </Link>
-          </div>
-          <div className="bg-white border border-stone-200 rounded-lg divide-y divide-stone-100">
-            {marketing.active_campaigns.length > 0 ? (
-              marketing.active_campaigns.map((c) => {
-                const statusStyle = STATUS_STYLES[c.status] || 'bg-stone-100 text-stone-600';
-                return (
-                  <Link
-                    key={c.id}
-                    to={c.href}
-                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50 transition"
-                  >
-                    <Megaphone size={14} className="text-stone-400 flex-shrink-0" />
-                    <span className="flex-1 text-sm text-stone-700 truncate">
-                      {c.name}
-                    </span>
-                    <span
-                      className={`text-[11px] px-2 py-0.5 rounded-full font-medium capitalize ${statusStyle}`}
-                    >
-                      {c.status}
-                    </span>
-                    <span className="text-[11px] text-stone-400 flex-shrink-0">
-                      {timeAgo(c.updated_at)}
-                    </span>
-                  </Link>
-                );
-              })
-            ) : (
-              <div className="px-4 py-8 text-center">
-                <Megaphone size={18} className="mx-auto mb-2 text-stone-300" />
-                <p className="text-xs text-stone-400 mb-2">No active campaigns</p>
-                <Link
-                  to="/admin/campaigns/new"
-                  className="inline-flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-700 transition"
-                >
-                  <Plus size={12} />
-                  Create one
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Automations Health */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-medium text-stone-500 uppercase tracking-wider">
-              Automations
-            </h2>
-            <Link
-              to="/admin/automations"
-              className="text-xs text-stone-400 hover:text-stone-600 transition"
-            >
-              Manage <ArrowRight size={12} className="inline ml-0.5" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white border border-stone-200 rounded-lg p-4 text-center">
-              <p className="text-2xl font-semibold text-emerald-600">
-                {marketing.automations_health.active}
-              </p>
-              <p className="text-xs text-stone-500 mt-1">Active</p>
-            </div>
-            <div className="bg-white border border-stone-200 rounded-lg p-4 text-center">
-              <p className="text-2xl font-semibold text-stone-500">
-                {marketing.automations_health.paused}
-              </p>
-              <p className="text-xs text-stone-500 mt-1">Paused</p>
-            </div>
-            <div
-              className={`bg-white border rounded-lg p-4 text-center ${
-                marketing.automations_health.failing > 0
-                  ? 'border-red-200'
-                  : 'border-stone-200'
-              }`}
-            >
-              <p
-                className={`text-2xl font-semibold ${
-                  marketing.automations_health.failing > 0
-                    ? 'text-red-600'
-                    : 'text-stone-400'
-                }`}
-              >
-                {marketing.automations_health.failing}
-              </p>
-              <p className="text-xs text-stone-500 mt-1">Failing</p>
-            </div>
           </div>
         </div>
       </div>

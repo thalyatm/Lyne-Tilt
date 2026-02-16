@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { products, coachingPackages, orders, orderItems } from '../db/schema';
 import type { Bindings, Variables } from '../index';
@@ -85,6 +85,7 @@ checkoutRoutes.post('/create-session', async (c) => {
     line_items: lineItems,
     success_url: successUrl || `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: cancelUrl || `${baseUrl}/checkout`,
+    allow_promotion_codes: true,
     billing_address_collection: 'required',
     shipping_address_collection: fetchedProducts.length > 0 ? {
       allowed_countries: ['AU'],
@@ -200,6 +201,26 @@ checkoutRoutes.post('/webhook', async (c) => {
           price: product.price,
           quantity,
         });
+      }
+
+      // Deduct inventory and update availability
+      for (const product of orderedProducts) {
+        const qty = productQuantities[product.id] || 1;
+
+        if (product.trackInventory) {
+          const newQuantity = Math.max(0, product.quantity - qty);
+          const updates: Record<string, any> = {
+            quantity: newQuantity,
+            updatedAt: new Date().toISOString(),
+          };
+
+          // Mark sold out if inventory hits zero and continueSelling is off
+          if (newQuantity <= 0 && !product.continueSelling) {
+            updates.availability = 'Sold out';
+          }
+
+          await db.update(products).set(updates).where(eq(products.id, product.id));
+        }
       }
 
       console.log('Order created:', order.orderNumber);

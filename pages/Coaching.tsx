@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import SectionHeading from '../components/SectionHeading';
 import CoachingCard from '../components/CoachingCard';
 import CoachingApplicationModal from '../components/CoachingApplicationModal';
 import SubNav from '../components/SubNav';
-import { CheckCircle, ArrowRight, Clock, MessageCircle, Sparkles, Shield, Calendar, Phone, Rocket, ChevronDown, Compass, RefreshCw, Zap, Fingerprint, Award } from 'lucide-react';
+import { CheckCircle, ChevronDown, Eye, Compass, Heart, Award, Users, BookOpen, ArrowRight } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
 import { API_BASE } from '../config/api';
 import { CoachingPackage, Testimonial, FAQItem } from '../types';
@@ -12,12 +11,50 @@ import { CoachingPackage, Testimonial, FAQItem } from '../types';
 const Coaching = () => {
   const { settings } = useSettings();
   const { coaching } = settings;
-  const [coachingPackages, setCoachingPackages] = useState<CoachingPackage[]>([]);
+  const defaultPackages: CoachingPackage[] = [
+    {
+      id: 'oxygen',
+      title: 'The Oxygen Package',
+      description: '6-Month Commitment',
+      summary: 'For creatives ready to commit to clarity, focus, and growth. A six-month partnership designed to help you strengthen your mindset, refine your direction, and create consistent progress in your art, business, or leadership.',
+      features: [
+        '1 x 60-minute coaching call per month (Zoom)',
+        'Email support between sessions',
+        'Custom tools and resources aligned with your goals',
+        'Reflection and review every two months',
+      ],
+      ctaText: 'Apply Now',
+      price: '$155 per month',
+      priceAmount: '155',
+      currency: 'AUD',
+      recurring: true,
+      recurringInterval: 'month',
+    },
+    {
+      id: 'momentum',
+      title: 'The Momentum Package',
+      description: '12-Month Commitment',
+      summary: 'For creatives ready to build lasting rhythm, visibility, and sustainability. A year-long coaching partnership for deeper transformation, accountability, and growth. Perfect for artists and entrepreneurs scaling their work or developing long-term strategy.',
+      features: [
+        '1 x 60-minute coaching call per month (Zoom)',
+        'Priority email access',
+        'Quarterly strategic planning sessions',
+        'Tailored frameworks and progress reviews',
+      ],
+      ctaText: 'Apply Now',
+      price: '$135 per month',
+      priceAmount: '135',
+      currency: 'AUD',
+      recurring: true,
+      recurringInterval: 'month',
+      badge: 'MOST POPULAR',
+    },
+  ];
+  const [coachingPackages, setCoachingPackages] = useState<CoachingPackage[]>(defaultPackages);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [coachingFaqs, setCoachingFaqs] = useState<FAQItem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Fetch coaching packages, testimonials, and FAQs from API
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -28,7 +65,8 @@ const Coaching = () => {
         ]);
         if (pkgRes.ok) {
           const data = await pkgRes.json();
-          setCoachingPackages(Array.isArray(data) ? data : data.items ?? []);
+          const items = Array.isArray(data) ? data : data.items ?? [];
+          if (items.length > 0) setCoachingPackages(items);
         }
         if (testRes.ok) setTestimonials(await testRes.json());
         if (faqRes.ok) setCoachingFaqs(await faqRes.json());
@@ -50,7 +88,9 @@ const Coaching = () => {
 
   const subNavItems = useMemo(() => [
     { id: 'overview', label: 'Overview' },
-    { id: 'the-shift', label: 'Benefits' },
+    { id: 'why-coaching', label: 'Benefits' },
+    { id: 'your-coach', label: 'Your Coach' },
+    { id: 'is-it-for-me', label: 'Is It For Me?' },
     { id: 'packages', label: 'Packages' },
     ...(coachingFaqs.length > 0 ? [{ id: 'faq', label: 'FAQ' }] : []),
   ], [coachingFaqs]);
@@ -70,62 +110,19 @@ const Coaching = () => {
 
       {/* Background Lines */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Vertical Lines */}
         <div className="absolute top-0 left-1/4 h-full w-px bg-stone-200/50"></div>
         <div className="absolute top-0 left-1/2 h-full w-px bg-stone-200/30"></div>
         <div className="absolute top-0 right-1/4 h-full w-px bg-stone-200/50"></div>
-
-        {/* Diagonal Lines */}
-        <div className="absolute top-[15%] -left-[10%] w-[120%] h-px bg-stone-200/40 rotate-6"></div>
-        <div className="absolute top-[45%] -left-[10%] w-[120%] h-px bg-stone-200/30 -rotate-3"></div>
-        <div className="absolute top-[75%] -left-[10%] w-[120%] h-px bg-stone-200/40 rotate-3"></div>
-
-        {/* Circles */}
         <div className="absolute -top-32 -right-32 w-96 h-96 border border-stone-200/30 rounded-full"></div>
         <div className="absolute top-[40%] -left-24 w-80 h-80 border border-stone-200/20 rounded-full"></div>
-        <div className="absolute -bottom-48 right-1/4 w-72 h-72 border border-stone-200/25 rounded-full"></div>
       </div>
 
-      {/* Hero */}
-      <section id="overview" className="pt-44 pb-16 px-6 max-w-7xl mx-auto relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          {/* Right: Text Content */}
-          <div className="order-2 lg:order-2">
-            <p className="text-xs uppercase tracking-[0.3em] text-stone-400 mb-4">{coaching.hero.subtitle}</p>
-            <h1 className="text-4xl md:text-5xl font-serif font-medium mb-6 text-stone-900 leading-tight" dangerouslySetInnerHTML={{ __html: coaching.hero.title.replace(/\n/g, '<br/>') }} />
-            <p className="text-lg font-light text-stone-600 mb-8 leading-relaxed">
-              {coaching.hero.description}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 mb-8">
-              <button
-                onClick={() => handleApply()}
-                className="inline-block bg-clay text-white px-8 py-4 uppercase tracking-widest text-xs font-bold hover:bg-stone-900 transition-colors"
-              >
-                Book Free Call
-              </button>
-              <button
-                onClick={() => scrollToSection('packages')}
-                className="inline-block text-stone-500 px-8 py-4 uppercase tracking-widest text-xs font-medium hover:text-stone-900 transition-colors"
-              >
-                See How It Works →
-              </button>
-            </div>
-            {/* Trust indicators */}
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-stone-400">
-              <span className="flex items-center gap-2">
-                <CheckCircle size={14} className="text-clay" />
-                50+ artists & makers coached since 2023
-              </span>
-              <span className="flex items-center gap-2">
-                <Sparkles size={14} className="text-clay" />
-                5-star reviews
-              </span>
-            </div>
-          </div>
-
-          {/* Left: Image with Quote */}
-          <div className="order-1 lg:order-1 relative">
-            <div className="aspect-[4/5] bg-stone-200 overflow-hidden shadow-2xl">
+      {/* Hero — Split Layout with Image */}
+      <section id="overview" className="pt-36 md:pt-44 pb-12 md:pb-16 px-6 max-w-7xl mx-auto relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+          {/* Image */}
+          <div className="relative flex justify-center -mt-4 md:mt-0">
+            <div className="aspect-[3/4] md:aspect-[4/5] max-w-[280px] md:max-w-none bg-stone-200 overflow-hidden shadow-2xl rounded-3xl">
               <img
                 src="https://images.squarespace-cdn.com/content/v1/6182043dd1096334c6d280c8/a2b24cba-294f-4e4f-b4a6-ebaa1b285607/IMG_4502+copy.jpg?format=750w"
                 alt="Lyne Tilt - Creative Coach"
@@ -133,158 +130,158 @@ const Coaching = () => {
               />
             </div>
             {/* Floating Quote Card */}
-            <div className="absolute -bottom-6 -right-6 lg:-right-12 bg-white p-6 shadow-xl max-w-xs border-r-4 border-clay">
-              <p className="font-serif italic text-stone-700 text-sm leading-relaxed mb-3">
+            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 md:-bottom-6 md:left-auto md:translate-x-0 md:-right-6 lg:-right-10 bg-white p-2.5 md:p-6 shadow-xl max-w-[300px] md:max-w-xs border-t-4 md:border-t-0 md:border-l-4 border-clay rounded-lg md:rounded-r-lg text-center md:text-left">
+              <p className="font-serif italic text-stone-700 text-xs md:text-sm leading-snug md:leading-relaxed mb-1 md:mb-2">
                 "Working with Lyne gave me the clarity I needed to finally move forward."
               </p>
-              <p className="text-xs uppercase tracking-widest text-stone-400"> - Sarah C., Visual Artist</p>
+              <p className="text-[10px] uppercase tracking-widest text-stone-400">- Sarah C., Visual Artist</p>
+            </div>
+          </div>
+
+          {/* Text Content */}
+          <div className="text-center lg:text-left mt-4 md:mt-0">
+            <p className="text-xs uppercase tracking-[0.3em] text-stone-400 mb-4">{coaching.hero.subtitle}</p>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif text-stone-900 mb-4 leading-tight">{coaching.hero.title.replace(/\n/g, ' ')}</h1>
+            <p className="font-serif text-lg text-clay mb-6 italic">Art is oxygen. Clarity is power. Action is growth.</p>
+            <p className="text-stone-600 text-[15px] leading-relaxed mb-8">
+              Creative success doesn't come from chance or hustle. It comes from clarity, consistency, and confidence. Coaching gives you the structure, strategy, and support to build a creative life that actually works.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 mb-8 justify-center lg:justify-start items-center lg:items-start">
+              <button
+                onClick={() => handleApply()}
+                className="bg-clay text-white px-8 py-4 uppercase tracking-widest text-xs font-bold hover:bg-stone-900 transition-colors"
+              >
+                Apply for Coaching
+              </button>
+              <button
+                onClick={() => scrollToSection('packages')}
+                className="text-stone-500 px-8 py-4 uppercase tracking-widest text-xs font-medium hover:text-stone-900 transition-colors inline-flex items-center gap-2"
+              >
+                See Packages <ArrowRight size={14} />
+              </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Section Divider */}
-      <div className="w-full max-w-3xl h-px bg-clay mx-auto relative z-10"></div>
+      {/* Divider between Hero and Why Coaching */}
+      <div className="flex justify-center -mt-6 -mb-6 relative z-20 md:hidden">
+        <div className="w-px h-16 bg-stone-300" />
+      </div>
 
-      {/* Is This For You? */}
-      <section className="py-20 px-6 relative z-10">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-stone-100 border border-stone-200 p-8 md:p-12 shadow-sm">
-            <h2 className="text-center font-serif text-2xl md:text-3xl text-stone-900 mb-4">{coaching.isThisForYou.title}</h2>
-            <p className="text-center text-stone-500 mb-10 max-w-2xl mx-auto">
-              {coaching.isThisForYou.subtitle}
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(coaching.isThisForYou.items.length > 0 ? coaching.isThisForYou.items : [
-                "You have ideas but struggle to follow through",
-                "You're tired of second-guessing yourself",
-                "You want a sustainable creative practice",
-                "You're ready to stop waiting and start making",
-                "You feel stuck between who you are and who you're becoming",
-                "You want accountability and honest feedback"
-              ]).map((item, idx) => (
-                <div key={idx} className="flex items-start gap-3 p-4 bg-white border border-stone-100">
-                  <CheckCircle size={20} className="text-clay shrink-0 mt-0.5" />
-                  <p className="text-stone-700 text-sm">{item}</p>
-                </div>
-              ))}
-            </div>
-            <p className="text-center mt-10 text-stone-600 text-sm">
-              Sound like you? <button onClick={() => handleApply()} className="text-clay font-medium hover:underline">Let's talk →</button>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* What You'll Experience */}
-      <section id="the-shift" className="py-24 px-6 bg-stone-50 relative z-10">
+      {/* Why Coaching — Icon Cards */}
+      <section id="why-coaching" className="py-16 px-6 relative z-10 bg-stone-50 md:bg-transparent">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="font-serif text-2xl md:text-3xl text-stone-900 mb-4">{coaching.whatYoullExperience.title}</h2>
-            <p className="text-stone-500 max-w-xl mx-auto font-light leading-relaxed">
-              {coaching.whatYoullExperience.subtitle}
-            </p>
+          <div className="text-center mb-12">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-stone-400 mb-3">Why Coaching</p>
+            <h2 className="font-serif text-2xl md:text-3xl text-stone-900">What changes when you have a coach</h2>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {(() => {
-              const defaultCards = [
-                { title: "Clarity on Your Direction", description: "Stop spinning in circles. Know exactly what to focus on and why it matters to you." },
-                { title: "Sustainable Creative & Business Habits", description: "Build routines that actually work with your life, not against it." },
-                { title: "Confident Action", description: "Move from planning to doing. Launch that project, share that work, make that leap." },
-                { title: "A Trusted Sounding Board", description: "Someone in your corner who gets it - honest feedback without judgment." },
-                { title: "Permission to Be You", description: "Stop waiting for external validation. Trust your instincts and creative vision." },
-                { title: "Real Results", description: "Finished projects, new opportunities, and a creative practice you're proud of." }
-              ];
-              const cards = coaching.whatYoullExperience.cards.length > 0 ? coaching.whatYoullExperience.cards : defaultCards;
-              const icons = [
-                <Compass size={22} strokeWidth={1.5} />,
-                <RefreshCw size={22} strokeWidth={1.5} />,
-                <Zap size={22} strokeWidth={1.5} />,
-                <MessageCircle size={22} strokeWidth={1.5} />,
-                <Fingerprint size={22} strokeWidth={1.5} />,
-                <Award size={22} strokeWidth={1.5} />
-              ];
-              return cards.map((item, idx) => (
-                <div key={idx} className="bg-white rounded-2xl px-6 py-5 flex items-start gap-4">
-                  <div className="w-11 h-11 rounded-full bg-stone-50 border border-stone-100 flex items-center justify-center shrink-0 text-clay">
-                    {icons[idx % icons.length]}
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase tracking-[0.3em] text-stone-300 mb-0.5 block">
-                      {String(idx + 1).padStart(2, '0')}
-                    </span>
-                    <h3 className="font-serif text-base text-stone-900 mb-1 leading-snug">{item.title}</h3>
-                    <p className="text-stone-500 text-xs leading-relaxed font-light">{item.description}</p>
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-md md:max-w-5xl mx-auto">
+            {[
+              { icon: <Eye size={22} strokeWidth={1.5} />, title: "Clarity", desc: "See clearly, plan intentionally, and stop spinning in circles. Know exactly what to focus on and why it matters." },
+              { icon: <Compass size={22} strokeWidth={1.5} />, title: "Momentum", desc: "Move from inspiration to implementation. Build routines that actually work with your life, not against it." },
+              { icon: <Heart size={22} strokeWidth={1.5} />, title: "Support", desc: "A partner in your corner. Honest feedback, real accountability, and space to think without judgment." },
+            ].map((card, idx) => (
+              <div key={idx} className="group bg-white border border-stone-200 rounded-2xl p-5 md:p-8 hover:border-clay/30 hover:shadow-lg transition-all duration-300 flex flex-row md:flex-col items-start md:items-center text-left md:text-center gap-4 md:gap-0">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-clay/10 flex items-center justify-center shrink-0 md:mx-auto md:mb-5 text-clay group-hover:bg-clay group-hover:text-white transition-colors duration-300">
+                  {card.icon}
                 </div>
-              ));
-            })()}
+                <div>
+                  <h3 className="font-serif text-lg md:text-xl text-stone-900 mb-1 md:mb-3">{card.title}</h3>
+                  <p className="text-sm text-stone-500 leading-relaxed">{card.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="py-20 px-6 relative z-10">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-center font-serif text-2xl md:text-3xl text-stone-900 mb-4">{coaching.howItWorks.title}</h2>
-          <p className="text-center text-stone-500 mb-12 max-w-2xl mx-auto">
-            {coaching.howItWorks.subtitle}
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            {/* Connecting line */}
-            <div className="hidden md:block absolute top-8 left-[20%] right-[20%] h-px bg-stone-200"></div>
-
-            {(() => {
-              const defaultSteps = [
-                { step: "01", title: "Free Discovery Call", description: "A 15-minute conversation to understand your goals and see if we're a good fit." },
-                { step: "02", title: "Choose Your Path", description: "Select the coaching package that aligns with where you are and where you want to go." },
-                { step: "03", title: "Start Creating", description: "Begin your coaching journey with clarity, accountability, and ongoing support." }
-              ];
-              const steps = coaching.howItWorks.steps.length > 0 ? coaching.howItWorks.steps : defaultSteps;
-              const icons = [<Phone size={24} />, <Calendar size={24} />, <Rocket size={24} />];
-              return steps.map((item, idx) => (
-                <div key={idx} className="text-center relative">
-                  <div className="w-16 h-16 bg-white border-2 border-clay rounded-full flex items-center justify-center mx-auto mb-4 relative z-10">
-                    <span className="text-clay">{icons[idx % icons.length]}</span>
-                  </div>
-                  <span className="text-xs text-clay font-bold tracking-widest mb-2 block">{item.step}</span>
-                  <h3 className="font-serif text-lg text-stone-900 mb-2">{item.title}</h3>
-                  <p className="text-stone-500 text-sm leading-relaxed">{item.description}</p>
-                </div>
-              ));
-            })()}
+      {/* Why Lyne — Credentials + Pull Quote */}
+      <section id="your-coach" className="py-16 px-6 relative z-10">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-stone-400 mb-3">Your Coach</p>
+            <h2 className="font-serif text-2xl md:text-3xl text-stone-900 mb-4">Why Work With Lyne</h2>
+            <p className="text-stone-600 text-sm leading-relaxed max-w-2xl mx-auto">
+              More than two decades across art, education, business, and human behaviour, blending creative strategy, mindset work, and evidence-based coaching.
+            </p>
           </div>
-          <div className="text-center mt-12">
-            <button
-              onClick={() => handleApply()}
-              className="inline-block bg-clay text-white px-8 py-4 uppercase tracking-widest text-xs font-bold hover:bg-stone-900 transition-colors"
-            >
-              Book Your Free Call
-            </button>
+
+          {/* Credential Badges */}
+          <div className="flex flex-wrap justify-center gap-3 mb-10">
+            {[
+              { icon: <BookOpen size={14} />, label: "First Class Honours" },
+              { icon: <Users size={14} />, label: "200+ Creatives Coached" },
+              { icon: <Award size={14} />, label: "ICF Eligible" },
+              { icon: <Compass size={14} />, label: "20+ Years Experience" },
+            ].map((cred, idx) => (
+              <div key={idx} className="flex items-center gap-2 px-4 py-2.5 bg-stone-100 rounded-full text-stone-600">
+                <span className="text-clay">{cred.icon}</span>
+                <span className="text-xs uppercase tracking-wider font-medium">{cred.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Pull Quote */}
+          <div className="max-w-2xl mx-auto text-center">
+            <div className="w-10 h-[2px] bg-clay mx-auto mb-6"></div>
+            <p className="font-serif text-xl md:text-2xl text-stone-900 italic leading-relaxed mb-4">
+              "Clients describe my coaching as clear, grounded, and deeply human."
+            </p>
+            <p className="text-stone-500 text-sm leading-relaxed">
+              You'll get real-world insight, tools that work, and accountability that feels supportive, not stressful.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Is Coaching For Me — Dark Card */}
+      <section id="is-it-for-me" className="py-6 md:py-10 px-6 relative z-10">
+        <div className="max-w-4xl mx-auto">
+          <div className="relative bg-stone-900 rounded-2xl py-10 px-6 md:py-12 md:px-14 overflow-hidden">
+            {/* Decorative circles */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-[0.08]">
+              <div className="absolute -top-12 -left-8 w-56 h-56 border border-white rounded-full"></div>
+              <div className="absolute -bottom-16 right-8 w-72 h-72 border border-white rounded-full"></div>
+              <div className="absolute top-1/2 right-[20%] w-32 h-32 border border-white rounded-full"></div>
+              <div className="absolute top-4 left-[30%] w-40 h-40 border border-white rounded-full"></div>
+            </div>
+
+            <div className="relative z-10">
+              <h2 className="font-serif text-2xl md:text-3xl text-white mb-4 text-center">Is Coaching For Me?</h2>
+              <p className="text-stone-400 text-sm leading-relaxed text-center max-w-2xl mx-auto mb-8">
+                You've worked hard, but you haven't seen the rewards you expected. You're ready to keep working, but this time, aligned with your values, your creativity, and your goals.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 max-w-2xl mx-auto">
+                {[
+                  "You've outgrown where you are, but you're not sure what's next",
+                  "You're craving something real, sustainable, and true to you",
+                  "You want to stop second-guessing and start building momentum",
+                  "You need structure, clarity, and support to follow through",
+                  "You want your art, business, and life to feel aligned",
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-3">
+                    <CheckCircle size={16} className="text-clay shrink-0 mt-0.5" />
+                    <p className="text-stone-300 text-sm leading-relaxed">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Packages */}
-      <section id="packages" className="py-20 px-6 bg-white/80 backdrop-blur-sm relative z-10 overflow-hidden">
-        {/* Section Background Lines */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[20%] -left-[10%] w-[120%] h-px bg-stone-200/50 rotate-3"></div>
-          <div className="absolute top-[80%] -left-[10%] w-[120%] h-px bg-stone-200/40 -rotate-2"></div>
-          <div className="absolute -top-16 -left-16 w-64 h-64 border border-stone-200/30 rounded-full"></div>
-          <div className="absolute -bottom-20 -right-20 w-80 h-80 border border-stone-200/25 rounded-full"></div>
-        </div>
-
-        <div className="max-w-7xl mx-auto relative z-10">
-          <SectionHeading title="Choose Your Path" />
-          <p className="text-center text-stone-500 text-sm max-w-2xl mx-auto mb-4 -mt-4">
-            Two pathways designed for creatives ready to commit to clarity, focus, and sustainable growth.
-          </p>
-          <p className="text-center text-xs text-clay font-medium mb-10">
-            Limited spots available each month
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+      <section id="packages" className="py-16 px-6 relative z-10">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10">
+            <div className="w-10 h-[2px] bg-clay mx-auto mb-6"></div>
+            <h2 className="font-serif text-2xl md:text-3xl text-stone-900 mb-3">The Packages</h2>
+            <p className="text-stone-500 text-sm max-w-xl mx-auto">
+              Two pathways designed for creatives ready to commit to clarity, focus, and sustainable growth.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 max-w-4xl mx-auto">
             {coachingPackages.map(pkg => (
               <CoachingCard key={pkg.id} item={pkg} onApply={handleApply} />
             ))}
@@ -293,81 +290,92 @@ const Coaching = () => {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 px-6 relative z-10">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-center font-serif text-2xl md:text-3xl text-stone-900 mb-4">What Others Are Saying</h2>
-          <p className="text-center text-stone-500 mb-12 max-w-2xl mx-auto">
-            Real words from creatives who've been where you are.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {testimonials.slice(0, 4).map((testimonial, idx) => (
-              <div key={idx} className="bg-white p-8 border border-stone-100 relative">
-                <div className="text-5xl text-clay/20 font-serif absolute top-4 left-6">"</div>
-                <p className="font-serif text-stone-700 italic leading-relaxed mb-6 relative z-10">
-                  "{testimonial.text}"
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-stone-200 rounded-full flex items-center justify-center text-stone-500 font-medium text-sm">
-                    {testimonial.author.split(' ').map(n => n[0]).join('')}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-stone-900">{testimonial.author}</p>
-                    <p className="text-xs text-stone-400">{testimonial.role}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ - only shown when FAQs exist */}
-      {coachingFaqs.length > 0 && (
-        <section id="faq" className="py-20 px-6 bg-stone-50/80 backdrop-blur-sm relative z-10">
-          <div className="max-w-3xl mx-auto">
-            <h2 className="text-center font-serif text-2xl md:text-3xl text-stone-900 mb-4">Questions You Might Have</h2>
-            <p className="text-center text-stone-500 mb-12">
-              If your question isn't answered here, let's chat on a discovery call.
+      {testimonials.length > 0 && (
+        <section className="py-16 px-6 bg-stone-50 relative z-10">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-center font-serif text-2xl md:text-3xl text-stone-900 mb-4">What Others Are Saying</h2>
+            <p className="text-center text-stone-500 mb-10 max-w-2xl mx-auto text-sm">
+              Real words from creatives who've been where you are.
             </p>
-            <div className="space-y-4">
-              {coachingFaqs.map((faq, idx) => (
-                <div key={idx} className="bg-white border border-stone-100 hover:border-stone-200 transition-colors overflow-hidden">
-                  <button
-                    onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                    className="w-full p-6 flex items-center justify-between text-left"
-                  >
-                    <h4 className="font-serif text-lg text-stone-900 pr-4">{faq.question}</h4>
-                    <ChevronDown
-                      size={20}
-                      className={`text-stone-400 shrink-0 transition-transform duration-300 ${openFaq === idx ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-                  <div className={`transition-all duration-300 ease-in-out ${openFaq === idx ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-                    <p className="text-stone-600 text-sm leading-relaxed px-6 pb-6">{faq.answer}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {testimonials.slice(0, 4).map((testimonial, idx) => (
+                <div key={idx} className="bg-white p-8 border border-stone-100 rounded-xl relative">
+                  <div className="text-5xl text-clay/20 font-serif absolute top-4 left-6">"</div>
+                  <p className="font-serif text-stone-700 italic leading-relaxed mb-6 relative z-10">
+                    "{testimonial.text}"
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-stone-200 rounded-full flex items-center justify-center text-stone-500 font-medium text-sm">
+                      {testimonial.author.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-stone-900">{testimonial.author}</p>
+                      <p className="text-xs text-stone-400">{testimonial.role}</p>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-            <p className="text-center mt-10 text-stone-500 text-sm">
-              Still have questions? <button onClick={() => handleApply()} className="text-clay font-medium hover:underline">Book a free call</button> and let's talk it through.
-            </p>
           </div>
         </section>
       )}
 
-      {/* Final CTA */}
-      <section className="py-16 px-6 bg-stone-900 text-white relative z-10">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="font-serif text-2xl md:text-3xl mb-6">Ready to Clear the Path?</h2>
-          <button
-            onClick={() => handleApply()}
-            className="inline-block bg-clay text-white px-10 py-4 uppercase tracking-widest text-xs font-bold hover:bg-white hover:text-stone-900 transition-colors"
-          >
-            Book Your Free Call
-          </button>
-          <p className="text-stone-500 text-xs mt-4">
-            15 minutes · Relaxed · Over coffee or tea
-          </p>
+      {/* FAQ */}
+      {coachingFaqs.length > 0 && (
+        <section id="faq" className="py-16 px-6 relative z-10">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-center font-serif text-2xl md:text-3xl text-stone-900 mb-4">Questions You Might Have</h2>
+            <p className="text-center text-stone-500 mb-10 text-sm">
+              If your question isn't answered here, let's chat on a discovery call.
+            </p>
+            <div className="space-y-3">
+              {coachingFaqs.map((faq, idx) => (
+                <div key={idx} className="bg-white border border-stone-200 rounded-xl hover:border-stone-300 transition-colors overflow-hidden">
+                  <button
+                    onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                    className="w-full p-5 flex items-center justify-between text-left"
+                  >
+                    <h4 className="font-serif text-base text-stone-900 pr-4">{faq.question}</h4>
+                    <ChevronDown
+                      size={18}
+                      className={`text-stone-400 shrink-0 transition-transform duration-300 ${openFaq === idx ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                  <div className={`transition-all duration-300 ease-in-out ${openFaq === idx ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <p className="text-stone-600 text-sm leading-relaxed px-5 pb-5">{faq.answer}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Apply For Coaching CTA */}
+      <section className="pt-4 pb-12 px-6 relative z-10">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-stone-900 rounded-2xl px-8 py-10 md:px-12 text-center relative overflow-hidden">
+            {/* Decorative circles */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-[0.07]">
+              <div className="absolute -top-16 -left-8 w-56 h-56 border border-white rounded-full"></div>
+              <div className="absolute -bottom-20 right-6 w-72 h-72 border border-white rounded-full"></div>
+              <div className="absolute top-1/3 right-[15%] w-36 h-36 border border-white rounded-full"></div>
+            </div>
+            <div className="relative z-10">
+              <h2 className="font-serif text-xl md:text-2xl text-white mb-3">Apply For Coaching</h2>
+              <p className="text-stone-400 text-sm leading-relaxed max-w-lg mx-auto mb-6">
+                Coaching is personal. Let's start with a short conversation to see if we're the right fit. This isn't a sales call, it's a real chat about where you're at and whether coaching can help.
+              </p>
+              <div className="flex justify-center">
+                <button
+                  onClick={() => handleApply()}
+                  className="bg-clay text-white px-8 py-3 uppercase tracking-widest text-[10px] font-bold hover:bg-white hover:text-stone-900 transition-colors rounded-full"
+                >
+                  Apply for Coaching
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

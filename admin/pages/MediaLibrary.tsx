@@ -14,7 +14,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE } from '../config/api';
+import { API_BASE, resolveImageUrl } from '../config/api';
 
 interface MediaFile {
   filename: string;
@@ -25,7 +25,7 @@ interface MediaFile {
 }
 
 export default function MediaLibrary() {
-  const { token } = useAuth();
+  const { accessToken } = useAuth();
   const [files, setFiles] = useState<MediaFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -39,7 +39,7 @@ export default function MediaLibrary() {
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE}/upload`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (response.ok) {
         const data = await response.json();
@@ -49,7 +49,7 @@ export default function MediaLibrary() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [accessToken]);
 
   useEffect(() => {
     fetchFiles();
@@ -59,36 +59,19 @@ export default function MediaLibrary() {
     if (!fileList || fileList.length === 0) return;
 
     setUploading(true);
-    const formData = new FormData();
-
-    if (fileList.length === 1) {
-      formData.append('image', fileList[0]);
-      try {
-        const response = await fetch(`${API_BASE}/upload`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        });
-        if (response.ok) {
-          fetchFiles();
-        }
-      } catch (error) {
-      }
-    } else {
+    try {
       for (let i = 0; i < fileList.length; i++) {
-        formData.append('images', fileList[i]);
-      }
-      try {
-        const response = await fetch(`${API_BASE}/upload/multiple`, {
+        const formData = new FormData();
+        formData.append('image', fileList[i]);
+        await fetch(`${API_BASE}/upload`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${accessToken}` },
           body: formData,
         });
-        if (response.ok) {
-          fetchFiles();
-        }
-      } catch (error) {
       }
+      fetchFiles();
+    } catch (error) {
+      // silently handle
     }
     setUploading(false);
   };
@@ -99,7 +82,7 @@ export default function MediaLibrary() {
     try {
       const response = await fetch(`${API_BASE}/upload/${filename}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (response.ok) {
         setFiles((prev) => prev.filter((f) => f.filename !== filename));
@@ -112,7 +95,7 @@ export default function MediaLibrary() {
   };
 
   const copyToClipboard = (url: string) => {
-    const fullUrl = `${window.location.origin}${url}`;
+    const fullUrl = resolveImageUrl(url);
     navigator.clipboard.writeText(fullUrl);
     setCopiedUrl(url);
     setTimeout(() => setCopiedUrl(null), 2000);
@@ -269,7 +252,7 @@ export default function MediaLibrary() {
                   }`}
                 >
                   <img
-                    src={`${API_BASE.replace(/\/api$/, '')}${file.url}`}
+                    src={resolveImageUrl(file.url)}
                     alt={file.filename}
                     className="w-full h-full object-cover"
                   />
@@ -310,7 +293,7 @@ export default function MediaLibrary() {
                     >
                       <td className="px-4 py-3">
                         <img
-                          src={`${API_BASE.replace(/\/api$/, '')}${file.url}`}
+                          src={resolveImageUrl(file.url)}
                           alt={file.filename}
                           className="w-12 h-12 object-cover rounded"
                         />
@@ -363,7 +346,7 @@ export default function MediaLibrary() {
             <div className="p-4 flex-1 overflow-y-auto">
               <div className="aspect-square bg-stone-100 rounded-lg overflow-hidden mb-4">
                 <img
-                  src={`${API_BASE.replace(/\/api$/, '')}${selectedFile.url}`}
+                  src={resolveImageUrl(selectedFile.url)}
                   alt={selectedFile.filename}
                   className="w-full h-full object-contain"
                 />
@@ -387,7 +370,7 @@ export default function MediaLibrary() {
                     <input
                       type="text"
                       readOnly
-                      value={`${window.location.origin}${selectedFile.url}`}
+                      value={resolveImageUrl(selectedFile.url)}
                       className="flex-1 text-xs bg-stone-50 border border-stone-200 rounded px-2 py-1.5"
                     />
                     <button

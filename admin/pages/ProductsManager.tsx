@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE } from '../config/api';
+import { API_BASE, resolveImageUrl } from '../config/api';
 import {
   Search,
   SlidersHorizontal,
@@ -381,6 +381,7 @@ export default function ProductsManager() {
   const clearFilters = () => {
     setCategoryFilter('');
     setTypeFilter('');
+    setAvailabilityFilter('');
     setSearchQuery('');
   };
 
@@ -644,7 +645,7 @@ export default function ProductsManager() {
                       <td className="px-4 py-3">
                         {product.image ? (
                           <img
-                            src={product.image}
+                            src={resolveImageUrl(product.image)}
                             alt={product.name}
                             className="w-10 h-10 object-cover rounded"
                           />

@@ -567,6 +567,38 @@ export const faqs = sqliteTable('faqs', {
 }));
 
 // ============================================
+// DISCOUNT CODES / PROMOTIONS
+// ============================================
+
+export const discountCodes = sqliteTable('discount_codes', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  code: text('code').notNull().unique(),
+  name: text('name').notNull(),
+  type: text('type', { enum: ['percentage', 'fixed_amount', 'free_shipping'] }).notNull(),
+  value: real('value').notNull().default(0),
+  currency: text('currency').notNull().default('AUD'),
+  minOrderAmount: real('min_order_amount'),
+  maxDiscountAmount: real('max_discount_amount'),
+  startsAt: text('starts_at'),
+  expiresAt: text('expires_at'),
+  usageLimit: integer('usage_limit'),
+  usageCount: integer('usage_count').notNull().default(0),
+  perCustomerLimit: integer('per_customer_limit').notNull().default(1),
+  firstTimeOnly: integer('first_time_only', { mode: 'boolean' }).notNull().default(false),
+  applicableTo: text('applicable_to', { enum: ['all', 'specific_products', 'specific_categories'] }).notNull().default('all'),
+  productIds: text('product_ids', { mode: 'json' }).$type<string[]>().default([]),
+  categories: text('categories', { mode: 'json' }).$type<string[]>().default([]),
+  stripeCouponId: text('stripe_coupon_id'),
+  stripePromotionCodeId: text('stripe_promotion_code_id'),
+  active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  codeIdx: index('discount_codes_code_idx').on(table.code),
+  activeIdx: index('discount_codes_active_idx').on(table.active),
+}));
+
+// ============================================
 // NEWSLETTER SUBSCRIBERS
 // ============================================
 
@@ -1088,6 +1120,198 @@ export const cohortAttendance = sqliteTable('cohort_attendance', {
   sessionIdIdx: index('cohort_attendance_session_id_idx').on(table.sessionId),
   enrollmentIdIdx: index('cohort_attendance_enrollment_id_idx').on(table.enrollmentId),
   sessionEnrollmentIdx: uniqueIndex('cohort_attendance_session_enrollment_idx').on(table.sessionId, table.enrollmentId),
+}));
+
+// ============================================
+// PRODUCT REVIEWS
+// ============================================
+
+export const productReviews = sqliteTable('product_reviews', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  productId: text('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  customerId: text('customer_id').references(() => customerUsers.id),
+  customerName: text('customer_name').notNull(),
+  customerEmail: text('customer_email').notNull(),
+  rating: integer('rating').notNull(), // 1-5
+  title: text('title'),
+  body: text('body'),
+  status: text('status', { enum: ['pending', 'approved', 'rejected'] }).notNull().default('pending'),
+  isVerifiedPurchase: integer('is_verified_purchase', { mode: 'boolean' }).notNull().default(false),
+  adminResponse: text('admin_response'),
+  respondedAt: text('responded_at'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  productIdx: index('reviews_product_idx').on(table.productId),
+  statusIdx: index('reviews_status_idx').on(table.status),
+  customerIdx: index('reviews_customer_idx').on(table.customerId),
+}));
+
+// ============================================
+// GIFT CARDS
+// ============================================
+
+export const giftCards = sqliteTable('gift_cards', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  code: text('code').notNull().unique(),
+  initialBalance: text('initial_balance').notNull(),
+  currentBalance: text('current_balance').notNull(),
+  currency: text('currency').notNull().default('AUD'),
+  status: text('status', { enum: ['active', 'depleted', 'expired', 'disabled'] }).notNull().default('active'),
+  purchaserEmail: text('purchaser_email'),
+  purchaserName: text('purchaser_name'),
+  recipientEmail: text('recipient_email'),
+  recipientName: text('recipient_name'),
+  personalMessage: text('personal_message'),
+  orderId: text('order_id'),
+  expiresAt: text('expires_at'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  codeIdx: index('gift_cards_code_idx').on(table.code),
+  statusIdx: index('gift_cards_status_idx').on(table.status),
+}));
+
+export const giftCardTransactions = sqliteTable('gift_card_transactions', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  giftCardId: text('gift_card_id').notNull().references(() => giftCards.id, { onDelete: 'cascade' }),
+  type: text('type', { enum: ['purchase', 'redemption', 'refund', 'adjustment'] }).notNull(),
+  amount: text('amount').notNull(),
+  balanceAfter: text('balance_after').notNull(),
+  orderId: text('order_id'),
+  note: text('note'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  cardIdx: index('gc_transactions_card_idx').on(table.giftCardId),
+}));
+
+// ============================================
+// WAITLIST
+// ============================================
+
+export const waitlist = sqliteTable('waitlist', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  productId: text('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  customerName: text('customer_name'),
+  customerId: text('customer_id').references(() => customerUsers.id),
+  status: text('status', { enum: ['waiting', 'notified', 'purchased', 'cancelled'] }).notNull().default('waiting'),
+  notifiedAt: text('notified_at'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  productIdx: index('waitlist_product_idx').on(table.productId),
+  emailIdx: index('waitlist_email_idx').on(table.email),
+  statusIdx: index('waitlist_status_idx').on(table.status),
+  productEmailIdx: uniqueIndex('waitlist_product_email_idx').on(table.productId, table.email),
+}));
+
+// ============================================
+// ABANDONED CARTS
+// ============================================
+
+export const abandonedCarts = sqliteTable('abandoned_carts', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  sessionId: text('session_id'),
+  email: text('email'),
+  customerName: text('customer_name'),
+  customerId: text('customer_id').references(() => customerUsers.id),
+  recoveryToken: text('recovery_token').unique(),
+  status: text('status', { enum: ['abandoned', 'recovered', 'expired', 'converting'] }).notNull().default('abandoned'),
+  totalValue: text('total_value').notNull().default('0'),
+  itemCount: integer('item_count').notNull().default(0),
+  lastActivityAt: text('last_activity_at').notNull().$defaultFn(() => new Date().toISOString()),
+  recoveredAt: text('recovered_at'),
+  emailSentAt: text('email_sent_at'),
+  emailCount: integer('email_count').notNull().default(0),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  emailIdx: index('abandoned_carts_email_idx').on(table.email),
+  statusIdx: index('abandoned_carts_status_idx').on(table.status),
+  recoveryIdx: index('abandoned_carts_recovery_idx').on(table.recoveryToken),
+}));
+
+export const abandonedCartItems = sqliteTable('abandoned_cart_items', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  cartId: text('cart_id').notNull().references(() => abandonedCarts.id, { onDelete: 'cascade' }),
+  productId: text('product_id').notNull(),
+  productName: text('product_name').notNull(),
+  price: text('price').notNull(),
+  quantity: integer('quantity').notNull().default(1),
+  image: text('image'),
+  variant: text('variant'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  cartIdx: index('cart_items_cart_idx').on(table.cartId),
+}));
+
+// ============================================
+// COACHING APPLICATIONS (discovery call requests)
+// ============================================
+
+export const coachingApplications = sqliteTable('coaching_applications', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  phone: text('phone'),
+  reason: text('reason'),
+  preferredPackage: text('preferred_package'),
+  status: text('status', { enum: ['new', 'contacted', 'scheduled', 'closed'] }).notNull().default('new'),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  statusIdx: index('coaching_applications_status_idx').on(table.status),
+  createdAtIdx: index('coaching_applications_created_at_idx').on(table.createdAt),
+  emailIdx: index('coaching_applications_email_idx').on(table.email),
+}));
+
+// ============================================
+// COACHING BOOKINGS & AVAILABILITY
+// ============================================
+
+export const coachAvailability = sqliteTable('coach_availability', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  dayOfWeek: integer('day_of_week').notNull(), // 0=Sunday, 1=Monday, ..., 6=Saturday
+  startTime: text('start_time').notNull(), // "09:00"
+  endTime: text('end_time').notNull(), // "17:00"
+  slotDuration: integer('slot_duration').notNull().default(60), // minutes
+  timezone: text('timezone').notNull().default('Australia/Melbourne'),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const coachBlockedDates = sqliteTable('coach_blocked_dates', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  blockedDate: text('blocked_date').notNull(), // "2025-03-15"
+  reason: text('reason'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const coachingBookings = sqliteTable('coaching_bookings', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  customerId: text('customer_id').references(() => customerUsers.id),
+  customerName: text('customer_name').notNull(),
+  customerEmail: text('customer_email').notNull(),
+  coachingPackageId: text('coaching_package_id').references(() => coachingPackages.id),
+  packageName: text('package_name'),
+  sessionDate: text('session_date').notNull(), // "2025-02-20"
+  startTime: text('start_time').notNull(), // "10:00"
+  endTime: text('end_time').notNull(), // "11:00"
+  timezone: text('timezone').notNull().default('Australia/Melbourne'),
+  status: text('status', { enum: ['pending', 'confirmed', 'completed', 'cancelled', 'no_show'] }).notNull().default('pending'),
+  meetingUrl: text('meeting_url'),
+  notes: text('notes'),
+  customerNotes: text('customer_notes'),
+  cancelledAt: text('cancelled_at'),
+  cancelReason: text('cancel_reason'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  dateIdx: index('bookings_date_idx').on(table.sessionDate),
+  statusIdx: index('bookings_status_idx').on(table.status),
+  customerIdx: index('bookings_customer_idx').on(table.customerId),
 }));
 
 // ============================================

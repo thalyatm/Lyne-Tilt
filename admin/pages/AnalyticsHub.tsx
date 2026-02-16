@@ -20,6 +20,7 @@ import {
   ArrowRight,
   Eye,
   MousePointerClick,
+  BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../config/api';
@@ -35,6 +36,7 @@ interface OverviewData {
   kpis: {
     revenue: KpiValue;
     orders: KpiValue;
+    aov: KpiValue;
     visitors: KpiValue;
     emailsSent: KpiValue;
     conversionRate: { value: number };
@@ -45,6 +47,10 @@ interface OverviewData {
   topProducts: Array<{ id: string; name: string; revenue: number; unitsSold: number }>;
   topPosts: Array<{ id: string; title: string; views: number }>;
   subscribers: { total: number; newCount: number };
+  services: {
+    workshopEnrollments: number;
+    coachingBookings: number;
+  };
 }
 
 type DateRange = '7d' | '30d' | '90d' | 'all';
@@ -131,8 +137,8 @@ function AnalyticsSkeleton() {
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {[1, 2, 3, 4, 5].map((i) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
           <div key={i} className="bg-stone-100 rounded-lg h-[96px]" />
         ))}
       </div>
@@ -230,7 +236,7 @@ export default function AnalyticsHub() {
 
   if (!data) return null;
 
-  const { kpis, revenueTimeSeries, topProducts, topPosts, subscribers } = data;
+  const { kpis, revenueTimeSeries, topProducts, topPosts, subscribers, services } = data;
 
   // ─── KPI card definitions ───
 
@@ -250,6 +256,14 @@ export default function AnalyticsHub() {
       icon: ShoppingCart,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
+    },
+    {
+      label: 'AOV',
+      value: formatCurrency(kpis.aov.value),
+      change: kpis.aov.change,
+      icon: DollarSign,
+      color: 'text-cyan-600',
+      bg: 'bg-cyan-50',
     },
     {
       label: 'Visitors',
@@ -330,7 +344,7 @@ export default function AnalyticsHub() {
       )}
 
       {/* ─── KPI Cards ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {kpiCards.map((card) => (
           <div
             key={card.label}
@@ -471,7 +485,7 @@ export default function AnalyticsHub() {
         </div>
       </div>
 
-      {/* ─── Email Performance + Subscriber Overview ─── */}
+      {/* ─── Email Performance + Services Summary ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Email Performance */}
         <div className="bg-white border border-stone-200 rounded-lg p-4">
@@ -506,33 +520,33 @@ export default function AnalyticsHub() {
           </Link>
         </div>
 
-        {/* Subscriber Overview */}
+        {/* Services Summary */}
         <div className="bg-white border border-stone-200 rounded-lg p-4">
           <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-4">
-            Subscriber Overview
+            Services
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Users size={14} className="text-indigo-500" />
-                <span className="text-xs text-stone-500">Total</span>
+                <BookOpen size={14} className="text-blue-500" />
+                <span className="text-xs text-stone-500">Workshop Enrollments</span>
               </div>
               <p className="text-2xl font-semibold text-stone-900">
-                {formatNumber(subscribers.total)}
+                {formatNumber(services.workshopEnrollments)}
               </p>
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <TrendingUp size={14} className="text-emerald-500" />
-                <span className="text-xs text-stone-500">New in Period</span>
+                <Users size={14} className="text-violet-500" />
+                <span className="text-xs text-stone-500">Coaching Bookings</span>
               </div>
               <p className="text-2xl font-semibold text-stone-900">
-                {subscribers.newCount >= 0 ? '+' : ''}{formatNumber(subscribers.newCount)}
+                {formatNumber(services.coachingBookings)}
               </p>
             </div>
           </div>
           <Link
-            to="/admin/analytics/customers"
+            to="/admin/analytics/services"
             className="inline-flex items-center gap-1 text-xs text-stone-400 hover:text-stone-600 transition mt-4"
           >
             View all <ArrowRight size={12} />

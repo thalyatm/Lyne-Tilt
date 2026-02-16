@@ -151,7 +151,7 @@ const Shop = () => {
     <div className="pt-32 pb-20 px-6 max-w-7xl mx-auto min-h-screen">
       {/* Custom Header for Shop Page */}
       <div className="mb-10 text-center">
-        <h1 className="text-5xl md:text-6xl font-serif font-medium mb-3 text-clay">
+        <h1 className="text-3xl md:text-5xl lg:text-6xl font-serif font-medium mb-3 text-clay">
           Wearable Art
         </h1>
         <p className="text-base font-light max-w-2xl mx-auto text-stone-500">
@@ -161,7 +161,7 @@ const Shop = () => {
       </div>
 
       {/* Category Filter - Tab Style */}
-      <div className="flex flex-wrap justify-center gap-6 mb-8">
+      <div className="flex flex-wrap justify-center gap-3 md:gap-6 mb-8">
         {categories.map(cat => (
           <button
             key={cat}
@@ -178,7 +178,7 @@ const Shop = () => {
       </div>
 
       {/* Dropdown Filters */}
-      <div className="flex flex-wrap justify-center gap-4 mb-8">
+      <div className="flex flex-wrap justify-center gap-2 md:gap-4 mb-8 relative z-20">
         <FilterDropdown
           label="Colour"
           value={colourFilter}

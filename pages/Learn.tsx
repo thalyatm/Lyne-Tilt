@@ -9,7 +9,8 @@ import {
   BookOpen,
   CheckCircle,
   Star,
-  Mail
+  Mail,
+  X
 } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
 import { API_BASE } from '../config/api';
@@ -18,7 +19,60 @@ import { LearnItem, Testimonial, FAQItem } from '../types';
 const Learn = () => {
   const { settings } = useSettings();
   const { learn } = settings;
-  const [learnItems, setLearnItems] = useState<LearnItem[]>([]);
+  const defaultLearnItems: LearnItem[] = [
+    {
+      id: 'concept-to-create',
+      title: 'Concept to Create: Wearable Art Online Workshop',
+      type: 'ONLINE',
+      price: 'from $135.00',
+      image: '',
+      description: "Break free from the scroll, the trends, and the sameness. Join Professional Artist, Coach, Mentor, and Creative Strategist Lyne Tilt for a two-part online workshop designed to help you move from feeling stuck to creating original, wearable art that feels unmistakably yours. Over two consecutive Sundays, you'll work through Lyne's signature Concept to Create framework, a practical, mindset-driven process that connects creative clarity with artistic momentum.",
+      subtitle: 'Premium Creative Experience',
+      duration: '2 full days',
+      format: 'Live Online',
+      level: 'Intermediate',
+      includes: [
+        'Material mastery: polymer clay, paint, and mixed media combinations',
+        'Custom components: design hooks, findings, and details that elevate your work',
+        'Design integrity: balancing wearability, durability, and creative vision',
+        'Purpose-led practice: infuse your story, values, and sustainability into your process',
+        'Audience alignment: create work that resonates with your ideal collectors',
+        'Creative foundations: composition, originality, and professional growth techniques',
+        'Access to exclusive Concept to Create Alumni community',
+        'All sessions recorded for later viewing',
+      ],
+      outcomes: [
+        'Tap into your authentic creative voice without chasing trends',
+        'Transform raw ideas into clear, meaningful concepts',
+        'Prototype and experiment with confidence',
+        'Design and refine a small-batch release or one-of-a-kind statement piece',
+      ],
+    },
+    {
+      id: 'oxygen-series-2026',
+      title: 'The Oxygen Series: Creative Momentum 2026',
+      type: 'ONLINE',
+      price: 'from $105.00',
+      image: '',
+      description: 'This three-part online workshop series is exclusively for Concept to Create alumni. Designed to give your creative practice a powerful breath of clarity, focus, and forward motion. Over three connected workshop days, we explore how intentional focus, creative planning, and inspired action can shape both your art and your year ahead.',
+      subtitle: 'Alumni Only',
+      duration: '3 sessions',
+      format: 'Live Online',
+      level: 'Alumni',
+      includes: [
+        'Three connected workshop days exploring art, AI, and intention',
+        'Clear intentions and a personally driven project plan',
+        'Focus on neuroscience principles and creative reconnection',
+        'All sessions recorded for later viewing',
+      ],
+      outcomes: [
+        'Set clear intentions for the year ahead',
+        'Plan and create a personally driven project',
+        'Explore how focus, awareness, and community support transform creative goals',
+      ],
+    },
+  ];
+  const [learnItems, setLearnItems] = useState<LearnItem[]>(defaultLearnItems);
   const [learnTestimonials, setLearnTestimonials] = useState<Testimonial[]>([]);
   const [learnFaqs, setLearnFaqs] = useState<FAQItem[]>([]);
   const [activeTab, setActiveTab] = useState<'ALL' | 'ONLINE' | 'WORKSHOP'>('ALL');
@@ -27,6 +81,56 @@ const Learn = () => {
   const [subscribed, setSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState('');
+
+  // Register Interest modal state
+  const [interestModal, setInterestModal] = useState<{ open: boolean; title: string }>({ open: false, title: '' });
+  const [interestName, setInterestName] = useState('');
+  const [interestEmail, setInterestEmail] = useState('');
+  const [interestSubmitting, setInterestSubmitting] = useState(false);
+  const [interestSuccess, setInterestSuccess] = useState(false);
+  const [interestError, setInterestError] = useState('');
+
+  const openInterestModal = (title: string) => {
+    setInterestModal({ open: true, title });
+    setInterestName('');
+    setInterestEmail('');
+    setInterestSuccess(false);
+    setInterestError('');
+  };
+
+  const closeInterestModal = () => {
+    setInterestModal({ open: false, title: '' });
+  };
+
+  const handleInterestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInterestSubmitting(true);
+    setInterestError('');
+
+    try {
+      const response = await fetch(`${API_BASE}/newsletter/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: interestEmail,
+          name: interestName,
+          source: `learn-interest:${interestModal.title}`,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Something went wrong');
+      }
+
+      setInterestSuccess(true);
+    } catch (error) {
+      setInterestError(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
+    } finally {
+      setInterestSubmitting(false);
+    }
+  };
 
   // Fetch learn items, testimonials, and FAQs from API
   useEffect(() => {
@@ -39,7 +143,8 @@ const Learn = () => {
         ]);
         if (itemsRes.ok) {
           const data = await itemsRes.json();
-          setLearnItems(Array.isArray(data) ? data : data.items ?? []);
+          const items = Array.isArray(data) ? data : data.items ?? [];
+          if (items.length > 0) setLearnItems(items);
         }
         if (testRes.ok) setLearnTestimonials(await testRes.json());
         if (faqRes.ok) setLearnFaqs(await faqRes.json());
@@ -113,64 +218,66 @@ const Learn = () => {
       </div>
 
       {/* Hero Section */}
-      <section className="pt-44 pb-16 px-6 max-w-7xl mx-auto relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          {/* Text Content */}
-          <div className="order-2 lg:order-2">
-            <p className="text-xs uppercase tracking-[0.3em] text-stone-400 mb-4">{learn.hero.subtitle}</p>
-            <h1 className="text-4xl md:text-5xl font-serif font-medium mb-6 text-clay leading-tight" dangerouslySetInnerHTML={{ __html: learn.hero.title.replace(/\n/g, '<br/>') }} />
-            <p className="text-lg font-light text-stone-600 mb-8 leading-relaxed">
-              {learn.hero.description}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 mb-8">
-              <button
-                onClick={() => scrollToSection('courses')}
-                className="inline-block bg-stone-900 text-white px-8 py-4 uppercase tracking-widest text-xs font-bold hover:bg-clay transition-colors"
-              >
-                Explore Courses
-              </button>
-              <button
-                onClick={() => scrollToSection('workshops')}
-                className="inline-block border border-stone-300 text-stone-600 px-8 py-4 uppercase tracking-widest text-xs font-bold hover:border-stone-900 hover:text-stone-900 transition-colors"
-              >
-                View Workshops
-              </button>
-            </div>
-            {/* Trust indicators */}
-            <div className="flex items-center gap-6 text-sm text-stone-400">
-              <span className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-clay rounded-full"></span>
-                2500+ Students Taught
-              </span>
-              <span className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-clay rounded-full"></span>
-                4.9★ Average Rating
-              </span>
-            </div>
-          </div>
-
-          {/* Image */}
-          <div className="order-1 lg:order-1 relative">
-            <div className="aspect-[4/5] bg-stone-200 overflow-hidden shadow-2xl">
-              <img
-                src="https://images.squarespace-cdn.com/content/v1/6182043dd1096334c6d280c8/1636022008943-O8YQ8KXQK7YWVQJ8JQ8V/Lyne+Tilt+Art+Studio.jpg?format=750w"
-                alt="Creative Learning"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            {/* Floating Quote Card */}
-            <div className="absolute -bottom-6 -right-6 lg:-right-12 bg-white p-6 shadow-xl max-w-xs border-r-4 border-clay">
-              <p className="font-serif italic text-stone-700 text-sm leading-relaxed mb-3">
-                "Creativity isn't a talent. It's a practice. Let me show you how."
-              </p>
-              <p className="text-xs uppercase tracking-widest text-stone-400"> - Lyne Tilt</p>
-            </div>
-          </div>
+      <section className="pt-40 md:pt-40 pb-8 md:pb-4 px-6 max-w-3xl mx-auto relative z-10 text-center">
+        <p className="text-xs uppercase tracking-[0.3em] text-stone-400 mb-4">{learn.hero.subtitle}</p>
+        <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif font-medium mb-6 text-clay leading-tight" dangerouslySetInnerHTML={{ __html: learn.hero.title.replace(/\n/g, '<br/>') }} />
+        <p className="text-base md:text-lg font-light text-stone-600 mb-8 leading-relaxed max-w-2xl mx-auto">
+          {learn.hero.description}
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 mb-8 items-center justify-center">
+          <button
+            onClick={() => scrollToSection('offerings')}
+            className="inline-block bg-stone-900 text-white px-8 py-4 uppercase tracking-widest text-xs font-bold hover:bg-clay transition-colors"
+          >
+            Explore
+          </button>
+          <button
+            onClick={() => scrollToSection('testimonials')}
+            className="inline-block border border-stone-300 text-stone-600 px-8 py-4 uppercase tracking-widest text-xs font-bold hover:border-stone-900 hover:text-stone-900 transition-colors"
+          >
+            What Students Say
+          </button>
+        </div>
+        {/* Trust indicators */}
+        <div className="flex items-center justify-center gap-6 text-sm text-stone-400">
+          <span className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-clay rounded-full"></span>
+            2500+ Students Taught
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-clay rounded-full"></span>
+            4.9★ Average Rating
+          </span>
         </div>
       </section>
 
-      {/* Section Divider */}
-      <div className="w-full max-w-3xl h-px bg-stone-200 mx-auto relative z-10 my-8"></div>
+      {/* Your Creative Journey */}
+      <section className="py-6 md:py-8 mt-4 md:mt-6 px-6 bg-stone-50 border-y border-stone-200 relative z-10">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-stone-400 text-center mb-4">Your Creative Journey</p>
+          <div className="flex items-start justify-between gap-2 md:gap-4 overflow-x-auto scrollbar-hide">
+            {[
+              { step: '01', label: 'Curiosity', desc: 'Something pulls you in', icon: <Star size={14} /> },
+              { step: '02', label: 'Foundation', desc: 'Learn the tools & techniques', icon: <BookOpen size={14} /> },
+              { step: '03', label: 'Practice', desc: 'Build rhythm & confidence', icon: <Clock size={14} /> },
+              { step: '04', label: 'Community', desc: 'Create alongside others', icon: <Users size={14} /> },
+              { step: '05', label: 'Identity', desc: 'Make work that\'s unmistakably yours', icon: <CheckCircle size={14} /> },
+            ].map((item, idx) => (
+              <div key={idx} className="flex items-center flex-1 min-w-0">
+                <div className="flex flex-col items-center text-center flex-1 min-w-0">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mb-1.5 ${idx === 4 ? 'bg-clay text-white' : 'bg-stone-200 text-stone-500'}`}>
+                    {item.icon}
+                  </div>
+                  <p className="text-[9px] uppercase tracking-widest text-clay font-bold">{item.step}</p>
+                  <p className="font-serif text-stone-900 text-xs md:text-sm leading-tight">{item.label}</p>
+                  <p className="text-[10px] text-stone-500 leading-tight hidden md:block">{item.desc}</p>
+                </div>
+                {/* spacer only, no line */}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Courses & Workshops Section */}
       <section id="offerings" className="py-16 px-6 max-w-6xl mx-auto relative z-10">
@@ -235,9 +342,13 @@ const Learn = () => {
                     {item.type === 'ONLINE' ? <PlayCircle size={12} /> : <Users size={12} />}
                     {item.format}
                   </span>
-                  {item.nextDate && (
+                  {item.nextDate ? (
                     <span className="bg-clay text-white px-2 py-1 text-[9px] uppercase tracking-widest font-bold">
                       Next: {item.nextDate}
+                    </span>
+                  ) : (
+                    <span className="bg-stone-200 text-stone-600 px-2 py-1 text-[9px] uppercase tracking-widest font-bold">
+                      Register Interest
                     </span>
                   )}
                 </div>
@@ -267,19 +378,32 @@ const Learn = () => {
                   <div>
                     <p className="text-xl font-serif text-stone-900">{item.price}</p>
                     <p className="text-[10px] text-stone-400">
-                      {item.type === 'ONLINE' ? 'Lifetime access' : 'Limited spots'}
+                      {!item.nextDate ? 'No upcoming dates' : item.type === 'ONLINE' ? 'Lifetime access' : 'Limited spots'}
                     </p>
                   </div>
-                  <Link
-                    to={`/contact?subject=${encodeURIComponent(item.title)}`}
-                    className={`inline-block px-6 py-2 uppercase tracking-widest text-[10px] font-bold transition-colors text-center ${
-                      item.type === 'ONLINE'
-                        ? 'bg-stone-900 text-white hover:bg-clay'
-                        : 'bg-clay text-white hover:bg-stone-900'
-                    }`}
-                  >
-                    {item.type === 'ONLINE' ? 'Enrol Now' : 'Reserve Spot'}
-                  </Link>
+                  {!item.nextDate ? (
+                    <button
+                      onClick={() => openInterestModal(item.title)}
+                      className={`inline-block px-6 py-2 uppercase tracking-widest text-[10px] font-bold transition-colors text-center ${
+                        item.type === 'ONLINE'
+                          ? 'bg-stone-900 text-white hover:bg-clay'
+                          : 'bg-clay text-white hover:bg-stone-900'
+                      }`}
+                    >
+                      Register Interest
+                    </button>
+                  ) : (
+                    <Link
+                      to={`/contact?subject=${encodeURIComponent(item.title)}`}
+                      className={`inline-block px-6 py-2 uppercase tracking-widest text-[10px] font-bold transition-colors text-center ${
+                        item.type === 'ONLINE'
+                          ? 'bg-stone-900 text-white hover:bg-clay'
+                          : 'bg-clay text-white hover:bg-stone-900'
+                      }`}
+                    >
+                      {item.type === 'ONLINE' ? 'Enrol Now' : 'Reserve Spot'}
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
@@ -291,8 +415,8 @@ const Learn = () => {
       <section className="py-16 px-6 relative z-10">
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
-            <div className="md:col-span-4">
-              <div className="aspect-square bg-stone-200 overflow-hidden shadow-lg">
+            <div className="md:col-span-4 flex justify-center">
+              <div className="aspect-square max-w-[220px] md:max-w-none w-full bg-stone-200 overflow-hidden shadow-lg rounded-3xl">
                 <img
                   src="https://images.squarespace-cdn.com/content/v1/6182043dd1096334c6d280c8/a2b24cba-294f-4e4f-b4a6-ebaa1b285607/IMG_4502+copy.jpg?format=500w"
                   alt={learn.instructorBio.name}
@@ -300,7 +424,7 @@ const Learn = () => {
                 />
               </div>
             </div>
-            <div className="md:col-span-8">
+            <div className="md:col-span-8 text-center md:text-left">
               <p className="text-xs uppercase tracking-[0.3em] text-stone-400 mb-3">Your Instructor</p>
               <h2 className="text-3xl font-serif text-stone-900 mb-4">{learn.instructorBio.name}</h2>
               {(learn.instructorBio.paragraphs.length > 0 ? learn.instructorBio.paragraphs : [
@@ -309,7 +433,7 @@ const Learn = () => {
               ]).map((para, idx) => (
                 <p key={idx} className="text-stone-600 leading-relaxed mb-4">{para}</p>
               ))}
-              <div className="flex flex-wrap gap-6 text-sm text-stone-500">
+              <div className="flex flex-wrap justify-center md:justify-start gap-6 text-sm text-stone-500 mt-6 md:mt-0">
                 {(learn.instructorBio.stats.length > 0 ? learn.instructorBio.stats : [
                   { value: "2500+", label: "Students Taught" },
                   { value: "20+", label: "Years Experience" },
@@ -377,11 +501,11 @@ const Learn = () => {
       )}
 
       {/* Email Signup Section */}
-      <section className="py-20 px-6 bg-white relative z-10 border-t border-stone-200">
+      <section className="py-8 md:py-10 px-6 bg-white relative z-10 border-t border-stone-200">
         <div className="max-w-2xl mx-auto text-center">
-          <Mail className="text-clay mx-auto mb-6" size={40} strokeWidth={1} />
-          <h3 className="text-2xl font-serif text-stone-900 mb-4">{learn.newsletterSignup.title}</h3>
-          <p className="text-stone-500 text-sm leading-relaxed mb-8" dangerouslySetInnerHTML={{ __html: learn.newsletterSignup.description || "Join <span class='font-medium text-stone-700'>Oxygen Notes</span> - my free weekly newsletter with insights on creativity, visibility, and staying true to your work. No spam, unsubscribe anytime." }} />
+          <Mail className="text-clay mx-auto mb-3" size={28} strokeWidth={1} />
+          <h3 className="text-xl md:text-2xl font-serif text-stone-900 mb-2">{learn.newsletterSignup.title}</h3>
+          <p className="text-stone-500 text-sm leading-relaxed mb-4" dangerouslySetInnerHTML={{ __html: learn.newsletterSignup.description || "Join <span class='font-medium text-stone-700'>Oxygen Notes</span> — honest thoughts, clarity tools, and gently rebellious insight, occasionally dispatched to your inbox with care." }} />
 
           {subscribed ? (
             <div className="bg-stone-50 p-6 border border-stone-200">
@@ -416,6 +540,95 @@ const Learn = () => {
           )}
         </div>
       </section>
+
+      {/* Register Interest Modal */}
+      {interestModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeInterestModal} />
+          <div className="relative bg-white w-full max-w-md shadow-xl">
+            <button
+              onClick={closeInterestModal}
+              className="absolute top-4 right-4 text-stone-400 hover:text-stone-900 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="p-8">
+              {interestSuccess ? (
+                <div className="text-center py-6">
+                  <div className="w-12 h-12 bg-clay/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle size={24} className="text-clay" />
+                  </div>
+                  <h3 className="text-xl font-serif text-stone-900 mb-2">You're on the list</h3>
+                  <p className="text-stone-500 text-sm mb-6">
+                    We'll let you know when <span className="font-medium text-stone-700">{interestModal.title}</span> has upcoming dates.
+                  </p>
+                  <button
+                    onClick={closeInterestModal}
+                    className="text-xs uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs uppercase tracking-[0.3em] text-stone-400 mb-2">Register Interest</p>
+                  <h3 className="text-xl font-serif text-stone-900 mb-1">{interestModal.title}</h3>
+                  <p className="text-stone-500 text-sm mb-6">
+                    Be the first to know when dates are announced.
+                  </p>
+
+                  <form onSubmit={handleInterestSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-1.5">Name</label>
+                      <input
+                        type="text"
+                        value={interestName}
+                        onChange={(e) => setInterestName(e.target.value)}
+                        placeholder="Your name"
+                        required
+                        className="w-full border border-stone-200 px-4 py-3 text-sm text-stone-900 placeholder:text-stone-300 focus:outline-none focus:border-clay transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-1.5">Email</label>
+                      <input
+                        type="email"
+                        value={interestEmail}
+                        onChange={(e) => setInterestEmail(e.target.value)}
+                        placeholder="your@email.com"
+                        required
+                        className="w-full border border-stone-200 px-4 py-3 text-sm text-stone-900 placeholder:text-stone-300 focus:outline-none focus:border-clay transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-widest text-stone-500 mb-1.5">Interested In</label>
+                      <input
+                        type="text"
+                        value={interestModal.title}
+                        readOnly
+                        className="w-full border border-stone-200 px-4 py-3 text-sm text-stone-500 bg-stone-50 cursor-not-allowed"
+                      />
+                    </div>
+
+                    {interestError && (
+                      <p className="text-red-600 text-sm">{interestError}</p>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={interestSubmitting}
+                      className="w-full bg-stone-900 text-white py-3 uppercase tracking-widest text-xs font-bold hover:bg-clay transition-colors disabled:bg-stone-400 disabled:cursor-not-allowed"
+                    >
+                      {interestSubmitting ? 'Submitting...' : 'Register Interest'}
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -12,6 +12,7 @@ import {
   learnItems,
   enrollments,
   coachingPackages,
+  coachingBookings,
   analyticsEvents,
   emailAutomations,
 } from '../db/schema';
@@ -291,6 +292,14 @@ analyticsRoutes.get('/overview', adminAuth, async (c) => {
   const opens = opensCurr?.value ?? 0;
   const clicks = clicksCurr?.value ?? 0;
 
+  // AOV = revenue / orders (current and previous)
+  const aovCurr = (ordersCurr?.value ?? 0) > 0
+    ? (revenueCurr?.value ?? 0) / (ordersCurr?.value ?? 0)
+    : 0;
+  const aovPrev = (ordersPrev?.value ?? 0) > 0
+    ? (revenuePrev?.value ?? 0) / (ordersPrev?.value ?? 0)
+    : 0;
+
   // ── Revenue time series ───────────────────────────────
   const revDaily = await db.select({
     date: sql<string>`DATE(${orders.createdAt})`,
@@ -369,6 +378,18 @@ analyticsRoutes.get('/overview', adminAuth, async (c) => {
       .get(),
   ]);
 
+  // ── Services summary ─────────────────────────────────
+  const [workshopEnrollments, coachingBookingsCount] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` })
+      .from(enrollments)
+      .where(and(gte(enrollments.enrolledAt, from), lte(enrollments.enrolledAt, to)))
+      .get().catch(() => ({ count: 0 })),
+    db.select({ count: sql<number>`count(*)` })
+      .from(coachingBookings)
+      .where(and(gte(coachingBookings.createdAt, from), lte(coachingBookings.createdAt, to)))
+      .get().catch(() => ({ count: 0 })),
+  ]);
+
   return c.json({
     kpis: {
       revenue: {
@@ -386,6 +407,10 @@ analyticsRoutes.get('/overview', adminAuth, async (c) => {
       emailsSent: {
         value: emailsSentCurr?.value ?? 0,
         change: pctChange(emailsSentCurr?.value ?? 0, emailsSentPrev?.value ?? 0),
+      },
+      aov: {
+        value: aovCurr,
+        change: pctChange(aovCurr, aovPrev),
       },
       conversionRate: {
         value: cart > 0 ? (checkout / cart) * 100 : 0,
@@ -408,6 +433,10 @@ analyticsRoutes.get('/overview', adminAuth, async (c) => {
     subscribers: {
       total: subsTotal?.count ?? 0,
       newCount: subsNew?.count ?? 0,
+    },
+    services: {
+      workshopEnrollments: workshopEnrollments?.count ?? 0,
+      coachingBookings: coachingBookingsCount?.count ?? 0,
     },
   });
 });
@@ -823,7 +852,7 @@ analyticsRoutes.get('/customers', adminAuth, async (c) => {
       avgOrderValue: avgOrderValue?.aov ?? 0,
     },
     topCustomers,
-    customerGrowth: customerGrowthRaw,
+    customerGrowth: fillDays(customerGrowthRaw, 'date', dateRange(new Date(from), new Date(to)), { count: 0 }),
     // TODO: Implement cohort analysis — requires complex multi-period aggregation
     cohortData: [],
   });
@@ -888,9 +917,10 @@ analyticsRoutes.get('/services', adminAuth, async (c) => {
       .all(),
   ]);
 
+  const days = dateRange(new Date(from), new Date(to));
   return c.json({
     workshops,
-    enrollmentTrend: enrollmentTrendRaw,
+    enrollmentTrend: fillDays(enrollmentTrendRaw, 'date', days, { count: 0 }),
     coaching,
     enrollmentsByStatus,
   });

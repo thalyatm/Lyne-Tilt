@@ -116,6 +116,8 @@ const FORMAT_BADGE_STYLES: Record<string, string> = {
   online: 'bg-blue-50 text-blue-700',
   'in-person': 'bg-amber-50 text-amber-700',
   hybrid: 'bg-violet-50 text-violet-700',
+  'Live online workshop': 'bg-blue-50 text-blue-700',
+  'Self-paced video + workbook': 'bg-violet-50 text-violet-700',
 };
 
 // --- Skeleton loader ---

@@ -15,6 +15,7 @@ import {
   sentEmails,
   emailAutomations,
   automationQueue,
+  coachingBookings,
 } from '../db/schema';
 import { adminAuth } from '../middleware/auth';
 import type { Bindings, Variables } from '../index';
@@ -211,6 +212,79 @@ dashboardRoutes.get('/overview', adminAuth, async (c) => {
     });
   }
 
+  // Low stock products
+  const lowStockProducts = await db.select({
+    id: products.id,
+    name: products.name,
+    quantity: products.quantity,
+  })
+    .from(products)
+    .where(and(
+      eq(products.status, 'active'),
+      eq(products.trackInventory, true),
+      sql`${products.quantity} < 5`,
+    ))
+    .orderBy(products.quantity)
+    .all();
+
+  for (const p of lowStockProducts) {
+    if (p.quantity === 0) {
+      warnings.push({
+        id: `out-of-stock-${p.id}`,
+        kind: 'inventory',
+        severity: 'high',
+        message: `${p.name} is out of stock`,
+        href: '/admin/inventory',
+      });
+    } else {
+      warnings.push({
+        id: `low-stock-${p.id}`,
+        kind: 'inventory',
+        severity: 'medium',
+        message: `${p.name} is low on stock (${p.quantity} left)`,
+        href: '/admin/inventory',
+      });
+    }
+  }
+
+  // ── Upcoming bookings (next 7 days) ───────────────────
+  const sevenDaysFromNow = new Date();
+  sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+  const nowISO = new Date().toISOString().split('T')[0];
+  const futureISO = sevenDaysFromNow.toISOString().split('T')[0];
+
+  const [upcomingBookings, pendingOrders] = await Promise.all([
+    db.select({
+      id: coachingBookings.id,
+      customerName: coachingBookings.customerName,
+      sessionDate: coachingBookings.sessionDate,
+      startTime: coachingBookings.startTime,
+      status: coachingBookings.status,
+    })
+      .from(coachingBookings)
+      .where(and(
+        gte(coachingBookings.sessionDate, nowISO),
+        sql`${coachingBookings.sessionDate} <= ${futureISO}`,
+        sql`${coachingBookings.status} IN ('confirmed', 'pending')`,
+      ))
+      .orderBy(coachingBookings.sessionDate)
+      .limit(5)
+      .all().catch(() => []),
+    db.select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      customerName: sql<string>`${orders.shippingFirstName} || ' ' || ${orders.shippingLastName}`,
+      total: orders.total,
+      status: orders.status,
+      createdAt: orders.createdAt,
+    })
+      .from(orders)
+      .where(eq(orders.status, 'pending'))
+      .orderBy(desc(orders.createdAt))
+      .limit(5)
+      .all().catch(() => []),
+  ]);
+
   // ── Response ──────────────────────────────────────────
   return c.json({
     kpis: {
@@ -253,6 +327,25 @@ dashboardRoutes.get('/overview', adminAuth, async (c) => {
     ops: {
       warnings,
     },
+    schedule: {
+      upcoming_bookings: upcomingBookings.map(b => ({
+        id: b.id,
+        customer_name: b.customerName,
+        session_date: b.sessionDate,
+        start_time: b.startTime,
+        status: b.status,
+        href: '/admin/bookings',
+      })),
+    },
+    pendingOrders: pendingOrders.map(o => ({
+      id: o.id,
+      order_number: o.orderNumber,
+      customer_name: o.customerName,
+      total: o.total,
+      status: o.status,
+      created_at: o.createdAt,
+      href: `/admin/orders/${o.id}`,
+    })),
   });
 });
 

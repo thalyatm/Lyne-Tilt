@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE } from '../config/api';
+import { API_BASE, resolveImageUrl } from '../config/api';
 import RichTextEditor from '../components/RichTextEditor';
 import SeoFields from '../components/SeoFields';
 import AccordionSection from '../components/AccordionSection';
@@ -275,7 +275,7 @@ function MediaSection({
                 selectedMedia === item.id ? 'border-stone-900' : 'border-transparent hover:border-stone-300'
               }`}
             >
-              <img src={item.url} alt={item.altText} className="w-full h-full object-cover" />
+              <img src={resolveImageUrl(item.url)} alt={item.altText} className="w-full h-full object-cover" />
               {item.isPrimary && (
                 <span className="absolute top-1 left-1 bg-stone-900 text-white text-[9px] px-1.5 py-0.5 rounded">
                   Primary
@@ -868,7 +868,13 @@ export default function ProductEditor() {
               <MediaSection
                 productId={productId}
                 media={media}
-                onMediaChange={setMedia}
+                onMediaChange={(updatedMedia) => {
+                  setMedia(updatedMedia);
+                  const primary = updatedMedia.find(m => m.isPrimary);
+                  const primaryUrl = primary?.url || updatedMedia[0]?.url || '';
+                  setProduct(prev => ({ ...prev, image: primaryUrl }));
+                  hasChanges.current = true;
+                }}
                 accessToken={accessToken}
               />
             </Card>

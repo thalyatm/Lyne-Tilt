@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Search, X, Clock, Feather } from 'lucide-react';
-import { API_BASE } from '../config/api';
+import { API_BASE, resolveImageUrl } from '../config/api';
 import { BlogPost } from '../types';
 
 // Helper to format date
@@ -96,7 +96,7 @@ const Blog = () => {
       <div className="mb-10 text-center animate-fade-in-up max-w-2xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-serif text-clay mb-4">Oxygen Notes</h1>
           <p className="text-base text-stone-500 font-light">
-            Essays on creative living, mindset, and building a meaningful practice.
+            Honest thoughts, clarity tools, and gently rebellious insight — occasionally dispatched with care.
           </p>
       </div>
 
@@ -151,7 +151,7 @@ const Blog = () => {
               {featuredPost.image && (
                 <Link to={`/oxygennotes/${featuredPost.id}`} className="block mb-6">
                   <img
-                    src={featuredPost.image}
+                    src={resolveImageUrl(featuredPost.image)}
                     alt={featuredPost.title}
                     className="w-full max-h-[400px] object-cover rounded-lg hover:opacity-90 transition-opacity"
                   />
@@ -207,7 +207,7 @@ const Blog = () => {
                   {post.image && (
                     <Link to={`/oxygennotes/${post.id}`}>
                       <img
-                        src={post.image}
+                        src={resolveImageUrl(post.image)}
                         alt={post.title}
                         className="w-full h-40 object-cover"
                       />
@@ -268,9 +268,9 @@ const Blog = () => {
         <div className="flex justify-center mb-4">
           <Feather className="text-clay" size={24} />
         </div>
-        <h3 className="text-xl font-serif text-white mb-2">Get new articles in your inbox</h3>
+        <h3 className="text-xl font-serif text-white mb-2">Oxygen Notes</h3>
         <p className="text-stone-400 text-sm mb-6">
-          Join the newsletter for essays on creative living, delivered occasionally with care.
+          Honest thoughts, clarity tools, and gently rebellious insight — occasionally dispatched to your inbox with care.
         </p>
 
         {!subscribed ? (

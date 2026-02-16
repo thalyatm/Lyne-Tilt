@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Clock, Share2, Check, Feather, Loader2 } from 'lucide-react';
-import { API_BASE } from '../config/api';
+import { API_BASE, resolveImageUrl } from '../config/api';
 import { trackEvent } from '../lib/analytics';
 import { BlogPost } from '../types';
 
@@ -224,7 +224,7 @@ const BlogPostDetail = () => {
         {post.image && (
           <div className="mb-10 -mx-6 md:-mx-12">
             <img
-              src={post.image}
+              src={resolveImageUrl(post.image)}
               alt={post.title}
               className="w-full max-h-[480px] object-cover rounded-lg"
             />
@@ -294,7 +294,7 @@ const BlogPostDetail = () => {
       <div className="max-w-xl mx-auto px-6 py-12 text-center">
         <Feather className="text-clay mx-auto mb-4" size={20} />
         <p className="text-stone-600 text-sm mb-4">
-          Enjoyed this article? Get more essays on creative living delivered to your inbox.
+          Enjoyed this? Oxygen Notes brings honest thoughts, clarity tools, and gently rebellious insight — occasionally dispatched with care.
         </p>
         <Link
           to="/oxygennotes"

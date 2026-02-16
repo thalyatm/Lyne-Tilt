@@ -31,7 +31,7 @@ import {
   Archive,
   Link as LinkIcon,
 } from 'lucide-react';
-import { API_BASE } from '../config/api';
+import { API_BASE, resolveImageUrl } from '../config/api';
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -888,7 +888,7 @@ export default function BlogManager() {
       key: 'image',
       label: '',
       render: (item: BlogPost) => item.image ? (
-        <img src={item.image} alt="" className="w-10 h-10 object-cover rounded" />
+        <img src={resolveImageUrl(item.image)} alt="" className="w-10 h-10 object-cover rounded" />
       ) : (
         <div className="w-10 h-10 bg-stone-100 rounded flex items-center justify-center">
           <FileText size={14} className="text-stone-300" />
@@ -1312,7 +1312,7 @@ export default function BlogManager() {
                     </label>
                     {formValues.image ? (
                       <div className="relative group rounded-md overflow-hidden">
-                        <img src={formValues.image} alt="" className="w-full h-24 object-cover" />
+                        <img src={resolveImageUrl(formValues.image)} alt="" className="w-full h-24 object-cover" />
                         <button
                           onClick={() => updateFormValue('image', '')}
                           className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded opacity-0 group-hover:opacity-100 transition"

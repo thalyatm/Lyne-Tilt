@@ -4,6 +4,25 @@ import type { Bindings, Variables } from '../index';
 
 export const uploadRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
+// GET /api/upload - List all files in R2 (admin only)
+uploadRoutes.get('/', adminAuth, async (c) => {
+  const bucket = c.env.UPLOADS;
+
+  const listed = await bucket.list({ prefix: 'uploads/' });
+  const files = listed.objects.map((obj) => ({
+    filename: obj.key.replace('uploads/', ''),
+    url: `/api/upload/${obj.key.replace('uploads/', '')}`,
+    size: obj.size,
+    createdAt: obj.uploaded?.toISOString() || new Date().toISOString(),
+    contentType: obj.httpMetadata?.contentType || 'application/octet-stream',
+  }));
+
+  // Sort by newest first
+  files.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  return c.json(files);
+});
+
 // POST /api/upload - Upload file to R2 (admin only)
 uploadRoutes.post('/', adminAuth, async (c) => {
   const bucket = c.env.UPLOADS;

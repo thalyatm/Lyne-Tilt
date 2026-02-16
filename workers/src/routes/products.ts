@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { eq, desc, and, or, like, isNull, ne, sql, asc } from 'drizzle-orm';
-import { products, productMedia, slugRedirects } from '../db/schema';
+import { products, productMedia, slugRedirects, waitlist } from '../db/schema';
 import { logActivity } from '../utils/activityLog';
+import { sendEmail } from '../utils/email';
 import { adminAuth } from '../middleware/auth';
 import type { Bindings, Variables } from '../index';
 
@@ -364,6 +365,33 @@ productsRoutes.put('/:id', adminAuth, async (c) => {
     .returning().get();
 
   await logActivity(db, 'update', 'product', result, user, changedFields);
+
+  // Auto-notify waitlist when product comes back in stock
+  if (body.availability === 'In stock' && current.availability === 'Sold out') {
+    const waitingEntries = await db.select().from(waitlist)
+      .where(and(eq(waitlist.productId, id), eq(waitlist.status, 'waiting')))
+      .all();
+
+    const baseUrl = c.env.FRONTEND_URL || 'https://lyne-tilt.pages.dev';
+    for (const entry of waitingEntries) {
+      try {
+        await sendEmail(c.env, entry.email,
+          `${current.name} is back in stock!`,
+          `<div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+            <h1 style="color: #1c1917; font-size: 24px;">Great news!</h1>
+            <p style="color: #57534e; font-size: 16px; line-height: 1.6;">${current.name} is back in stock and ready to be yours.</p>
+            <a href="${baseUrl}/#/shop/${id}" style="display: inline-block; background: #8d3038; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-size: 14px; margin-top: 16px;">Shop Now</a>
+            <p style="color: #a8a29e; font-size: 12px; margin-top: 24px;">You received this email because you signed up to be notified.</p>
+          </div>`
+        );
+        await db.update(waitlist)
+          .set({ status: 'notified', notifiedAt: new Date().toISOString() })
+          .where(eq(waitlist.id, entry.id));
+      } catch (err) {
+        console.error(`Failed to notify waitlist entry ${entry.id}:`, err);
+      }
+    }
+  }
 
   return c.json(result);
 });

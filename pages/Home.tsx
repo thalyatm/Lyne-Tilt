@@ -6,8 +6,26 @@ import SectionHeading from '../components/SectionHeading';
 import { Link } from 'react-router-dom';
 import { Star, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
-import { API_BASE } from '../config/api';
+import { API_BASE, resolveImageUrl } from '../config/api';
 import { Product, ProductCategory, Testimonial } from '../types';
+
+const DEFAULT_TESTIMONIALS: Testimonial[] = [
+  { id: 'r1', author: 'Jennifer M', role: 'She Basked in Silence', text: '', type: 'shop', rating: 5 },
+  { id: 'r2', author: 'Denise F', role: 'Black Boots & Big Scarves Were Her Aphrodisiacs', text: "These earrings are so fun and so me! Lyne's craftsmanship is superior and she knows how to make women feel beautiful AND fun at the same time. These are fantastic and I get compliments about them every time I wear them!", type: 'shop', rating: 5 },
+  { id: 'r3', author: 'Jenny M', role: 'Long Weekends in Melbourne Filled Her Heart & Her Head', text: "The problem I have is to only choose 1 pair of earrings!! I love everything Lyne makes, so to narrow it down to 1 pair is difficult!!", type: 'shop', rating: 5 },
+  { id: 'r4', author: 'Tricia W', role: 'She Saved Her Pennies for Today', text: "Gorgeous, quirky earrings that look fabulous and get so many comments - I love them", type: 'shop', rating: 5 },
+  { id: 'r5', author: 'Cathie T', role: 'PURE INFATUATION: When She Swam it Was as if the World Stood Still...', text: "Beautiful earrings. So loved the style, craftsmanship and colour that I put through three purchases. Discover the joy of wearing Lyne's beautiful jewellery. You won't be disappointed. Might just have to order one more pair...", type: 'shop', rating: 5 },
+  { id: 'r6', author: 'Karen Watson M', role: "KAREN's Order", text: "Lyne's work is awesome. The quality and feel of her jewellery is lovely and each piece is totally unique. Real wow factor. Can't fault service or customer care. Lyne is a gem. I've been following her for a while on IG and just love what she does and who she seems to be. She's been an inspiration to me.", type: 'shop', rating: 5 },
+  { id: 'r7', author: 'Susan S', role: 'PURE INFATUATION: And So She Wrote Poetry', text: "Just about every piece of jewellery is something I want to buy. The hardest job is choosing. Lovely earrings, fantastic quality...just can't rate Lyne Tilt high enough.", type: 'shop', rating: 5 },
+  { id: 'r8', author: 'Cheryl Y', role: 'Polymer Week Artist Silkscreens', text: "Thanks Lyne, this silkscreen set arrived quickly and safely. Of the 5 or 6 silkscreen sets which were released by Lucy recently, yours is by far the most attractive, IMHO. Much love, Cheryl", type: 'shop', rating: 5 },
+  { id: 'r9', author: 'Margaret R', role: "PURE INFATUATION: There Was No Reason She Couldn't", text: "Lyne, your website was very easy to deal with. Shipping was prompt and I LOVE the earrings. Thank you for your great work.", type: 'shop', rating: 5 },
+  { id: 'r10', author: 'Mary-ann W', role: 'PURE INFATUATION: Oh Audrey - How I Miss Your Understated Glamour', text: "Absolutely love Lyne's work. I have a number of her pieces and they always receive lots of compliments and coordinate with my outfits beautifully.", type: 'shop', rating: 5 },
+  { id: 'r11', author: 'Anne M', role: 'Polymer Week Artist Silkscreens', text: 'Excellent product. Love it', type: 'shop', rating: 5 },
+  { id: 'r12', author: 'Carol H', role: 'Polymer Week Artist Silkscreens', text: "So much fabulous inspiration and great quality items from this really lovely, friendly seller. Thank you", type: 'shop', rating: 5 },
+  { id: 'r13', author: 'Jennifer M', role: 'Polymer Week Artist Silkscreens', text: "Love my set of Lyne Tilt silkscreens. It is a pleasure to deal with Lyne. She is a very thoughtful person and I can thoroughly recommend purchasing from her.", type: 'shop', rating: 5 },
+  { id: 'r14', author: 'Shelley B', role: 'ELEMENTS - FULL SET STENCILS (10 stencils)', text: "Love these stencils, can't wait to try them all!", type: 'shop', rating: 5 },
+  { id: 'r15', author: 'Carol H', role: 'BLACK+WHITE - Digi-Paper LIGHTLY LAYERED', text: "These stencils and digi papers encourage and inspire so much creativity and they are amazing quality. I'm having so much fun. Thank you", type: 'shop', rating: 5 },
+];
 
 // Helper component for scroll reveal animation
 const RevealOnScroll: React.FC<{ children?: React.ReactNode; className?: string }> = ({ children, className = "" }) => {
@@ -48,7 +66,7 @@ const Home = () => {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
 
-  useEffect(() => { document.title = 'Lyne Tilt — Wearable Art & Creative Coaching'; }, []);
+  useEffect(() => { document.title = 'Lyne Tilt | Wearable Art & Creative Coaching'; }, []);
 
   // Fetch products
   useEffect(() => {
@@ -57,8 +75,9 @@ const Home = () => {
         const response = await fetch(`${API_BASE}/products`);
         if (!response.ok) throw new Error('API error');
         const data = await response.json();
-        const mapped: Product[] = data.slice(0, 3).map((p: any) => ({
-          id: p.id,
+        const items = data.products || data;
+        const mapped: Product[] = items.slice(0, 3).map((p: any) => ({
+          id: p.slug || p.id,
           name: p.name,
           price: parseFloat(p.price),
           currency: p.currency || 'AUD',
@@ -86,9 +105,9 @@ const Home = () => {
         const response = await fetch(`${API_BASE}/testimonials`);
         if (!response.ok) throw new Error('API error');
         const data = await response.json();
-        setTestimonials(data);
+        setTestimonials(data.length > 0 ? data : DEFAULT_TESTIMONIALS.filter(t => t.text));
       } catch {
-        // Testimonials will remain empty
+        setTestimonials(DEFAULT_TESTIMONIALS.filter(t => t.text));
       }
     };
     fetchTestimonials();
@@ -119,19 +138,36 @@ const Home = () => {
       {/* 1. Hero */}
       <Hero />
 
+      {/* Vertical divider between Hero and Split Path */}
+      <div className="flex justify-center -mt-14 -mb-14 relative z-20">
+        <div className="w-px h-28 bg-stone-300" />
+      </div>
+
       {/* 2. Split Path */}
       <RevealOnScroll>
         <SplitPath />
       </RevealOnScroll>
 
       {/* 3. About Section */}
-      <section className="pt-16 pb-16 px-6 max-w-7xl mx-auto relative z-10 bg-white w-full border-b border-stone-100">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+      <section className="pt-16 pb-16 px-6 relative z-10 bg-white w-full border-b border-stone-100">
+        {/* Abstract Background Elements */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute -top-16 right-20 w-72 h-72 border border-stone-200 rounded-full" />
+          <div className="absolute bottom-10 -left-10 w-96 h-96 border border-stone-200 rounded-full" />
+          <div className="absolute top-1/4 left-1/3 w-48 h-48 border border-stone-200 rounded-full" />
+          <div className="absolute -top-8 left-[15%] w-40 h-40 border border-stone-200 rounded-full" />
+          <div className="absolute top-[60%] right-[10%] w-56 h-56 border border-stone-200 rounded-full" />
+          <div className="absolute bottom-[20%] left-[45%] w-32 h-32 border border-stone-200 rounded-full" />
+          <div className="absolute -bottom-20 right-[30%] w-80 h-80 border border-stone-200 rounded-full" />
+          <div className="absolute top-[10%] right-[45%] w-24 h-24 border border-stone-200 rounded-full" />
+        </div>
+
+        <div className="relative z-10 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
 
             {/* Image Column */}
-            <div className="md:col-span-5 relative">
+            <div className="md:col-span-5 relative flex justify-center">
                  <RevealOnScroll>
-                    <div className="relative aspect-[4/5] bg-stone-200 overflow-hidden shadow-2xl shadow-stone-200 image-zoom-container">
+                    <div className="relative aspect-[4/5] max-w-[280px] md:max-w-none bg-stone-200 overflow-hidden shadow-2xl shadow-stone-200 rounded-3xl image-zoom-container">
                         <img
                            src={home.aboutSection.image || "https://images.squarespace-cdn.com/content/v1/6182043dd1096334c6d280c8/a2b24cba-294f-4e4f-b4a6-ebaa1b285607/IMG_4502+copy.jpg?format=300w"}
                            alt="Lyne Tilt"
@@ -143,12 +179,12 @@ const Home = () => {
             </div>
 
             {/* Text Column */}
-            <div className="md:col-span-7 md:pl-8">
+            <div className="md:col-span-7 md:pl-8 text-center md:text-left">
                  <RevealOnScroll>
                     <p className="text-stone-400 text-[10px] uppercase tracking-[0.3em] mb-3">Meet Lyne</p>
                     <h2 className="text-3xl md:text-4xl font-serif mb-5 text-stone-900">{home.aboutSection.title}</h2>
 
-                    <div className="prose prose-stone text-stone-600 leading-relaxed text-sm mb-6 max-w-lg">
+                    <div className="prose prose-stone text-stone-600 leading-relaxed text-sm mb-6 max-w-lg mx-auto md:mx-0">
                         {home.aboutSection.paragraphs.map((para, idx) => (
                           <p key={idx} className={idx < home.aboutSection.paragraphs.length - 1 ? 'mb-4' : ''}>
                             {para}
@@ -186,7 +222,7 @@ const Home = () => {
                      {/* Image Area */}
                      <div className="w-full aspect-square bg-stone-100 mb-2 flex items-center justify-center overflow-hidden relative">
                           <img
-                              src={product.image}
+                              src={resolveImageUrl(product.image)}
                               alt={product.name}
                               className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
                           />

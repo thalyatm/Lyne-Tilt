@@ -30,6 +30,9 @@ import Login from './admin/pages/Login';
 import Dashboard from './admin/pages/Dashboard';
 import ProductsManager from './admin/pages/ProductsManager';
 import ProductEditor from './admin/pages/ProductEditor';
+import PromotionsManager from './admin/pages/PromotionsManager';
+import OrdersManager from './admin/pages/OrdersManager';
+import OrderDetail from './admin/pages/OrderDetail';
 import CoachingManager from './admin/pages/CoachingManager';
 import CoachingEditor from './admin/pages/CoachingEditor';
 import WorkshopsManager from './admin/pages/WorkshopsManager';
@@ -63,6 +66,16 @@ import AnalyticsEmail from './admin/pages/AnalyticsEmail';
 import AnalyticsContent from './admin/pages/AnalyticsContent';
 import AnalyticsCustomers from './admin/pages/AnalyticsCustomers';
 import AnalyticsServices from './admin/pages/AnalyticsServices';
+import MediaLibrary from './admin/pages/MediaLibrary';
+import CustomersManager from './admin/pages/CustomersManager';
+import CustomerDetail from './admin/pages/CustomerDetail';
+import InventoryManager from './admin/pages/InventoryManager';
+import BookingsManager from './admin/pages/BookingsManager';
+import ReviewsManager from './admin/pages/ReviewsManager';
+import AbandonedCartsManager from './admin/pages/AbandonedCartsManager';
+import GiftCardsManager from './admin/pages/GiftCardsManager';
+import WaitlistManager from './admin/pages/WaitlistManager';
+import DataExport from './admin/pages/DataExport';
 import { ToastProvider } from './admin/context/ToastContext';
 import FeedbackWidget from './components/FeedbackWidget';
 
@@ -139,6 +152,9 @@ const App = () => {
               <Route path="products" element={<ProductsManager />} />
               <Route path="products/new" element={<ProductEditor />} />
               <Route path="products/:id" element={<ProductEditor />} />
+              <Route path="promotions" element={<PromotionsManager />} />
+              <Route path="orders" element={<OrdersManager />} />
+              <Route path="orders/:id" element={<OrderDetail />} />
               <Route path="coaching" element={<CoachingManager />} />
               <Route path="coaching/new" element={<CoachingEditor />} />
               <Route path="coaching/:id" element={<CoachingEditor />} />
@@ -159,6 +175,16 @@ const App = () => {
               <Route path="automations" element={<AutomationsManager />} />
               <Route path="automations/queue" element={<AutomationQueue />} />
               <Route path="email-settings" element={<EmailSettings />} />
+              <Route path="media" element={<MediaLibrary />} />
+              <Route path="customers" element={<CustomersManager />} />
+              <Route path="customers/:id" element={<CustomerDetail />} />
+              <Route path="inventory" element={<InventoryManager />} />
+              <Route path="bookings" element={<BookingsManager />} />
+              <Route path="reviews" element={<ReviewsManager />} />
+              <Route path="abandoned-carts" element={<AbandonedCartsManager />} />
+              <Route path="gift-cards" element={<GiftCardsManager />} />
+              <Route path="waitlist" element={<WaitlistManager />} />
+              <Route path="data-export" element={<DataExport />} />
             </Route>
 
               {/* Catch-all route redirects to home */}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { API_BASE } from '../config/api';
+import { API_BASE, resolveImageUrl } from '../config/api';
 import {
   Search,
   Plus,
@@ -656,7 +656,7 @@ export default function WorkshopsManager() {
                 <div className="hidden md:block">
                   {item.coverImageUrl || item.image ? (
                     <img
-                      src={item.coverImageUrl || item.image}
+                      src={resolveImageUrl(item.coverImageUrl || item.image)}
                       alt=""
                       className="w-10 h-10 object-cover rounded"
                     />

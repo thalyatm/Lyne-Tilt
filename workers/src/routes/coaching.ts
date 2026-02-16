@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { eq, desc, asc, sql, and, or, count } from 'drizzle-orm';
-import { coachingPackages, coachingRevisions } from '../db/schema';
+import { coachingPackages, coachingRevisions, coachingApplications } from '../db/schema';
 import { logActivity } from '../utils/activityLog';
+import { triggerAutomation } from '../utils/automations';
 import { adminAuth, optionalAdminAuth } from '../middleware/auth';
 import type { Bindings, Variables } from '../index';
 
@@ -150,6 +151,87 @@ coachingRoutes.get('/', optionalAdminAuth, async (c) => {
     page: pageNum,
     pageSize: limit,
   });
+});
+
+// ─── POST /apply — Public coaching application (discovery call request) ─
+
+coachingRoutes.post('/apply', async (c) => {
+  const db = c.get('db');
+  const body = await c.req.json();
+
+  if (!body.name || !body.email) {
+    return c.json({ error: 'Name and email are required' }, 400);
+  }
+
+  const application = await db
+    .insert(coachingApplications)
+    .values({
+      name: body.name,
+      email: body.email.toLowerCase().trim(),
+      phone: body.phone || null,
+      reason: body.reason || null,
+      preferredPackage: body.package || null,
+    })
+    .returning()
+    .get();
+
+  // Trigger coaching inquiry automation
+  await triggerAutomation(db, 'coaching_inquiry', body.email.toLowerCase().trim(), body.name);
+
+  return c.json({ success: true, id: application.id }, 201);
+});
+
+// ─── GET /applications — List applications (admin only) ─
+
+coachingRoutes.get('/applications', adminAuth, async (c) => {
+  const db = c.get('db');
+  const status = c.req.query('status');
+
+  const conditions = [];
+  if (status) conditions.push(eq(coachingApplications.status, status as any));
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const items = await db
+    .select()
+    .from(coachingApplications)
+    .where(whereClause)
+    .orderBy(desc(coachingApplications.createdAt))
+    .all();
+
+  return c.json(items);
+});
+
+// ─── PUT /applications/:id — Update application status (admin only) ─
+
+coachingRoutes.put('/applications/:id', adminAuth, async (c) => {
+  const db = c.get('db');
+  const id = c.req.param('id');
+  const body = await c.req.json();
+  const user = c.get('user');
+
+  const existing = await db
+    .select()
+    .from(coachingApplications)
+    .where(eq(coachingApplications.id, id))
+    .get();
+
+  if (!existing) return c.json({ error: 'Application not found' }, 404);
+
+  const updateData: Record<string, any> = { updatedAt: new Date().toISOString() };
+  if (body.status !== undefined) updateData.status = body.status;
+  if (body.notes !== undefined) updateData.notes = body.notes;
+
+  const updated = await db
+    .update(coachingApplications)
+    .set(updateData)
+    .where(eq(coachingApplications.id, id))
+    .returning()
+    .get();
+
+  await logActivity(db, 'update', 'coaching_application', updated, user);
+
+  return c.json(updated);
 });
 
 // ─── GET /:idOrSlug — Get single coaching offer (public) ─
@@ -614,3 +696,4 @@ coachingRoutes.post('/:id/revisions/:revisionId/restore', adminAuth, async (c) =
 
   return c.json(item);
 });
+

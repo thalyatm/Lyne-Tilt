@@ -36,7 +36,7 @@ interface RevenueData {
     avgRating: number | null;
   }>;
   aovTrend: Array<{ date: string; aov: number }>;
-  lowStock: Array<{ id: string; name: string; quantity: number; productType: string }>;
+  lowStock: Array<{ id: string; name: string; stock: number; productType: string }>;
 }
 
 type DateRange = '7d' | '30d' | '90d' | 'all';
@@ -567,7 +567,7 @@ export default function AnalyticsRevenue() {
                       <td className="py-2.5 px-2 text-right text-stone-700">{formatNumber(product.unitsSold)}</td>
                       <td className="py-2.5 px-2 text-right font-medium text-stone-900">{formatCurrency(product.revenue)}</td>
                       <td className="py-2.5 px-2 text-right">
-                        {product.avgRating !== null ? (
+                        {product.avgRating != null && product.avgRating > 0 ? (
                           <span className="inline-flex items-center gap-1 text-stone-700">
                             <Star size={12} className="text-amber-400 fill-amber-400" />
                             {product.avgRating.toFixed(1)}
@@ -609,7 +609,7 @@ export default function AnalyticsRevenue() {
                     {item.productType}
                   </span>
                   <span className="text-sm font-medium text-amber-700">
-                    {item.quantity} left
+                    {item.stock} left
                   </span>
                 </div>
               );

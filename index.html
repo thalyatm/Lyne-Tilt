@@ -14,6 +14,7 @@
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
@@ -141,6 +142,41 @@
       .stagger-2 { animation-delay: 0.2s; }
       .stagger-3 { animation-delay: 0.3s; }
       .stagger-4 { animation-delay: 0.4s; }
+
+      /* Admin dark mode overrides — scoped to .admin-dark wrapper */
+      .admin-dark { background-color: #111110; color: #d6d3d1; }
+      .admin-dark .bg-white { background-color: #1c1917 !important; }
+      .admin-dark .bg-stone-50 { background-color: #151413 !important; }
+      .admin-dark .bg-stone-100 { background-color: #1c1917 !important; }
+      .admin-dark .bg-stone-200 { background-color: #292524 !important; }
+      .admin-dark .text-stone-900 { color: #f5f5f4 !important; }
+      .admin-dark .text-stone-800 { color: #e7e5e4 !important; }
+      .admin-dark .text-stone-700 { color: #d6d3d1 !important; }
+      .admin-dark .text-stone-600 { color: #a8a29e !important; }
+      .admin-dark .text-stone-500 { color: #a8a29e !important; }
+      .admin-dark .text-stone-400 { color: #78716c !important; }
+      .admin-dark .border-stone-200 { border-color: #292524 !important; }
+      .admin-dark .border-stone-100 { border-color: #1c1917 !important; }
+      .admin-dark .border-stone-300 { border-color: #44403c !important; }
+      .admin-dark .divide-stone-200 > :not(:first-child) { border-color: #292524 !important; }
+      .admin-dark .hover\:bg-stone-50:hover { background-color: #1c1917 !important; }
+      .admin-dark .hover\:bg-stone-100:hover { background-color: #292524 !important; }
+      .admin-dark input, .admin-dark textarea, .admin-dark select {
+        background-color: #1c1917 !important;
+        border-color: #44403c !important;
+        color: #e7e5e4 !important;
+      }
+      .admin-dark input::placeholder, .admin-dark textarea::placeholder {
+        color: #78716c !important;
+      }
+      .admin-dark .shadow-sm { box-shadow: 0 1px 2px rgba(0,0,0,0.3) !important; }
+      .admin-dark .shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important; }
+      .admin-dark .shadow-lg { box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important; }
+      .admin-dark .ring-stone-200 { --tw-ring-color: #44403c !important; }
+      .admin-dark table thead { background-color: #1c1917 !important; }
+      .admin-dark table tbody tr { border-color: #292524 !important; }
+      .admin-dark table tbody tr:hover { background-color: #1c1917 !important; }
+      .admin-dark .bg-stone-200\/60 { background-color: rgba(41,37,36,0.6) !important; }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
   <script type="importmap">

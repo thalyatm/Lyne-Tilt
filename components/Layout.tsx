@@ -93,25 +93,27 @@ const Layout = () => {
         aria-label="Main navigation"
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out border-b ${
           isScrolled || mobileMenuOpen
-            ? 'bg-stone-900 border-stone-800 py-2 shadow-md'
-            : 'bg-stone-900 border-stone-800 py-2 shadow-sm'
+            ? 'bg-stone-900 border-stone-800 pt-1 pb-0 shadow-md'
+            : 'bg-stone-900 border-stone-800 pt-1 pb-0 shadow-sm'
         }`}
       >
         <div className="container mx-auto px-6 flex items-center justify-between">
           {/* Logo - Left */}
+          <div className="flex-1">
           <Link
             to="/"
-            className="z-50 hover:opacity-70 transition-opacity duration-300 flex-shrink-0"
+            className="z-50 hover:opacity-70 transition-opacity duration-300 inline-block"
           >
             <img
               src="https://images.squarespace-cdn.com/content/v1/6182043dd1096334c6d280c8/fac44eed-af07-4260-a870-f990338b731a/Untitled+design+%286%29.png?format=1500w"
               alt="Lyne Tilt"
-              className="h-14 w-auto object-contain"
+              className="h-[60px] lg:h-[78px] w-auto object-contain -mb-2"
             />
           </Link>
+          </div>
 
           {/* Desktop Links - Center */}
-          <div className="hidden lg:flex gap-6 xl:gap-8 items-center flex-shrink-0">
+          <div className="hidden lg:flex gap-6 xl:gap-8 items-center justify-center flex-shrink-0">
 
             {/* Shop Dropdown */}
             <div
@@ -167,11 +169,8 @@ const Layout = () => {
           </div>
 
           {/* Desktop Links Right */}
-          <div className="hidden lg:flex gap-3 xl:gap-4 items-center flex-shrink-0">
-             <Link to="/contact" className="text-[10px] uppercase tracking-wider xl:tracking-widest font-bold border border-stone-600 text-stone-200 px-3 xl:px-5 py-2 hover:bg-stone-200 hover:text-stone-900 transition-all duration-300 whitespace-nowrap">
-               Book Free Call
-             </Link>
-
+          <div className="hidden lg:flex flex-1 justify-end">
+          <div className="flex gap-3 xl:gap-4 items-center">
             {/* Login / User Menu */}
             {isAuthenticated ? (
               <div className="relative">
@@ -241,16 +240,34 @@ const Layout = () => {
               )}
             </Link>
           </div>
+          </div>
 
-          {/* Mobile Toggle */}
-          <button
-            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={mobileMenuOpen}
-            className="lg:hidden z-50 text-stone-200 hover:text-white ml-auto"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          {/* Mobile Icons */}
+          <div className="lg:hidden z-50 flex items-center gap-4 ml-auto">
+            {isAuthenticated ? (
+              <Link to="/account" className="text-stone-200 hover:text-clay transition-colors">
+                <User size={20} />
+              </Link>
+            ) : (
+              <button onClick={() => openAuthModal('login')} className="text-stone-200 hover:text-clay transition-colors">
+                <User size={20} />
+              </button>
+            )}
+            <Link to="/checkout" className="relative text-stone-200 hover:text-clay transition-colors">
+              <ShoppingBag size={20} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-2 bg-clay text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{cartCount}</span>
+              )}
+            </Link>
+            <button
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileMenuOpen}
+              className="text-stone-200 hover:text-white"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -336,40 +353,39 @@ const Layout = () => {
               Login / Register
             </button>
           )}
-          <Link to="/contact" className="text-lg mt-4 border border-stone-900 px-6 py-3 hover:bg-stone-900 hover:text-white transition-colors" onClick={() => setMobileMenuOpen(false)}>Book Free Call</Link>
         </div>
       </div>
 
       {/* Main Content */}
-      <main className="flex-grow pt-0 relative z-10">
+      <main className="flex-grow pt-0 relative">
         <Outlet />
       </main>
 
       {/* Global Lead Magnet (Newsletter Sign up) - Hidden on Blog page which has its own */}
-      {location.pathname !== '/oxygennotes' && (
-        <div id="newsletter" className="relative z-10">
+      {location.pathname !== '/oxygennotes' && location.pathname !== '/learn' && (
+        <div id="newsletter" className="relative">
           <LeadMagnet />
         </div>
       )}
 
       {/* Footer */}
-      <footer className="bg-stone-50 text-stone-600 py-10 px-6 border-t border-stone-200 relative z-10">
-        <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+      <footer className="bg-stone-50 text-stone-600 py-3 md:py-6 px-4 md:px-6 border-t border-stone-200 relative">
+        <div className="container mx-auto grid grid-cols-4 gap-2 md:gap-6">
 
           {/* Brand Column */}
-          <div className="md:col-span-1">
-            <h4 className="font-serif text-xl text-stone-900 mb-4 tracking-wider">{footer.tagline}</h4>
-            <p className="text-xs leading-loose mb-4 text-stone-500 font-light uppercase tracking-wide">
+          <div>
+            <h4 className="font-serif text-base md:text-xl text-stone-900 mb-2 tracking-wider">{footer.tagline}</h4>
+            <p className="text-[10px] md:text-xs leading-relaxed mb-3 text-stone-500 font-light uppercase tracking-wide">
               {footer.location}<br/>
               {footer.established}
             </p>
-            <div className="flex flex-wrap items-center gap-2 text-stone-400">
-               <span className="text-[10px] font-medium border border-stone-300 px-2 py-1 rounded-sm">Visa</span>
-               <span className="text-[10px] font-medium border border-stone-300 px-2 py-1 rounded-sm">Mastercard</span>
-               <span className="text-[10px] font-medium border border-stone-300 px-2 py-1 rounded-sm">Amex</span>
-               <span className="text-[10px] font-medium border border-stone-300 px-2 py-1 rounded-sm">Apple Pay</span>
-               <span className="text-[10px] font-medium border border-stone-300 px-2 py-1 rounded-sm">Google Pay</span>
-               <span className="text-[10px] font-medium border border-stone-300 px-2 py-1 rounded-sm">PayPal</span>
+            <div className="flex flex-wrap items-center gap-1 md:gap-2 text-stone-400">
+               <span className="text-[9px] md:text-[10px] font-medium border border-stone-300 px-1.5 md:px-2 py-0.5 md:py-1 rounded-sm">Visa</span>
+               <span className="text-[9px] md:text-[10px] font-medium border border-stone-300 px-1.5 md:px-2 py-0.5 md:py-1 rounded-sm">MC</span>
+               <span className="text-[9px] md:text-[10px] font-medium border border-stone-300 px-1.5 md:px-2 py-0.5 md:py-1 rounded-sm">Amex</span>
+               <span className="text-[9px] md:text-[10px] font-medium border border-stone-300 px-1.5 md:px-2 py-0.5 md:py-1 rounded-sm">Apple Pay</span>
+               <span className="text-[9px] md:text-[10px] font-medium border border-stone-300 px-1.5 md:px-2 py-0.5 md:py-1 rounded-sm">Google Pay</span>
+               <span className="text-[9px] md:text-[10px] font-medium border border-stone-300 px-1.5 md:px-2 py-0.5 md:py-1 rounded-sm">PayPal</span>
             </div>
           </div>
 
@@ -377,8 +393,8 @@ const Layout = () => {
           {footer.columns.length > 0 ? (
             footer.columns.map((column, idx) => (
               <div key={idx}>
-                <h5 className="text-stone-900 uppercase tracking-widest text-xs font-bold mb-4">{column.title}</h5>
-                <ul className="space-y-2 text-sm font-light">
+                <h5 className="text-stone-900 uppercase tracking-widest text-[10px] md:text-xs font-bold mb-2">{column.title}</h5>
+                <ul className="space-y-0.5 md:space-y-1 text-xs md:text-sm font-light leading-tight md:leading-normal">
                   {column.links.map((link, linkIdx) => (
                     <li key={linkIdx}>
                       <Link to={link.url} className="hover:text-clay transition-colors link-underline">{link.label}</Link>
@@ -391,8 +407,8 @@ const Layout = () => {
             <>
               {/* Shop Column - Default */}
               <div>
-                <h5 className="text-stone-900 uppercase tracking-widest text-xs font-bold mb-4">Collection</h5>
-                <ul className="space-y-2 text-sm font-light">
+                <h5 className="text-stone-900 uppercase tracking-widest text-[10px] md:text-xs font-bold mb-2">Collection</h5>
+                <ul className="space-y-0.5 md:space-y-1 text-xs md:text-sm font-light leading-tight md:leading-normal">
                   <li><Link to="/shop" className="hover:text-clay transition-colors link-underline">All Items</Link></li>
                   <li><Link to="/shop?category=Earrings" className="hover:text-clay transition-colors link-underline">Earrings</Link></li>
                   <li><Link to="/shop?category=Brooches" className="hover:text-clay transition-colors link-underline">Brooches</Link></li>
@@ -402,19 +418,18 @@ const Layout = () => {
 
               {/* Learn Column - Default */}
               <div>
-                <h5 className="text-stone-900 uppercase tracking-widest text-xs font-bold mb-4">Practice</h5>
-                <ul className="space-y-2 text-sm font-light">
+                <h5 className="text-stone-900 uppercase tracking-widest text-[10px] md:text-xs font-bold mb-2">Practice</h5>
+                <ul className="space-y-0.5 md:space-y-1 text-xs md:text-sm font-light leading-tight md:leading-normal">
                   <li><Link to="/coaching" className="hover:text-clay transition-colors link-underline">Clarity Coaching</Link></li>
                   <li><Link to="/learn" className="hover:text-clay transition-colors link-underline">Workshops & Courses</Link></li>
                   <li><Link to="/oxygennotes" className="hover:text-clay transition-colors link-underline">Oxygen Notes</Link></li>
-                  <li><Link to="/contact" className="hover:text-clay transition-colors link-underline">Book Free Call</Link></li>
                 </ul>
               </div>
 
               {/* About Column - Default */}
               <div>
-                <h5 className="text-stone-900 uppercase tracking-widest text-xs font-bold mb-4">Studio</h5>
-                <ul className="space-y-2 text-sm font-light">
+                <h5 className="text-stone-900 uppercase tracking-widest text-[10px] md:text-xs font-bold mb-2">Studio</h5>
+                <ul className="space-y-0.5 md:space-y-1 text-xs md:text-sm font-light leading-tight md:leading-normal">
                   <li><Link to="/about" className="hover:text-clay transition-colors link-underline">About Lyne</Link></li>
                   <li><Link to="/contact" className="hover:text-clay transition-colors link-underline">Contact</Link></li>
                   <li><Link to="/faq" className="hover:text-clay transition-colors link-underline">Policies & FAQs</Link></li>
@@ -425,7 +440,7 @@ const Layout = () => {
           )}
         </div>
 
-        <div className="container mx-auto mt-8 pt-8 border-t border-stone-200 text-[10px] uppercase tracking-widest text-stone-400 flex flex-col md:flex-row justify-between items-center text-center md:text-left leading-loose">
+        <div className="container mx-auto mt-3 md:mt-5 pt-2 md:pt-4 border-t border-stone-200 text-[10px] uppercase tracking-widest text-stone-400 flex flex-col md:flex-row justify-between items-center text-center md:text-left leading-relaxed">
           <p>{footer.copyright}</p>
           <div className="flex gap-6 mt-4 md:mt-0">
             {footer.socialLinks.length > 0 ? (
@@ -442,30 +457,6 @@ const Layout = () => {
         </div>
       </footer>
 
-      {/* Mobile Sticky Bottom Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-stone-200 p-3 z-50 flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <Link to="/checkout" className="flex flex-col items-center text-stone-500 hover:text-clay relative">
-          <ShoppingBag size={18} />
-          {cartCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-clay text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{cartCount}</span>
-          )}
-          <span className="text-[9px] uppercase tracking-wide mt-1">Cart</span>
-        </Link>
-        <Link to="/contact" className="bg-stone-900 text-white px-6 py-2 text-[10px] uppercase tracking-widest font-bold">
-          Book Call
-        </Link>
-        {isAuthenticated ? (
-          <Link to="/account" className="flex flex-col items-center text-stone-500 hover:text-clay">
-            <User size={18} />
-            <span className="text-[9px] uppercase tracking-wide mt-1">Account</span>
-          </Link>
-        ) : (
-          <button onClick={() => openAuthModal('login')} className="flex flex-col items-center text-stone-500 hover:text-clay">
-            <User size={18} />
-            <span className="text-[9px] uppercase tracking-wide mt-1">Login</span>
-          </button>
-        )}
-      </div>
 
       {/* Auth Modal */}
       <AuthModal />

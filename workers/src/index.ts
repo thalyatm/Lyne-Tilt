@@ -31,7 +31,17 @@ import { activityRoutes } from './routes/activity';
 import { campaignsRoutes } from './routes/campaigns';
 import { subscribersRoutes } from './routes/subscribers';
 import { feedbackRoutes } from './routes/feedback';
-import { processScheduledDrafts, processAutomationQueue } from './utils/scheduled';
+import { promotionsRoutes } from './routes/promotions';
+import { ordersRoutes } from './routes/orders';
+import { customersRoutes } from './routes/customers';
+import { inventoryRoutes } from './routes/inventory';
+import { bookingsRoutes } from './routes/bookings';
+import { reviewsRoutes } from './routes/reviews';
+import { abandonedCartsRoutes } from './routes/abandoned-carts';
+import { giftCardsRoutes } from './routes/gift-cards';
+import { waitlistRoutes } from './routes/waitlist';
+import { dataExportRoutes } from './routes/data-export';
+import { processScheduledDrafts, processAutomationQueue, processAbandonedCarts } from './utils/scheduled';
 
 // Environment bindings type
 export type Bindings = {
@@ -117,6 +127,16 @@ app.route('/api/activity', activityRoutes);
 app.route('/api/campaigns', campaignsRoutes);
 app.route('/api/subscribers', subscribersRoutes);
 app.route('/api/feedback', feedbackRoutes);
+app.route('/api/promotions', promotionsRoutes);
+app.route('/api/orders', ordersRoutes);
+app.route('/api/customers', customersRoutes);
+app.route('/api/inventory', inventoryRoutes);
+app.route('/api/bookings', bookingsRoutes);
+app.route('/api/reviews', reviewsRoutes);
+app.route('/api/abandoned-carts', abandonedCartsRoutes);
+app.route('/api/gift-cards', giftCardsRoutes);
+app.route('/api/waitlist', waitlistRoutes);
+app.route('/api/data-export', dataExportRoutes);
 
 // 404 handler
 app.notFound((c) => {
@@ -126,7 +146,9 @@ app.notFound((c) => {
 // Error handler
 app.onError((err, c) => {
   console.error('Error:', err);
-  return c.json({ error: err.message || 'Internal Server Error' }, 500);
+  const cause = (err as any).cause;
+  const message = cause?.message || err.message || 'Internal Server Error';
+  return c.json({ error: message }, 500);
 });
 
 export default {
@@ -136,6 +158,7 @@ export default {
     ctx.waitUntil(Promise.all([
       processScheduledDrafts(env, db),
       processAutomationQueue(env, db),
+      processAbandonedCarts(env, db),
     ]));
   },
 };

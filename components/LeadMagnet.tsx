@@ -35,19 +35,29 @@ const LeadMagnet = () => {
   };
 
   return (
-    <section className="bg-stone-100 text-stone-900 py-8 px-6 border-t border-stone-200">
-      <div className="max-w-4xl mx-auto">
+    <section className="relative bg-stone-900 py-6 md:py-8 px-4 md:px-6 overflow-hidden">
+      {/* Abstract background circles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-[0.07]">
+        <div className="absolute -top-20 -left-10 w-72 h-72 border border-white rounded-full" />
+        <div className="absolute -top-8 left-1/4 w-40 h-40 border border-white rounded-full" />
+        <div className="absolute top-1/2 left-[15%] w-24 h-24 border border-white rounded-full" />
+        <div className="absolute -bottom-28 right-12 w-96 h-96 border border-white rounded-full" />
+        <div className="absolute -top-12 right-[20%] w-56 h-56 border border-white rounded-full" />
+        <div className="absolute bottom-4 right-[40%] w-32 h-32 border border-white rounded-full" />
+      </div>
+
+      <div className="relative z-10 max-w-4xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             {/* Left: Title & Description */}
-            <div className="md:max-w-md">
-              <div className="flex items-center gap-3 mb-2">
+            <div className="md:max-w-md text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
                 <Feather className="text-clay" size={18} />
-                <h3 className="text-lg md:text-xl font-serif text-stone-900">
+                <h3 className="text-lg md:text-xl font-serif text-white">
                   Oxygen Notes
                 </h3>
               </div>
-              <p className="text-stone-500 text-sm font-light leading-relaxed">
-                Honest thoughts, clarity tools, and gently rebellious insight for creatives who want space to breathe and think differently.
+              <p className="text-stone-400 text-sm font-light leading-relaxed">
+                Honest thoughts, clarity tools, and gently rebellious insight — occasionally dispatched to your inbox with care.
               </p>
             </div>
 
@@ -64,17 +74,17 @@ const LeadMagnet = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     disabled={submitting}
-                    className="flex-1 bg-white border border-stone-300 px-4 py-3 focus:outline-none focus:border-clay text-stone-900 placeholder-stone-400 text-sm transition-colors disabled:opacity-50"
+                    className="flex-1 bg-stone-800 border border-stone-700 px-4 py-3 focus:outline-none focus:border-clay text-white placeholder-stone-500 text-sm transition-colors disabled:opacity-50"
                   />
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="bg-stone-900 text-white px-6 py-3 uppercase tracking-widest text-[10px] font-bold hover:bg-clay transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-white text-stone-900 px-6 py-3 uppercase tracking-widest text-[10px] font-bold hover:bg-clay hover:text-white transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {submitting ? '...' : 'Sign Up'}
                   </button>
                 </div>
-                {error && <p className="text-red-600 text-xs mt-2">{error}</p>}
+                {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
               </form>
             ) : (
               <div className="flex items-center gap-3 text-clay">

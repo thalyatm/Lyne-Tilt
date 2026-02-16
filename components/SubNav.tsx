@@ -45,17 +45,17 @@ const SubNav: React.FC<SubNavProps> = ({ items }) => {
   }, []);
 
   return (
-    <div className="fixed left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-stone-200 z-40 top-[72px]">
+    <div className="fixed left-0 right-0 bg-stone-800 border-b border-stone-700 z-40 top-[62px] lg:top-[80.5px]">
       <div className="max-w-7xl mx-auto px-6">
-        <nav className="flex justify-center gap-8 py-3 overflow-x-auto scrollbar-hide">
+        <nav className="flex justify-center gap-4 md:gap-10 py-2.5 overflow-x-auto scrollbar-hide">
           {items.map(item => (
             <button
               key={item.id}
               onClick={() => scrollToSection(item.id)}
-              className={`text-[10px] uppercase tracking-widest font-medium transition-colors whitespace-nowrap relative pb-1 ${
+              className={`text-xs uppercase tracking-[0.2em] font-medium transition-colors whitespace-nowrap relative pb-1 ${
                 activeSection === item.id
-                  ? 'text-clay'
-                  : 'text-stone-500 hover:text-clay'
+                  ? 'text-white'
+                  : 'text-stone-400 hover:text-stone-200'
               }`}
             >
               {item.label}

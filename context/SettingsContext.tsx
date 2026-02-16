@@ -88,23 +88,23 @@ const defaultSettings: SiteSettings = {
     headline: "Art is Oxygen.",
     tagline: "Clarity is Power.",
     subtitle: "Wearable art & strategic coaching for creatives ready to make meaningful work.",
-    metaTags: "Handmade Jewellery · 1:1 Coaching · Learn & Create",
+    metaTags: "Wearable Art · 1:1 Coaching · Learn & Create",
     primaryCta: { text: "Shop Art", link: "/shop" },
     secondaryCta: { text: "Explore Coaching", link: "/coaching" },
     image: "https://images.squarespace-cdn.com/content/v1/6182043dd1096334c6d280c8/25307466-b400-4d67-bb64-8763bd9cc285/5.png?format=2500w"
   },
   splitPath: {
-    title: "Three Ways to Work Together",
+    title: "Your Next Move Starts Here",
     cards: [
-      { label: "Handmade in Australia", title: "Wearable & Wall Art", description: "Unique small batch art - made with intention.", linkText: "Shop Collection", linkUrl: "/shop" },
-      { label: "1:1 Sessions", title: "Coaching & Mentoring", description: "Clarity, direction, and accountability for creatives building something meaningful.", linkText: "Explore Coaching", linkUrl: "/coaching" },
-      { label: "Online & In-Person", title: "Learn & Create", description: "Hands-on learning for makers who want to develop their craft and creative practice.", linkText: "Browse Workshops", linkUrl: "/learn" }
+      { label: "Handmade in Australia", title: "Wearable & Wall Art", description: "Wear your story. Collect what resonates. Original, handmade pieces designed to anchor your identity and bring beauty into your everyday.", linkText: "Shop Collection", linkUrl: "/shop" },
+      { label: "1:1 Sessions", title: "Coaching & Mentoring", description: "Deep work with practical outcomes. Intelligent, experienced coaching for creatives, founders, and deep thinkers ready to recalibrate and move forward with clarity.", linkText: "Explore Coaching", linkUrl: "/coaching" },
+      { label: "Online & In-Person", title: "Learn & Create", description: "Break free from the scroll, the trends, and the sameness. Workshops designed to help you move from feeling stuck to creating work that feels unmistakably yours.", linkText: "Browse Workshops", linkUrl: "/learn" }
     ]
   },
   home: {
     aboutSection: {
       image: "https://images.squarespace-cdn.com/content/v1/6182043dd1096334c6d280c8/a2b24cba-294f-4e4f-b4a6-ebaa1b285607/IMG_4502+copy.jpg?format=300w",
-      title: "Two decades of making & guiding",
+      title: "Artist, educator & coach",
       paragraphs: [
         "Every piece I create is designed to be a quiet companion - something that holds meaning for the wearer.",
         "Whether you're drawn to wearable art or looking for strategic guidance, you'll find work made with care."
@@ -158,7 +158,7 @@ const defaultSettings: SiteSettings = {
     tagline: "LYNE TILT",
     location: "Australia-based.",
     established: "Est. 2023",
-    copyright: "© 2025 Lyne Tilt Studio. All rights reserved.",
+    copyright: "© 2023 - 2026 Lyne Tilt Studio. All rights reserved.",
     columns: [],
     socialLinks: []
   },
@@ -222,24 +222,27 @@ export function useSettings() {
   return context;
 }
 
-// Helper function to deep merge objects
+// Helper function to deep merge objects, treating empty strings and empty arrays as missing
 function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
   const result = { ...target };
 
   for (const key in source) {
-    if (source[key] !== undefined) {
-      if (
-        typeof source[key] === 'object' &&
-        source[key] !== null &&
-        !Array.isArray(source[key]) &&
-        typeof target[key] === 'object' &&
-        target[key] !== null &&
-        !Array.isArray(target[key])
-      ) {
-        result[key] = deepMerge(target[key], source[key] as any);
-      } else {
-        result[key] = source[key] as any;
-      }
+    const val = source[key];
+    if (val === undefined || val === null) continue;
+    // Skip empty strings and empty arrays — keep the default
+    if (val === '') continue;
+    if (Array.isArray(val) && val.length === 0 && Array.isArray(target[key]) && target[key].length > 0) continue;
+
+    if (
+      typeof val === 'object' &&
+      !Array.isArray(val) &&
+      typeof target[key] === 'object' &&
+      target[key] !== null &&
+      !Array.isArray(target[key])
+    ) {
+      result[key] = deepMerge(target[key], val as any);
+    } else {
+      result[key] = val as any;
     }
   }
 

@@ -21,7 +21,7 @@ interface WallArtProduct {
   archived?: boolean;
 }
 
-import { API_BASE } from '../config/api';
+import { API_BASE, resolveImageUrl } from '../config/api';
 
 const emptyProduct: Partial<WallArtProduct> = {
   name: '',
@@ -225,7 +225,7 @@ export default function WallArtManager() {
       key: 'image',
       label: 'Image',
       render: (item: WallArtProduct) => (
-        <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
+        <img src={resolveImageUrl(item.image)} alt={item.name} className="w-12 h-12 object-cover rounded" />
       ),
     },
     {

@@ -3,6 +3,7 @@ import { Product } from '../types';
 import { Link } from 'react-router-dom';
 import { ShoppingBag, Check } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { resolveImageUrl } from '../config/api';
 
 interface ProductCardProps {
   product: Product;
@@ -11,17 +12,21 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
-  const { addToCart, cart } = useCart();
+  const { addToCart, removeFromCart, cart } = useCart();
   const isSoldOut = product.availability === 'Sold out';
   const isInCart = cart.some(item => item.id === product.id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isSoldOut && !isInCart) {
-      addToCart(product);
-      setJustAdded(true);
-      setTimeout(() => setJustAdded(false), 2000);
+    if (!isSoldOut) {
+      if (isInCart) {
+        removeFromCart(product.id);
+      } else {
+        addToCart(product);
+        setJustAdded(true);
+        setTimeout(() => setJustAdded(false), 2000);
+      }
     }
   };
 
@@ -34,13 +39,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     >
       <div className={`relative overflow-hidden bg-stone-200 aspect-[4/5] mb-4 ${isSoldOut ? 'opacity-60 grayscale-[50%]' : ''}`}>
         {product.badge && (
-          <span className="absolute top-2 left-2 bg-stone-900/90 text-white px-2 py-1 text-[10px] uppercase tracking-widest z-20">
+          <span className="absolute top-2 left-2 bg-stone-900/90 text-white px-2 py-1 text-[10px] uppercase tracking-widest z-10">
             {product.badge}
           </span>
         )}
 
         {isSoldOut && (
-          <span className="absolute top-2 right-2 bg-stone-400/90 text-white px-3 py-1 text-[10px] uppercase tracking-widest z-20 font-bold">
+          <span className="absolute top-2 right-2 bg-stone-400/90 text-white px-3 py-1 text-[10px] uppercase tracking-widest z-10 font-bold">
             Sold Out
           </span>
         )}
@@ -49,12 +54,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {!isSoldOut && (
           <button
             onClick={handleAddToCart}
-            className={`absolute top-2 right-2 z-20 w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 ${
+            className={`absolute top-2 right-2 z-10 w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 ${
               isInCart || justAdded
                 ? 'bg-green-600 text-white'
                 : 'bg-white/90 text-stone-700 hover:bg-clay hover:text-white shadow-sm'
             }`}
-            title={isInCart ? 'In cart' : 'Add to cart'}
+            title={isInCart ? 'Remove from cart' : 'Add to cart'}
           >
             {isInCart || justAdded ? <Check size={18} /> : <ShoppingBag size={18} />}
           </button>
@@ -62,7 +67,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         {/* Primary Image */}
         <img
-          src={product.image}
+          src={resolveImageUrl(product.image)}
           alt={product.name}
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-out ${isHovered && product.detailImages.length > 0 ? 'opacity-0' : 'opacity-100'}`}
         />
@@ -70,7 +75,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {/* Secondary Image (revealed on hover) */}
         {product.detailImages.length > 0 && (
            <img
-            src={product.detailImages[0]}
+            src={resolveImageUrl(product.detailImages[0])}
             alt={`${product.name} - alternate view`}
             className={`absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out scale-105 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
           />

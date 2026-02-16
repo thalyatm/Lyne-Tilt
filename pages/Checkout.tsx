@@ -1,18 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useCart } from '../context/CartContext';
 import { useCustomerAuth } from '../context/CustomerAuthContext';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Trash2, ShoppingBag, Lock, AlertCircle, Mail, Loader2, CreditCard } from 'lucide-react';
-import { API_BASE, STRIPE_PUBLIC_KEY, isStripeConfigured } from '../config/api';
+import { API_BASE, STRIPE_PUBLIC_KEY, isStripeConfigured, resolveImageUrl } from '../config/api';
 import { trackEvent } from '../lib/analytics';
 import { loadStripe } from '@stripe/stripe-js';
 
 // Initialize Stripe
 const stripePromise = STRIPE_PUBLIC_KEY ? loadStripe(STRIPE_PUBLIC_KEY) : null;
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const Checkout = () => {
-  const { cart, removeFromCart, cartTotal, clearCart } = useCart();
+  const { cart, removeFromCart, cartTotal, clearCart, addToCart } = useCart();
   const { user, isAuthenticated, isVerified, resendVerification } = useCustomerAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => { document.title = 'Checkout | Lyne Tilt'; }, []);
   useEffect(() => { trackEvent('checkout_start'); }, []);
@@ -21,6 +24,82 @@ const Checkout = () => {
   const [sendingVerification, setSendingVerification] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recoveryNotice, setRecoveryNotice] = useState(false);
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestName, setGuestName] = useState('');
+
+  // --- Abandoned cart capture ---
+  const capturedEmailRef = useRef<string | null>(null);
+
+  const captureAbandonedCart = useCallback(async (email: string, customerName?: string) => {
+    if (!EMAIL_REGEX.test(email) || cart.length === 0) return;
+    if (capturedEmailRef.current === email) return;
+    capturedEmailRef.current = email;
+
+    try {
+      await fetch(`${API_BASE}/abandoned-carts/capture`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          customerName: customerName || undefined,
+          items: cart.map(item => ({
+            productId: item.id,
+            productName: item.name,
+            price: String(item.price),
+            quantity: item.quantity,
+            image: item.image || undefined,
+            variant: (item as any).selectedVariant || (item as any).variant || undefined,
+          })),
+        }),
+      });
+    } catch {
+      // Fire-and-forget: silently ignore errors
+    }
+  }, [cart]);
+
+  // Auto-capture for authenticated users (they already have an email)
+  useEffect(() => {
+    if (isAuthenticated && user?.email && cart.length > 0) {
+      captureAbandonedCart(user.email, [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined);
+    }
+  }, [isAuthenticated, user?.email, cart.length, captureAbandonedCart]);
+
+  // --- Cart recovery from ?recover=TOKEN ---
+  useEffect(() => {
+    const token = searchParams.get('recover');
+    if (!token) return;
+
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/abandoned-carts/recover/${token}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const items = data.items || data.cart?.items || [];
+        for (const item of items) {
+          addToCart({
+            id: item.productId,
+            name: item.productName,
+            price: typeof item.price === 'string' ? parseFloat(item.price) : item.price,
+            image: item.image || '',
+            currency: 'AUD',
+            category: '' as any,
+            colours: [],
+            shortDescription: '',
+            longDescription: '',
+            detailImages: [],
+          });
+        }
+        setRecoveryNotice(true);
+        setTimeout(() => setRecoveryNotice(false), 5000);
+      } catch {
+        // Silently ignore recovery errors
+      }
+      // Remove the recover param from URL
+      searchParams.delete('recover');
+      setSearchParams(searchParams, { replace: true });
+    })();
+  }, []); // Run once on mount
 
   const handleResendVerification = async () => {
     setSendingVerification(true);
@@ -141,6 +220,47 @@ const Checkout = () => {
         </div>
       )}
 
+      {/* Cart Recovery Notice */}
+      {recoveryNotice && (
+        <div className="mb-8 p-4 bg-green-50 border border-green-200 flex items-center gap-3">
+          <ShoppingBag className="text-green-600 shrink-0" size={20} />
+          <p className="text-green-800 font-medium text-sm">Your cart has been restored!</p>
+        </div>
+      )}
+
+      {/* Guest Email Capture for Abandoned Cart Recovery */}
+      {!isAuthenticated && (
+        <div className="mb-8 p-6 bg-white border border-stone-200">
+          <h3 className="text-lg font-medium text-stone-900 mb-1">Contact Information</h3>
+          <p className="text-stone-500 text-sm mb-4">Enter your email so we can save your cart and send you order updates.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="guest-email" className="block text-xs uppercase tracking-wider text-stone-600 mb-1">Email *</label>
+              <input
+                id="guest-email"
+                type="email"
+                value={guestEmail}
+                onChange={e => setGuestEmail(e.target.value)}
+                onBlur={() => captureAbandonedCart(guestEmail, guestName || undefined)}
+                placeholder="you@example.com"
+                className="w-full border border-stone-300 px-4 py-3 text-sm focus:outline-none focus:border-stone-900 transition-colors"
+              />
+            </div>
+            <div>
+              <label htmlFor="guest-name" className="block text-xs uppercase tracking-wider text-stone-600 mb-1">Name (optional)</label>
+              <input
+                id="guest-name"
+                type="text"
+                value={guestName}
+                onChange={e => setGuestName(e.target.value)}
+                placeholder="Your name"
+                className="w-full border border-stone-300 px-4 py-3 text-sm focus:outline-none focus:border-stone-900 transition-colors"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Error Message */}
       {error && (
         <div className="mb-8 p-4 bg-red-50 border border-red-200 flex items-start gap-3">
@@ -162,7 +282,7 @@ const Checkout = () => {
               {cart.map(item => (
                 <div key={item.id} className="flex gap-4 pb-6 border-b border-stone-200 last:border-b-0 last:pb-0">
                   <div className="w-24 h-24 bg-stone-200 overflow-hidden flex-shrink-0">
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                    <img src={resolveImageUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-lg font-medium text-stone-900 mb-1">{item.name}</h3>

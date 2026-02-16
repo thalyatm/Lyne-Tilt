@@ -81,7 +81,7 @@ const Contact = () => {
       <div className="max-w-6xl mx-auto">
 
         {/* Contact Info - Horizontal Row */}
-        <div className="flex flex-wrap justify-center items-start gap-8 md:gap-16 mb-12 pb-8 border-b border-stone-200 pt-4">
+        <div className="flex flex-wrap justify-center items-start gap-6 md:gap-16 mb-8 md:mb-12 pb-8 border-b border-stone-200 pt-4">
           <div className="flex flex-col items-center text-center">
             <Mail className="text-clay mb-3" size={24} />
             <h4 className="text-[10px] font-bold uppercase tracking-widest text-stone-900 mb-1">Email</h4>
@@ -100,11 +100,11 @@ const Contact = () => {
         </div>
 
         {/* Intro Message + Form Side by Side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
 
           {/* Personal Message Column */}
-          <div className="bg-stone-100 border border-stone-200 shadow-sm p-8">
-            <h3 className="font-serif text-2xl text-stone-900 mb-6">{contact.welcomeMessage.title}</h3>
+          <div className="bg-stone-100 border border-stone-200 shadow-sm p-5 md:p-8">
+            <h3 className="font-serif text-xl md:text-2xl text-stone-900 mb-4 md:mb-6">{contact.welcomeMessage.title}</h3>
             <div className="text-stone-600 leading-relaxed space-y-4">
               {(contact.welcomeMessage.paragraphs.length > 0 ? contact.welcomeMessage.paragraphs : [
                 "If you've landed here, you're probably ready for something to shift. Maybe a new creative direction, more clarity in your work, or just a conversation about what's possible.",
@@ -136,8 +136,8 @@ const Contact = () => {
                 </button>
              </div>
           ) : (
-            <div className="bg-stone-100 border border-stone-200 shadow-sm p-8">
-              <h3 className="font-serif text-xl text-stone-900 mb-6">Send a Message</h3>
+            <div className="bg-stone-100 border border-stone-200 shadow-sm p-5 md:p-8">
+              <h3 className="font-serif text-xl text-stone-900 mb-4 md:mb-6">Send a Message</h3>
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-1">

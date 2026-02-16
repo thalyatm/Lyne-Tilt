@@ -261,7 +261,7 @@ export default function WorkshopEditor() {
           priceAmount: raw.priceAmount || '',
           currency: raw.currency || 'AUD',
           image: raw.image || '',
-          coverImageUrl: raw.coverImageUrl || '',
+          coverImageUrl: raw.coverImageUrl || raw.image || '',
           deliveryMode: raw.deliveryMode || 'online',
           locationLabel: raw.locationLabel || '',
           duration: raw.duration || '',

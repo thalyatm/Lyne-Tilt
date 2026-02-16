@@ -18,24 +18,24 @@ const Hero = () => {
 
       {/* Centered Layout */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center w-full">
           {/* Left: Image - Centered vertically */}
           <div className="relative flex justify-center items-center">
             <img
               src={hero.image || "https://images.squarespace-cdn.com/content/v1/6182043dd1096334c6d280c8/25307466-b400-4d67-bb64-8763bd9cc285/5.png?format=2500w"}
               alt="Lyne Tilt Art"
-              className="w-full max-w-md h-auto object-cover rounded-3xl"
+              className="w-full max-w-[280px] md:max-w-md h-auto object-cover rounded-3xl"
             />
           </div>
 
           {/* Right: Content - Left aligned */}
-          <div className="relative text-left px-6 py-8 flex flex-col items-start justify-center">
+          <div className="relative text-center lg:text-left px-6 py-8 flex flex-col items-center lg:items-start justify-center">
             {/* Headline */}
             <h1 className="font-serif text-stone-900 mb-6 relative leading-[1.1]">
-              <span className="block text-3xl md:text-5xl lg:text-6xl tracking-tighter animate-fade-in-up mix-blend-darken">
+              <span className="block text-4xl md:text-5xl lg:text-6xl tracking-tighter animate-fade-in-up mix-blend-darken">
                 {hero.headline}
               </span>
-              <span className="block text-3xl md:text-5xl lg:text-6xl italic font-light text-clay mt-2 animate-fade-in-up delay-100 tracking-wide">
+              <span className="block text-4xl md:text-5xl lg:text-6xl italic font-light text-clay mt-2 animate-fade-in-up delay-100 tracking-wide">
                 {hero.tagline}
               </span>
             </h1>
@@ -50,21 +50,15 @@ const Hero = () => {
               {hero.metaTags}
             </p>
 
-            {/* Buttons - Clear hierarchy */}
-            <div className="flex flex-col md:flex-row gap-4 justify-start w-full md:w-auto items-start animate-fade-in-up delay-300">
+            {/* CTA */}
+            <div className="animate-fade-in-up delay-300">
               <Link
-                to={hero.primaryCta.link}
-                className="group relative overflow-hidden bg-stone-900 text-white px-10 py-4 text-[10px] uppercase tracking-[0.25em] font-bold transition-all shadow-xl shadow-stone-200/50 hover:shadow-stone-300 text-center"
+                to="/coaching"
+                className="group relative overflow-hidden bg-stone-900 text-white px-8 py-3 md:px-10 md:py-4 text-[10px] uppercase tracking-[0.25em] font-bold transition-all shadow-xl shadow-stone-200/50 hover:shadow-stone-300 text-center inline-flex items-center gap-3"
               >
-                <span className="relative z-10 group-hover:text-white transition-colors duration-500">{hero.primaryCta.text}</span>
-                <div className="absolute inset-0 bg-red-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left cubic-bezier(0.19, 1, 0.22, 1)"></div>
-              </Link>
-
-              <Link
-                to={hero.secondaryCta.link}
-                className="text-stone-500 px-4 py-4 text-[10px] uppercase tracking-[0.2em] font-medium hover:text-stone-900 transition-colors text-center inline-flex items-center gap-2"
-              >
-                {hero.secondaryCta.text} <ArrowRight size={12} />
+                <span className="relative z-10 group-hover:text-white transition-colors duration-500">Book a 15-Minute Strategy Call</span>
+                <ArrowRight size={12} className="relative z-10" />
+                <div className="absolute inset-0 bg-clay transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
               </Link>
             </div>
           </div>

@@ -12,7 +12,7 @@ export const newsletterRoutes = new Hono<{ Bindings: Bindings; Variables: Variab
 // POST /api/newsletter/subscribe - Public subscription
 newsletterRoutes.post('/subscribe', async (c) => {
   const db = c.get('db');
-  const { email, source } = await c.req.json();
+  const { email, source, name } = await c.req.json();
 
   if (!email) {
     return c.json({ error: 'Email is required' }, 400);
@@ -42,6 +42,7 @@ newsletterRoutes.post('/subscribe', async (c) => {
 
   await db.insert(subscribers).values({
     email,
+    name: name || null,
     source: source || 'website',
     subscribed: true,
   });

@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { ShoppingBag, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import FilterDropdown from '../components/FilterDropdown';
-import { API_BASE } from '../config/api';
+import { API_BASE, resolveImageUrl } from '../config/api';
 
 const WallArt = () => {
   const [wallArtProducts, setWallArtProducts] = useState<WallArtProduct[]>([]);
@@ -209,7 +209,7 @@ const WallArt = () => {
             {/* Image */}
             <Link to={`/wall-art/${product.id}`} className="block relative overflow-hidden aspect-[4/5] bg-stone-100 mb-4">
               <img
-                src={product.image}
+                src={resolveImageUrl(product.image)}
                 alt={product.name}
                 className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${isSoldOut(product) ? 'opacity-60' : ''}`}
               />

@@ -4,7 +4,7 @@ import FormModal, { FormField } from '../components/FormModal';
 import AccordionSection from '../components/AccordionSection';
 import { StringArrayEditor, StatArrayEditor } from '../components/ArrayEditor';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE } from '../config/api';
+import { API_BASE, resolveImageUrl } from '../config/api';
 
 interface LearnItem {
   id: string;
@@ -204,7 +204,7 @@ export default function LearnManager() {
 
   const columns = [
     { key: 'image', label: 'Image', render: (item: LearnItem) => (
-      <img src={item.image} alt={item.title} className="w-12 h-12 object-cover rounded" />
+      <img src={resolveImageUrl(item.image)} alt={item.title} className="w-12 h-12 object-cover rounded" />
     )},
     { key: 'title', label: 'Title' },
     { key: 'type', label: 'Type' },

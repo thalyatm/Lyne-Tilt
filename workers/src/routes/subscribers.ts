@@ -120,15 +120,19 @@ subscribersRoutes.post('/', adminAuth, async (c) => {
 
   if (existing) return c.json({ error: 'Subscriber with this email already exists' }, 409);
 
-  const result = await db.insert(subscribers).values({
-    email: body.email.toLowerCase().trim(),
+  const email = body.email.toLowerCase().trim();
+  await db.insert(subscribers).values({
+    email,
     name: body.name || null,
     firstName: body.firstName || null,
     lastName: body.lastName || null,
     source: body.source || 'manual',
     tags: body.tags || [],
     subscribed: true,
-  }).returning().get();
+  }).run();
+
+  const result = await db.select().from(subscribers)
+    .where(eq(subscribers.email, email)).get();
 
   await logActivity(db, 'create', 'subscriber', result, user);
   return c.json(result, 201);
@@ -257,7 +261,7 @@ subscribersRoutes.put('/:id', adminAuth, async (c) => {
   const existing = await db.select().from(subscribers).where(eq(subscribers.id, id)).get();
   if (!existing) return c.json({ error: 'Subscriber not found' }, 404);
 
-  const result = await db.update(subscribers)
+  await db.update(subscribers)
     .set({
       email: body.email ?? existing.email,
       name: body.name !== undefined ? body.name : existing.name,
@@ -270,11 +274,13 @@ subscribersRoutes.put('/:id', adminAuth, async (c) => {
       updatedAt: new Date().toISOString(),
     })
     .where(eq(subscribers.id, id))
-    .returning()
-    .get();
+    .run();
 
-  await logActivity(db, 'update', 'subscriber', result, user);
-  return c.json(result);
+  const updated = await db.select().from(subscribers)
+    .where(eq(subscribers.id, id)).get();
+
+  await logActivity(db, 'update', 'subscriber', updated, user);
+  return c.json(updated);
 });
 
 // ─── DELETE /:id — Delete subscriber ─────────────────────

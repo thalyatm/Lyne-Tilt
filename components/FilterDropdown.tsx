@@ -28,7 +28,7 @@ function FilterDropdown<T extends string>({ label, value, options, onChange }: F
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
-        className="flex items-center gap-2 px-4 py-2 text-sm text-stone-600 border border-stone-300 rounded-sm hover:border-stone-400 transition-colors bg-white min-w-[160px] justify-between"
+        className="flex items-center gap-2 px-4 py-2 text-sm text-stone-600 border border-stone-300 rounded-sm hover:border-stone-400 transition-colors bg-white min-w-[120px] md:min-w-[160px] justify-between"
       >
         <span className="text-stone-400 text-xs uppercase tracking-wider">{label}:</span>
         <span className="text-stone-800">{value}</span>
@@ -43,7 +43,7 @@ function FilterDropdown<T extends string>({ label, value, options, onChange }: F
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 w-full bg-white border border-stone-200 rounded-sm shadow-lg">
+        <div className="absolute z-30 mt-1 w-full bg-white border border-stone-200 rounded-sm shadow-lg">
           {options.map((option) => (
             <button
               key={option}
