@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { eq, desc, asc, sql, and, or, count } from 'drizzle-orm';
-import { coachingPackages, coachingRevisions, coachingApplications } from '../db/schema';
+import { coachingPackages, coachingRevisions, coachingApplications, coachingClients } from '../db/schema';
 import { logActivity } from '../utils/activityLog';
 import { triggerAutomation } from '../utils/automations';
 import { adminAuth, optionalAdminAuth } from '../middleware/auth';
@@ -232,6 +232,88 @@ coachingRoutes.put('/applications/:id', adminAuth, async (c) => {
   await logActivity(db, 'update', 'coaching_application', updated, user);
 
   return c.json(updated);
+});
+
+// ─── POST /applications/:id/promote — Convert application to coaching client ─
+
+coachingRoutes.post('/applications/:id/promote', adminAuth, async (c) => {
+  const db = c.get('db');
+  const id = c.req.param('id');
+  const user = c.get('user');
+
+  // 1. Get the application by ID
+  const application = await db
+    .select()
+    .from(coachingApplications)
+    .where(eq(coachingApplications.id, id))
+    .get();
+
+  if (!application) {
+    return c.json({ error: 'Application not found' }, 404);
+  }
+
+  // 2. If application already has a clientId, return the existing client
+  if (application.clientId) {
+    const existingClient = await db
+      .select()
+      .from(coachingClients)
+      .where(eq(coachingClients.id, application.clientId))
+      .get();
+
+    if (existingClient) {
+      return c.json(existingClient);
+    }
+  }
+
+  // 3. Check if a coaching client with same email already exists
+  const existingByEmail = await db
+    .select()
+    .from(coachingClients)
+    .where(sql`LOWER(${coachingClients.email}) = ${application.email.toLowerCase().trim()}`)
+    .get();
+
+  if (existingByEmail) {
+    // Link the application to the existing client
+    await db
+      .update(coachingApplications)
+      .set({ clientId: existingByEmail.id, updatedAt: new Date().toISOString() })
+      .where(eq(coachingApplications.id, id));
+
+    return c.json(existingByEmail);
+  }
+
+  // 4. Create new coaching client
+  const now = new Date().toISOString();
+  const newClient = await db
+    .insert(coachingClients)
+    .values({
+      id: crypto.randomUUID(),
+      name: application.name,
+      email: application.email,
+      phone: application.phone || null,
+      source: 'website_form',
+      status: 'discovery',
+      notes: application.reason || null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning()
+    .get();
+
+  // 5. Update application's clientId and status
+  await db
+    .update(coachingApplications)
+    .set({
+      clientId: newClient.id,
+      status: 'scheduled',
+      updatedAt: now,
+    })
+    .where(eq(coachingApplications.id, id));
+
+  await logActivity(db, 'create', 'coaching_client', newClient, user);
+
+  // 6. Return the new client with 201
+  return c.json(newClient, 201);
 });
 
 // ─── GET /:idOrSlug — Get single coaching offer (public) ─
