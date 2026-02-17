@@ -13,7 +13,7 @@ const SectionHeading: React.FC<SectionHeadingProps> = ({ title, subtitle, alignm
   const subColor = light ? 'text-stone-300' : 'text-stone-500';
 
   return (
-    <div className={`mb-10 ${alignClass}`}>
+    <div className={`mb-6 ${alignClass}`}>
       <h2 className={`text-2xl md:text-3xl font-serif font-medium mb-3 ${titleColor}`}>
         {title}
       </h2>

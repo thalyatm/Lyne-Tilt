@@ -9,9 +9,9 @@ const SplitPath = () => {
   const { splitPath } = settings;
 
   return (
-    <section className="w-full py-16 md:py-24 px-6 bg-stone-50">
+    <section className="py-10 md:py-14 px-6 lg:px-12 bg-stone-50 mx-4 md:mx-auto max-w-[92%] md:max-w-[90%] lg:max-w-[90%] rounded-2xl border border-stone-200 relative z-20">
       <div className="max-w-6xl mx-auto">
-        <h2 className="text-2xl md:text-3xl font-serif text-stone-900 text-center mb-8 md:mb-14">
+        <h2 className="text-2xl md:text-3xl font-serif text-stone-900 text-center mb-6 md:mb-8">
           {splitPath.title}
         </h2>
 
@@ -19,7 +19,7 @@ const SplitPath = () => {
           {splitPath.cards.map((card, index) => (
             <div
               key={index}
-              className="group flex flex-col bg-white border border-stone-200 rounded-2xl p-5 md:p-6 text-center md:text-left items-center md:items-start hover:border-stone-300 hover:shadow-lg transition-all duration-500"
+              className="group flex flex-col bg-white border border-stone-200 rounded-2xl p-4 md:p-5 text-center md:text-left items-center md:items-start hover:border-stone-300 hover:shadow-lg transition-all duration-500"
             >
               {/* Clay accent line + label */}
               <div className="mb-3">
