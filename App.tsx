@@ -38,7 +38,6 @@ import CoachingEditor from './admin/pages/CoachingEditor';
 import WorkshopsManager from './admin/pages/WorkshopsManager';
 import WorkshopEditor from './admin/pages/WorkshopEditor';
 import BlogManager from './admin/pages/BlogManager';
-import TestimonialsManager from './admin/pages/TestimonialsManager';
 import FAQsManager from './admin/pages/FAQsManager';
 import SiteSettingsManager from './admin/pages/SiteSettingsManager';
 import NewsletterManager from './admin/pages/NewsletterManager';
@@ -69,8 +68,8 @@ import AnalyticsServices from './admin/pages/AnalyticsServices';
 import MediaLibrary from './admin/pages/MediaLibrary';
 import CustomersManager from './admin/pages/CustomersManager';
 import CustomerDetail from './admin/pages/CustomerDetail';
-import InventoryManager from './admin/pages/InventoryManager';
 import BookingsManager from './admin/pages/BookingsManager';
+import ClientsManager from './admin/pages/ClientsManager';
 import ReviewsManager from './admin/pages/ReviewsManager';
 import AbandonedCartsManager from './admin/pages/AbandonedCartsManager';
 import GiftCardsManager from './admin/pages/GiftCardsManager';
@@ -165,7 +164,6 @@ const App = () => {
               <Route path="cohorts/new" element={<CohortEditor />} />
               <Route path="cohorts/:id" element={<CohortEditor />} />
               <Route path="blog" element={<BlogManager />} />
-              <Route path="testimonials" element={<TestimonialsManager />} />
               <Route path="faqs" element={<FAQsManager />} />
               <Route path="settings" element={<SiteSettingsManager />} />
               <Route path="activity" element={<ActivityLog />} />
@@ -178,7 +176,7 @@ const App = () => {
               <Route path="media" element={<MediaLibrary />} />
               <Route path="customers" element={<CustomersManager />} />
               <Route path="customers/:id" element={<CustomerDetail />} />
-              <Route path="inventory" element={<InventoryManager />} />
+              <Route path="coaching/clients" element={<ClientsManager />} />
               <Route path="bookings" element={<BookingsManager />} />
               <Route path="reviews" element={<ReviewsManager />} />
               <Route path="abandoned-carts" element={<AbandonedCartsManager />} />

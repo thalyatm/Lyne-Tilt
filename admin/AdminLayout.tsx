@@ -46,6 +46,7 @@ interface NavItem {
   icon: React.ComponentType<{ size?: number; className?: string }>;
   label: string;
   end?: boolean;
+  sub?: boolean;
 }
 
 interface NavSection {
@@ -108,8 +109,6 @@ export default function AdminLayout() {
       items: [
         { to: '/admin/orders', icon: Package, label: 'Orders' },
         { to: '/admin/products', icon: ShoppingBag, label: 'Products' },
-        { to: '/admin/inventory', icon: BarChart3, label: 'Inventory' },
-        { to: '/admin/reviews', icon: MessageSquare, label: 'Reviews' },
         { to: '/admin/promotions', icon: Tag, label: 'Promotions' },
         { to: '/admin/abandoned-carts', icon: ShoppingCart, label: 'Abandoned Carts' },
         { to: '/admin/gift-cards', icon: Gift, label: 'Gift Cards' },
@@ -120,7 +119,8 @@ export default function AdminLayout() {
       label: 'Services',
       items: [
         { to: '/admin/coaching', icon: Users, label: 'Coaching' },
-        { to: '/admin/bookings', icon: Clock, label: 'Bookings' },
+        { to: '/admin/coaching/clients', icon: Contact, label: 'Clients', sub: true },
+        { to: '/admin/bookings', icon: Clock, label: 'Bookings', sub: true },
         { to: '/admin/workshops', icon: BookOpen, label: 'Workshops' },
         { to: '/admin/cohorts', icon: CalendarDays, label: 'Cohorts' },
       ],
@@ -129,7 +129,7 @@ export default function AdminLayout() {
       label: 'Content',
       items: [
         { to: '/admin/blog', icon: FileText, label: 'Oxygen Notes' },
-        { to: '/admin/testimonials', icon: Star, label: 'Testimonials' },
+        { to: '/admin/reviews', icon: MessageSquare, label: 'Reviews' },
         { to: '/admin/faqs', icon: HelpCircle, label: 'FAQs' },
         { to: '/admin/media', icon: Image, label: 'Media Library' },
       ],
@@ -277,7 +277,9 @@ export default function AdminLayout() {
                     end={item.end}
                     onClick={() => setSidebarOpen(false)}
                     className={({ isActive }) =>
-                      `flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
+                      `flex items-center gap-2 py-1.5 rounded-md text-sm transition-colors ${
+                        item.sub ? 'pl-7 pr-2' : 'px-2'
+                      } ${
                         isActive
                           ? 'bg-stone-200/60 text-stone-900 font-medium'
                           : 'text-stone-600 hover:bg-stone-100'
@@ -287,7 +289,7 @@ export default function AdminLayout() {
                     {({ isActive }) => (
                       <>
                         <item.icon
-                          size={16}
+                          size={item.sub ? 14 : 16}
                           className={isActive ? 'text-stone-700' : 'text-stone-400'}
                         />
                         <span>{item.label}</span>
