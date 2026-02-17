@@ -70,6 +70,8 @@ import CustomersManager from './admin/pages/CustomersManager';
 import CustomerDetail from './admin/pages/CustomerDetail';
 import BookingsManager from './admin/pages/BookingsManager';
 import ClientsManager from './admin/pages/ClientsManager';
+import ClientDetail from './admin/pages/ClientDetail';
+import ApplicationsManager from './admin/pages/ApplicationsManager';
 import ReviewsManager from './admin/pages/ReviewsManager';
 import AbandonedCartsManager from './admin/pages/AbandonedCartsManager';
 import GiftCardsManager from './admin/pages/GiftCardsManager';
@@ -177,6 +179,8 @@ const App = () => {
               <Route path="customers" element={<CustomersManager />} />
               <Route path="customers/:id" element={<CustomerDetail />} />
               <Route path="coaching/clients" element={<ClientsManager />} />
+              <Route path="coaching/clients/:id" element={<ClientDetail />} />
+              <Route path="coaching/applications" element={<ApplicationsManager />} />
               <Route path="bookings" element={<BookingsManager />} />
               <Route path="reviews" element={<ReviewsManager />} />
               <Route path="abandoned-carts" element={<AbandonedCartsManager />} />
