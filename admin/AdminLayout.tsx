@@ -39,6 +39,7 @@ import {
   Database,
   Moon,
   Sun,
+  ClipboardList,
 } from 'lucide-react';
 
 interface NavItem {
@@ -119,6 +120,7 @@ export default function AdminLayout() {
       label: 'Services',
       items: [
         { to: '/admin/coaching', icon: Users, label: 'Coaching' },
+        { to: '/admin/coaching/applications', icon: ClipboardList, label: 'Applications', sub: true },
         { to: '/admin/coaching/clients', icon: Contact, label: 'Clients', sub: true },
         { to: '/admin/bookings', icon: Clock, label: 'Bookings', sub: true },
         { to: '/admin/workshops', icon: BookOpen, label: 'Workshops' },
