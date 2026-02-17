@@ -109,11 +109,16 @@ export const products = sqliteTable('products', {
   // Descriptions
   shortDescription: text('short_description'),
   longDescription: text('long_description'),
+  careDescription: text('care_description'),
 
   // Organisation
   category: text('category').notNull(),
   tags: text('tags', { mode: 'json' }).$type<string[]>().default([]),
   badge: text('badge'),
+
+  // Product attributes
+  materials: text('materials', { mode: 'json' }).$type<string[]>().default([]),
+  colours: text('colours', { mode: 'json' }).$type<string[]>().default([]),
 
   // Physical attributes (nullable for digital)
   weightGrams: integer('weight_grams'),
@@ -1128,7 +1133,8 @@ export const cohortAttendance = sqliteTable('cohort_attendance', {
 
 export const productReviews = sqliteTable('product_reviews', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  productId: text('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  productId: text('product_id').references(() => products.id, { onDelete: 'set null' }),
+  productName: text('product_name'),
   customerId: text('customer_id').references(() => customerUsers.id),
   customerName: text('customer_name').notNull(),
   customerEmail: text('customer_email').notNull(),
@@ -1137,6 +1143,7 @@ export const productReviews = sqliteTable('product_reviews', {
   body: text('body'),
   status: text('status', { enum: ['pending', 'approved', 'rejected'] }).notNull().default('pending'),
   isVerifiedPurchase: integer('is_verified_purchase', { mode: 'boolean' }).notNull().default(false),
+  featured: integer('featured', { mode: 'boolean' }).notNull().default(false),
   adminResponse: text('admin_response'),
   respondedAt: text('responded_at'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
@@ -1145,6 +1152,7 @@ export const productReviews = sqliteTable('product_reviews', {
   productIdx: index('reviews_product_idx').on(table.productId),
   statusIdx: index('reviews_status_idx').on(table.status),
   customerIdx: index('reviews_customer_idx').on(table.customerId),
+  featuredIdx: index('reviews_featured_idx').on(table.featured),
 }));
 
 // ============================================
@@ -1258,12 +1266,55 @@ export const coachingApplications = sqliteTable('coaching_applications', {
   preferredPackage: text('preferred_package'),
   status: text('status', { enum: ['new', 'contacted', 'scheduled', 'closed'] }).notNull().default('new'),
   notes: text('notes'),
+  clientId: text('client_id').references(() => coachingClients.id, { onDelete: 'set null' }),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => ({
   statusIdx: index('coaching_applications_status_idx').on(table.status),
   createdAtIdx: index('coaching_applications_created_at_idx').on(table.createdAt),
   emailIdx: index('coaching_applications_email_idx').on(table.email),
+  clientIdIdx: index('applications_client_id_idx').on(table.clientId),
+}));
+
+// ============================================
+// COACHING CLIENTS
+// ============================================
+
+export const coachingClients = sqliteTable('coaching_clients', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  phone: text('phone'),
+  status: text('status', { enum: ['prospect', 'discovery', 'active', 'paused', 'completed'] }).notNull().default('prospect'),
+  source: text('source', { enum: ['website_form', 'social_dm', 'referral', 'other'] }).notNull().default('other'),
+  currentPackageId: text('current_package_id').references(() => coachingPackages.id, { onDelete: 'set null' }),
+  goals: text('goals'),
+  notes: text('notes'),
+  communicationPreference: text('communication_preference'),
+  importantDates: text('important_dates', { mode: 'json' }).$type<string[]>().default([]),
+  startDate: text('start_date'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  statusIdx: index('coaching_clients_status_idx').on(table.status),
+  emailIdx: index('coaching_clients_email_idx').on(table.email),
+}));
+
+// ============================================
+// CLIENT NOTES
+// ============================================
+
+export const clientNotes = sqliteTable('client_notes', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: text('client_id').notNull().references(() => coachingClients.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  type: text('type', { enum: ['session', 'general', 'goal'] }).notNull().default('general'),
+  sessionDate: text('session_date'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  clientIdIdx: index('client_notes_client_id_idx').on(table.clientId),
+  typeIdx: index('client_notes_type_idx').on(table.type),
 }));
 
 // ============================================
@@ -1306,12 +1357,14 @@ export const coachingBookings = sqliteTable('coaching_bookings', {
   customerNotes: text('customer_notes'),
   cancelledAt: text('cancelled_at'),
   cancelReason: text('cancel_reason'),
+  clientId: text('client_id').references(() => coachingClients.id, { onDelete: 'set null' }),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => ({
   dateIdx: index('bookings_date_idx').on(table.sessionDate),
   statusIdx: index('bookings_status_idx').on(table.status),
   customerIdx: index('bookings_customer_idx').on(table.customerId),
+  clientIdIdx: index('bookings_client_id_idx').on(table.clientId),
 }));
 
 // ============================================
@@ -1457,4 +1510,14 @@ export const cohortEnrollmentsRelations = relations(cohortEnrollments, ({ one, m
 export const cohortAttendanceRelations = relations(cohortAttendance, ({ one }) => ({
   session: one(cohortSessions, { fields: [cohortAttendance.sessionId], references: [cohortSessions.id] }),
   enrollment: one(cohortEnrollments, { fields: [cohortAttendance.enrollmentId], references: [cohortEnrollments.id] }),
+}));
+
+// Coaching Clients relations
+export const coachingClientsRelations = relations(coachingClients, ({ one, many }) => ({
+  currentPackage: one(coachingPackages, { fields: [coachingClients.currentPackageId], references: [coachingPackages.id] }),
+  notes: many(clientNotes),
+}));
+
+export const clientNotesRelations = relations(clientNotes, ({ one }) => ({
+  client: one(coachingClients, { fields: [clientNotes.clientId], references: [coachingClients.id] }),
 }));
