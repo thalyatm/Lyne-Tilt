@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../config/api';
 import {
@@ -20,6 +21,7 @@ import {
   ToggleLeft,
   ToggleRight,
   AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -40,6 +42,7 @@ interface Booking {
   notes?: string | null;
   status: BookingStatus;
   cancellationReason?: string | null;
+  clientId?: string | null;
   createdAt: string;
 }
 
@@ -1013,9 +1016,19 @@ function BookingsTab({
 
                     {/* Customer */}
                     <td className="px-4 py-3">
-                      <span className="text-sm font-medium text-stone-700">
-                        {booking.customerName}
-                      </span>
+                      {booking.clientId ? (
+                        <Link
+                          to={`/admin/coaching/clients/${booking.clientId}`}
+                          className="text-sm font-medium text-stone-700 hover:text-[#8d3038] inline-flex items-center gap-1"
+                        >
+                          {booking.customerName}
+                          <ExternalLink size={12} className="text-stone-400" />
+                        </Link>
+                      ) : (
+                        <span className="text-sm font-medium text-stone-700">
+                          {booking.customerName}
+                        </span>
+                      )}
                       <p className="text-xs text-stone-400 mt-0.5">{booking.customerEmail}</p>
                     </td>
 

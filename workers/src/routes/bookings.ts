@@ -402,6 +402,7 @@ bookingsRoutes.post('/', adminAuth, async (c) => {
     meetingUrl,
     customerNotes,
     timezone,
+    clientId,
   } = body;
 
   if (!customerName || !customerEmail || !sessionDate || !startTime || !endTime) {
@@ -460,6 +461,7 @@ bookingsRoutes.post('/', adminAuth, async (c) => {
       meetingUrl: meetingUrl || null,
       notes: notes || null,
       customerNotes: customerNotes || null,
+      clientId: clientId || null,
       createdAt: now,
       updatedAt: now,
     })
