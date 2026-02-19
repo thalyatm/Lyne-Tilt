@@ -108,47 +108,109 @@ interface SiteSettings {
 
 const defaultSettings: SiteSettings = {
   hero: {
-    headline: '', tagline: '', subtitle: '', metaTags: '',
-    primaryCta: { text: '', link: '' },
-    secondaryCta: { text: '', link: '' },
-    image: '',
+    headline: 'Art is Oxygen.',
+    tagline: 'Clarity is Power.',
+    subtitle: 'Wearable art & strategic coaching for creatives ready to make meaningful work.',
+    metaTags: 'Wearable Art \u00b7 1:1 Coaching \u00b7 Learn & Create',
+    primaryCta: { text: 'Shop Art', link: '/shop' },
+    secondaryCta: { text: 'Explore Coaching', link: '/coaching' },
+    image: 'https://images.squarespace-cdn.com/content/v1/6182043dd1096334c6d280c8/25307466-b400-4d67-bb64-8763bd9cc285/5.png?format=2500w',
   },
-  splitPath: { title: '', cards: [] },
+  splitPath: {
+    title: 'Your Next Move Starts Here',
+    cards: [
+      { label: 'Handmade in Australia', title: 'Wearable & Wall Art', description: 'Wear your story. Collect what resonates. Original, handmade pieces designed to anchor your identity and bring beauty into your everyday.', linkText: 'Shop Collection', linkUrl: '/shop' },
+      { label: '1:1 Sessions', title: 'Coaching & Mentoring', description: 'Deep work with practical outcomes. Intelligent, experienced coaching for creatives, founders, and deep thinkers ready to recalibrate and move forward with clarity.', linkText: 'Explore Coaching', linkUrl: '/coaching' },
+      { label: 'Online & In-Person', title: 'Learn & Create', description: 'Break free from the scroll, the trends, and the sameness. Workshops designed to help you move from feeling stuck to creating work that feels unmistakably yours.', linkText: 'Browse Workshops', linkUrl: '/learn' },
+    ],
+  },
   home: {
-    aboutSection: { image: '', title: '', paragraphs: [], linkText: '', linkUrl: '' },
-    shopCta: { title: '', subtitle: '', buttonText: '' },
+    aboutSection: {
+      image: 'https://images.squarespace-cdn.com/content/v1/6182043dd1096334c6d280c8/a2b24cba-294f-4e4f-b4a6-ebaa1b285607/IMG_4502+copy.jpg?format=300w',
+      title: 'Artist, educator & coach',
+      paragraphs: [
+        'Every piece I create is designed to be a quiet companion - something that holds meaning for the wearer.',
+        "Whether you're drawn to wearable art or looking for strategic guidance, you'll find work made with care.",
+      ],
+      linkText: 'Read My Story',
+      linkUrl: '/about',
+    },
+    shopCta: {
+      title: 'Shop the Collection',
+      subtitle: 'Handmade polymer clay earrings & brooches - each one of a kind.',
+      buttonText: 'View Full Collection',
+    },
   },
   about: {
-    header: { title: '', subtitle: '', location: '' },
+    header: { title: 'About Lyne Tilt', subtitle: 'Artist. Educator. Creative Strategist. Coach.', location: 'Brisbane, Australia' },
     heroImage: '',
-    philosophy: { quote: '', paragraphs: [] },
-    howIShowUp: { cards: [] },
-    journey: { title: '', description: '', stats: [], credentials: [] },
-    whoThisIsFor: { title: '', subtitle: '', items: [] },
-    cta: { title: '', description: '', buttonText: '', buttonUrl: '' },
+    philosophy: {
+      quote: 'I believe that art is oxygen, and clarity is power.',
+      paragraphs: [
+        'Whether we\u2019re creating, collecting, building, or leading, we need creative expression to stay connected to ourselves and the lives we want to live. Every offer I create, a painting, a ring, a workshop, or a coaching call, is an invitation to take yourself seriously. To act with intention. To step into the next version of who you want to be.',
+        'For over two decades, I\u2019ve helped people do exactly that.',
+        'My professional background spans Fine Art, Literature, Education, Human Behaviour, and most recently, Nutrition and Integrative Health. I hold First Class Honours in Education and completed Honours research through Griffith University examining identity and belonging in adolescent girls. That early work still drives me, because at every stage of life the question remains: what would it take to truly belong to yourself?',
+        'As a former educator and wellbeing leader in schools, I\u2019ve led thousands of people toward more focused, values-aligned ways of living and working. Over the last five years, I\u2019ve coached more than 200 artists, creatives, and business owners, helping them find their voice, clarify their message, and build with purpose.',
+      ],
+    },
+    howIShowUp: { cards: [
+      { title: 'As a Maker', description: 'If you wear my jewellery or collect my art, you\'re not just choosing beauty. You\'re anchoring into something bold and personal.', linkText: 'Shop Collection', linkUrl: '/shop' },
+      { title: 'As an Educator', description: 'If you attend one of my classes or workshops, you\'re not just learning a skill. You\'re engaging with your mindset, your capacity, and your creative identity.', linkText: 'View Workshops', linkUrl: '/learn' },
+      { title: 'As a Coach', description: 'If you work with me as a coach, we\'ll get to the heart of what\'s holding you back and build the strategy and structure to move through it.', linkText: 'Learn More', linkUrl: '/coaching' },
+    ] },
+    journey: {
+      title: 'A Background Built for Clarity + Action',
+      description: 'I\u2019m a qualified Nutrition Coach and an ICF-eligible professional coach, combining evidence-based mindset and behaviour change approaches with creative strategy and communication.',
+      stats: [
+        { value: '20+', label: 'Years in Education' },
+        { value: '200+', label: 'Creatives Coached' },
+        { value: '2500+', label: 'Students Taught' },
+        { value: '5+', label: 'Disciplines' },
+      ],
+      credentials: ['Fine Art', 'Education (Hons)', 'ICF-Eligible Coach', 'Nutrition Coach', 'Creative Strategy', 'Founder, Studio on Brunswick'],
+    },
+    whoThisIsFor: {
+      title: 'Who I Work With',
+      subtitle: 'I work with people who are ready to show up with more intention, creatively, professionally, and personally.',
+      items: [
+        'People starting or returning to a creative practice after a long break',
+        'People creating or refining businesses that reflect their values',
+        'People ready to stop playing small in life, work, or leadership',
+      ],
+    },
+    cta: {
+      title: 'Want to Work With Lyne?',
+      description: 'Whether you\u2019re looking to book a guest speaker, collaborate on a creative project, or schedule a free 15-minute strategy call.',
+      buttonText: 'Get in Touch',
+      buttonUrl: '/contact',
+    },
   },
   coaching: {
-    hero: { title: '', subtitle: '', description: '' },
-    isThisForYou: { title: '', subtitle: '', items: [] },
-    whatYoullExperience: { title: '', subtitle: '', cards: [] },
-    howItWorks: { title: '', subtitle: '', steps: [] },
+    hero: { title: 'Coaching & Mentoring', subtitle: 'Artist Transformation', description: 'Whether you\u2019re seeking a coach to challenge your thinking or a mentor to guide your creative path, this is your space to transform.' },
+    isThisForYou: { title: 'Is This For You?', subtitle: '', items: [] },
+    whatYoullExperience: { title: "What You'll Experience", subtitle: '', cards: [] },
+    howItWorks: { title: 'How It Works', subtitle: '', steps: [] },
   },
   learn: {
-    hero: { title: '', subtitle: '', description: '' },
-    instructorBio: { name: '', paragraphs: [], stats: [] },
-    newsletterSignup: { title: '', description: '' },
+    hero: { title: 'Unlock Your Creative Potential', subtitle: 'Learn & Create', description: 'From self-paced courses to live workshops and in-person experiences. Learn at your own pace, connect with a community, and build the creative skills that last.' },
+    instructorBio: { name: 'Lyne Tilt', paragraphs: [], stats: [] },
+    newsletterSignup: { title: 'Not Ready to Enrol?', description: '' },
   },
   contact: {
-    header: { title: '', subtitle: '' },
-    welcomeMessage: { title: '', paragraphs: [] },
-    formSubjects: [],
-    info: { email: '', location: '', responseTime: '' },
-    coachingCallout: { title: '', description: '' },
+    header: { title: 'Start a Conversation', subtitle: 'Get In Touch' },
+    welcomeMessage: { title: 'Hey there, it\u2019s great to see you.', paragraphs: [] },
+    formSubjects: ['General Inquiry', 'Coaching Application', 'Speaking Request'],
+    info: { email: 'hello@lynetilt.com', location: 'Brisbane, Australia', responseTime: '1-2 business days' },
+    coachingCallout: { title: 'Coaching Applications', description: '' },
   },
   productDetail: { materialsAndCare: '', shippingAndReturns: '' },
   footer: {
-    tagline: '', location: '', established: '', copyright: '',
-    columns: [], socialLinks: [],
+    tagline: 'LYNE TILT',
+    location: 'Australia-based.',
+    established: 'Est. 2023',
+    copyright: '\u00a9 2023 - 2026 Lyne Tilt Studio. All rights reserved.',
+    columns: [],
+    socialLinks: [],
   },
   sections: {
     showTestimonials: true, showNewsletter: true,
@@ -404,10 +466,16 @@ export default function SiteSettingsManager() {
   function deepMerge(target: any, source: any): any {
     const result = { ...target };
     for (const key of Object.keys(source)) {
-      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-        result[key] = deepMerge(target[key] || {}, source[key]);
+      const val = source[key];
+      if (val === undefined || val === null) continue;
+      // Skip empty strings from API — keep the default content
+      if (val === '' && target[key] !== '') continue;
+      // Skip empty arrays from API — keep the default content
+      if (Array.isArray(val) && val.length === 0 && Array.isArray(target[key]) && target[key].length > 0) continue;
+      if (val && typeof val === 'object' && !Array.isArray(val)) {
+        result[key] = deepMerge(target[key] || {}, val);
       } else {
-        result[key] = source[key];
+        result[key] = val;
       }
     }
     return result;

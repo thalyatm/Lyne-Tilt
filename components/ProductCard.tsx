@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
 import { Link } from 'react-router-dom';
-import { ShoppingBag, Check } from 'lucide-react';
+import { ShoppingBag, Check, Heart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
+import { useCustomerAuth } from '../context/CustomerAuthContext';
 import { resolveImageUrl } from '../config/api';
 
 interface ProductCardProps {
@@ -13,8 +15,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const { addToCart, removeFromCart, cart } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
+  const { isAuthenticated, openAuthModal } = useCustomerAuth();
   const isSoldOut = product.availability === 'Sold out';
   const isInCart = cart.some(item => item.id === product.id);
+  const isOnSale = product.compareAtPrice && product.compareAtPrice < product.price;
+  const wishlisted = isInWishlist(product.id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -23,7 +29,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       if (isInCart) {
         removeFromCart(product.id);
       } else {
-        addToCart(product);
+        // Use sale price if applicable
+        const effectiveProduct = isOnSale
+          ? { ...product, price: product.compareAtPrice! }
+          : product;
+        addToCart(effectiveProduct);
         setJustAdded(true);
         setTimeout(() => setJustAdded(false), 2000);
       }
@@ -38,9 +48,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className={`relative overflow-hidden bg-stone-200 aspect-[4/5] mb-4 ${isSoldOut ? 'opacity-60 grayscale-[50%]' : ''}`}>
-        {product.badge && (
-          <span className="absolute top-2 left-2 bg-stone-900/90 text-white px-2 py-1 text-[10px] uppercase tracking-widest z-10">
-            {product.badge}
+        {(product.badge || isOnSale) && (
+          <span className={`absolute top-2 left-2 text-white px-2 py-1 text-[10px] uppercase tracking-widest z-10 ${isOnSale && !product.badge ? 'bg-clay/90' : 'bg-stone-900/90'}`}>
+            {product.badge || 'Sale'}
           </span>
         )}
 
@@ -50,20 +60,41 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </span>
         )}
 
-        {/* Add to Cart Button */}
-        {!isSoldOut && (
+        {/* Wishlist + Cart Buttons */}
+        <div className="absolute top-2 right-2 z-10 flex flex-col gap-1.5">
           <button
-            onClick={handleAddToCart}
-            className={`absolute top-2 right-2 z-10 w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 ${
-              isInCart || justAdded
-                ? 'bg-green-600 text-white'
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!isAuthenticated) {
+                openAuthModal('login');
+                return;
+              }
+              toggleWishlist(product.id);
+            }}
+            className={`w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 ${
+              wishlisted
+                ? 'bg-clay text-white'
                 : 'bg-white/90 text-stone-700 hover:bg-clay hover:text-white shadow-sm'
             }`}
-            title={isInCart ? 'Remove from cart' : 'Add to cart'}
+            title={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           >
-            {isInCart || justAdded ? <Check size={18} /> : <ShoppingBag size={18} />}
+            <Heart size={18} className={wishlisted ? 'fill-white' : ''} />
           </button>
-        )}
+          {!isSoldOut && (
+            <button
+              onClick={handleAddToCart}
+              className={`w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 ${
+                isInCart || justAdded
+                  ? 'bg-green-600 text-white'
+                  : 'bg-white/90 text-stone-700 hover:bg-clay hover:text-white shadow-sm'
+              }`}
+              title={isInCart ? 'Remove from cart' : 'Add to cart'}
+            >
+              {isInCart || justAdded ? <Check size={18} /> : <ShoppingBag size={18} />}
+            </button>
+          )}
+        </div>
 
         {/* Primary Image */}
         <img
@@ -92,7 +123,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         <h3 className="text-lg font-serif text-stone-900 mb-2">
           {product.name}
         </h3>
-        <p className="text-stone-800 font-bold text-base mb-1">${product.price} {product.currency}</p>
+        {isOnSale ? (
+          <p className="text-base mb-1">
+            <span className="line-through text-stone-400 font-normal mr-2">${product.price}</span>
+            <span className="text-clay font-bold">${product.compareAtPrice} {product.currency}</span>
+          </p>
+        ) : (
+          <p className="text-stone-800 font-bold text-base mb-1">${product.price} {product.currency}</p>
+        )}
         {product.availability && <p className="text-[10px] text-clay font-medium uppercase tracking-wide">{product.availability}</p>}
       </div>
     </Link>

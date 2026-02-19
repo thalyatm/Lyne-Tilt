@@ -105,6 +105,30 @@ subscribersRoutes.get('/', adminAuth, async (c) => {
   });
 });
 
+// ─── GET /stats — Subscriber count summaries ─────────────────
+subscribersRoutes.get('/stats', adminAuth, async (c) => {
+  const db = c.get('db');
+
+  const [totalResult, activeResult, unsubscribedResult, newThisMonthResult] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(subscribers).get(),
+    db.select({ count: sql<number>`count(*)` }).from(subscribers).where(eq(subscribers.subscribed, true)).get(),
+    db.select({ count: sql<number>`count(*)` }).from(subscribers).where(eq(subscribers.subscribed, false)).get(),
+    db.select({ count: sql<number>`count(*)` }).from(subscribers).where(
+      and(
+        eq(subscribers.subscribed, true),
+        sql`${subscribers.subscribedAt} >= date('now', 'start of month')`
+      )
+    ).get(),
+  ]);
+
+  return c.json({
+    total: totalResult?.count ?? 0,
+    active: activeResult?.count ?? 0,
+    unsubscribed: unsubscribedResult?.count ?? 0,
+    newThisMonth: newThisMonthResult?.count ?? 0,
+  });
+});
+
 // ─── POST / — Manually add a subscriber ─────────────────
 subscribersRoutes.post('/', adminAuth, async (c) => {
   const db = c.get('db');

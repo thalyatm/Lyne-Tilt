@@ -16,6 +16,8 @@ import {
   emailAutomations,
   automationQueue,
   coachingBookings,
+  coachingApplications,
+  productReviews,
 } from '../db/schema';
 import { adminAuth } from '../middleware/auth';
 import type { Bindings, Variables } from '../index';
@@ -33,6 +35,49 @@ function last30Days(): string[] {
   }
   return dates;
 }
+
+// ─── GET /badge-counts — Sidebar notification badges ─────
+
+dashboardRoutes.get('/badge-counts', adminAuth, async (c) => {
+  const db = c.get('db');
+
+  const [
+    newApplications,
+    pendingReviews,
+    ordersToFulfill,
+    unreadMessages,
+    pendingBookings,
+  ] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` })
+      .from(coachingApplications)
+      .where(sql`${coachingApplications.status} IN ('new', 'contacted_retry')`)
+      .get().catch(() => ({ count: 0 })),
+    db.select({ count: sql<number>`count(*)` })
+      .from(productReviews)
+      .where(eq(productReviews.status, 'pending'))
+      .get().catch(() => ({ count: 0 })),
+    db.select({ count: sql<number>`count(*)` })
+      .from(orders)
+      .where(sql`${orders.status} IN ('pending', 'confirmed')`)
+      .get().catch(() => ({ count: 0 })),
+    db.select({ count: sql<number>`count(*)` })
+      .from(contactSubmissions)
+      .where(eq(contactSubmissions.status, 'unread'))
+      .get().catch(() => ({ count: 0 })),
+    db.select({ count: sql<number>`count(*)` })
+      .from(coachingBookings)
+      .where(eq(coachingBookings.status, 'pending'))
+      .get().catch(() => ({ count: 0 })),
+  ]);
+
+  return c.json({
+    '/admin/coaching/applications': newApplications?.count ?? 0,
+    '/admin/reviews': pendingReviews?.count ?? 0,
+    '/admin/orders': ordersToFulfill?.count ?? 0,
+    '/admin/inbox': unreadMessages?.count ?? 0,
+    '/admin/bookings': pendingBookings?.count ?? 0,
+  });
+});
 
 // ─── GET /overview — Full dashboard data ─────────────────
 
@@ -54,10 +99,10 @@ dashboardRoutes.get('/overview', adminAuth, async (c) => {
     campaignClicks,
     campaignDelivered,
   ] = await Promise.all([
-    // Revenue last 30d
+    // Revenue last 30d (all orders)
     db.select({ total: sql<number>`COALESCE(SUM(CAST(${orders.total} AS REAL)), 0)` })
       .from(orders)
-      .where(and(gte(orders.createdAt, cutoff), eq(orders.status, 'confirmed')))
+      .where(gte(orders.createdAt, cutoff))
       .get(),
     // Orders last 30d
     db.select({ count: sql<number>`count(*)` })
@@ -108,7 +153,7 @@ dashboardRoutes.get('/overview', adminAuth, async (c) => {
       value: sql<number>`COALESCE(SUM(CAST(${orders.total} AS REAL)), 0)`,
     })
       .from(orders)
-      .where(and(gte(orders.createdAt, cutoff), eq(orders.status, 'confirmed')))
+      .where(gte(orders.createdAt, cutoff))
       .groupBy(sql`DATE(${orders.createdAt})`)
       .all(),
     // Subscribers by day
@@ -212,40 +257,30 @@ dashboardRoutes.get('/overview', adminAuth, async (c) => {
     });
   }
 
-  // Low stock products
-  const lowStockProducts = await db.select({
-    id: products.id,
-    name: products.name,
-    quantity: products.quantity,
-  })
-    .from(products)
-    .where(and(
-      eq(products.status, 'active'),
-      eq(products.trackInventory, true),
-      sql`${products.quantity} < 5`,
-    ))
-    .orderBy(products.quantity)
-    .all();
-
-  for (const p of lowStockProducts) {
-    if (p.quantity === 0) {
-      warnings.push({
-        id: `out-of-stock-${p.id}`,
-        kind: 'inventory',
-        severity: 'high',
-        message: `${p.name} is out of stock`,
-        href: '/admin/inventory',
-      });
-    } else {
-      warnings.push({
-        id: `low-stock-${p.id}`,
-        kind: 'inventory',
-        severity: 'medium',
-        message: `${p.name} is low on stock (${p.quantity} left)`,
-        href: '/admin/inventory',
-      });
-    }
-  }
+  // ── Action items ────────────────────────────────────────
+  const [
+    newApplications,
+    pendingReviews,
+    ordersToFulfill,
+    pendingBookings,
+  ] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` })
+      .from(coachingApplications)
+      .where(eq(coachingApplications.status, 'new'))
+      .get().catch(() => ({ count: 0 })),
+    db.select({ count: sql<number>`count(*)` })
+      .from(productReviews)
+      .where(eq(productReviews.status, 'pending'))
+      .get().catch(() => ({ count: 0 })),
+    db.select({ count: sql<number>`count(*)` })
+      .from(orders)
+      .where(sql`${orders.status} IN ('pending', 'confirmed')`)
+      .get().catch(() => ({ count: 0 })),
+    db.select({ count: sql<number>`count(*)` })
+      .from(coachingBookings)
+      .where(eq(coachingBookings.status, 'pending'))
+      .get().catch(() => ({ count: 0 })),
+  ]);
 
   // ── Upcoming bookings (next 7 days) ───────────────────
   const sevenDaysFromNow = new Date();
@@ -253,7 +288,7 @@ dashboardRoutes.get('/overview', adminAuth, async (c) => {
   const nowISO = new Date().toISOString().split('T')[0];
   const futureISO = sevenDaysFromNow.toISOString().split('T')[0];
 
-  const [upcomingBookings, pendingOrders] = await Promise.all([
+  const [upcomingBookings, scheduledCalls, pendingOrders] = await Promise.all([
     db.select({
       id: coachingBookings.id,
       customerName: coachingBookings.customerName,
@@ -270,6 +305,22 @@ dashboardRoutes.get('/overview', adminAuth, async (c) => {
       .orderBy(coachingBookings.sessionDate)
       .limit(5)
       .all().catch(() => []),
+    // Scheduled coaching application calls (upcoming + recent past needing outcome)
+    db.select({
+      id: coachingApplications.id,
+      name: coachingApplications.name,
+      scheduledCallAt: coachingApplications.scheduledCallAt,
+      scheduledCallTimezone: coachingApplications.scheduledCallTimezone,
+      status: coachingApplications.status,
+    })
+      .from(coachingApplications)
+      .where(and(
+        eq(coachingApplications.status, 'scheduled'),
+        sql`${coachingApplications.scheduledCallAt} IS NOT NULL`,
+      ))
+      .orderBy(coachingApplications.scheduledCallAt)
+      .limit(10)
+      .all().catch(() => []),
     db.select({
       id: orders.id,
       orderNumber: orders.orderNumber,
@@ -279,9 +330,9 @@ dashboardRoutes.get('/overview', adminAuth, async (c) => {
       createdAt: orders.createdAt,
     })
       .from(orders)
-      .where(eq(orders.status, 'pending'))
+      .where(sql`${orders.status} IN ('pending', 'confirmed')`)
       .orderBy(desc(orders.createdAt))
-      .limit(5)
+      .limit(10)
       .all().catch(() => []),
   ]);
 
@@ -324,18 +375,42 @@ dashboardRoutes.get('/overview', adminAuth, async (c) => {
         failing: autoFailing?.count ?? 0,
       },
     },
+    actions: {
+      new_applications: newApplications?.count ?? 0,
+      pending_reviews: pendingReviews?.count ?? 0,
+      orders_to_fulfill: ordersToFulfill?.count ?? 0,
+      unread_messages: unreadMessages?.count ?? 0,
+      pending_bookings: pendingBookings?.count ?? 0,
+    },
     ops: {
       warnings,
     },
     schedule: {
-      upcoming_bookings: upcomingBookings.map(b => ({
-        id: b.id,
-        customer_name: b.customerName,
-        session_date: b.sessionDate,
-        start_time: b.startTime,
-        status: b.status,
-        href: '/admin/bookings',
-      })),
+      upcoming_bookings: [
+        ...upcomingBookings.map(b => ({
+          id: b.id,
+          customer_name: b.customerName,
+          session_date: b.sessionDate,
+          start_time: b.startTime,
+          status: b.status,
+          type: 'booking' as const,
+          href: '/admin/bookings',
+        })),
+        ...scheduledCalls.map(a => {
+          const callDate = a.scheduledCallAt ? a.scheduledCallAt.split('T')[0] : '';
+          const callTime = a.scheduledCallAt && a.scheduledCallAt.includes('T') ? a.scheduledCallAt.split('T')[1]?.slice(0, 5) : '';
+          const isPast = a.scheduledCallAt ? new Date(a.scheduledCallAt) < new Date() : false;
+          return {
+            id: `app-${a.id}`,
+            customer_name: a.name,
+            session_date: callDate,
+            start_time: callTime,
+            status: isPast ? 'outcome_required' : 'scheduled',
+            type: 'call' as const,
+            href: '/admin/coaching/applications',
+          };
+        }),
+      ].sort((a, b) => a.session_date.localeCompare(b.session_date)),
     },
     pendingOrders: pendingOrders.map(o => ({
       id: o.id,

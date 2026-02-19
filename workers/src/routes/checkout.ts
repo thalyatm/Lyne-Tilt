@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { eq, inArray, or, sql } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { products, coachingPackages, orders, orderItems } from '../db/schema';
 import type { Bindings, Variables } from '../index';
@@ -27,24 +27,39 @@ checkoutRoutes.post('/create-session', async (c) => {
   const productIds = items.filter((i: any) => i.type === 'product').map((i: any) => i.id);
   const coachingIds = items.filter((i: any) => i.type === 'coaching').map((i: any) => i.id);
 
-  // Fetch products and coaching packages
+  // Fetch products by id OR slug (frontend may send slugs as identifiers)
   const fetchedProducts = productIds.length > 0
-    ? await db.select().from(products).where(inArray(products.id, productIds)).all()
+    ? await db.select().from(products).where(
+        or(inArray(products.id, productIds), inArray(products.slug, productIds))
+      ).all()
     : [];
 
   const fetchedCoaching = coachingIds.length > 0
     ? await db.select().from(coachingPackages).where(inArray(coachingPackages.id, coachingIds)).all()
     : [];
 
-  // Build quantity map
-  const quantityMap = new Map(items.map((i: any) => [i.id, i.quantity || 1]));
+  // Build quantity map (map both id and slug to quantity for lookup)
+  const quantityMap = new Map<string, number>(items.map((i: any) => [i.id, i.quantity || 1]));
 
   // Build line items for Stripe
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
+  let subtotalCents = 0;
   for (const product of fetchedProducts) {
-    const quantity = quantityMap.get(product.id) || 1;
+    // Look up quantity by id or slug since frontend may send either
+    const quantity = quantityMap.get(product.id) || quantityMap.get(product.slug) || 1;
     const priceInCents = Math.round(parseFloat(product.price) * 100);
+    subtotalCents += priceInCents * quantity;
+
+    // Stripe requires absolute URLs for product images
+    let imageUrl: string | undefined;
+    if (product.image) {
+      if (product.image.startsWith('http')) {
+        imageUrl = product.image;
+      } else if (product.image.startsWith('/')) {
+        imageUrl = `${apiBaseUrl}${product.image}`;
+      }
+    }
 
     lineItems.push({
       price_data: {
@@ -52,12 +67,29 @@ checkoutRoutes.post('/create-session', async (c) => {
         product_data: {
           name: product.name,
           description: product.shortDescription || undefined,
-          images: product.image ? [product.image] : undefined,
+          images: imageUrl ? [imageUrl] : undefined,
         },
         unit_amount: priceInCents,
       },
       quantity,
     });
+  }
+
+  // Add shipping as a line item for physical products (once per order)
+  if (fetchedProducts.length > 0) {
+    const subtotalDollars = subtotalCents / 100;
+    if (subtotalDollars < 100) {
+      lineItems.push({
+        price_data: {
+          currency: 'aud',
+          product_data: {
+            name: 'Shipping',
+          },
+          unit_amount: 1500, // $15.00 AUD
+        },
+        quantity: 1,
+      });
+    }
   }
 
   for (const coaching of fetchedCoaching) {
@@ -77,8 +109,21 @@ checkoutRoutes.post('/create-session', async (c) => {
     });
   }
 
+  if (lineItems.length === 0) {
+    return c.json({ error: 'No valid items found. Please try again.' }, 400);
+  }
+
   // Create checkout session
   const baseUrl = c.env.FRONTEND_URL || 'https://lyne-tilt.pages.dev';
+  const apiBaseUrl = 'https://lyne-tilt-api.verdant-digital-co.workers.dev';
+
+  // Build quantities map using real product IDs and slugs for webhook lookup
+  const quantitiesForMeta: Record<string, number> = {};
+  for (const product of fetchedProducts) {
+    const qty = quantityMap.get(product.id) || quantityMap.get(product.slug) || 1;
+    quantitiesForMeta[product.id] = qty;
+    quantitiesForMeta[product.slug] = qty;
+  }
 
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
@@ -91,11 +136,9 @@ checkoutRoutes.post('/create-session', async (c) => {
       allowed_countries: ['AU'],
     } : undefined,
     metadata: {
-      productIds: productIds.join(','),
+      productIds: fetchedProducts.map(p => p.id).join(','),
       coachingIds: coachingIds.join(','),
-      productQuantities: JSON.stringify(Object.fromEntries(
-        items.filter((i: any) => i.type === 'product').map((i: any) => [i.id, i.quantity || 1])
-      )),
+      productQuantities: JSON.stringify(quantitiesForMeta),
     },
   });
 
@@ -163,7 +206,7 @@ checkoutRoutes.post('/webhook', async (c) => {
       } catch {}
 
       const orderedProducts = await db.select().from(products)
-        .where(inArray(products.id, productIds))
+        .where(or(inArray(products.id, productIds), inArray(products.slug, productIds)))
         .all();
 
       // Generate order number
@@ -191,7 +234,7 @@ checkoutRoutes.post('/webhook', async (c) => {
 
       // Create order items
       for (const product of orderedProducts) {
-        const quantity = productQuantities[product.id] || 1;
+        const quantity = productQuantities[product.id] || productQuantities[product.slug] || 1;
 
         await db.insert(orderItems).values({
           orderId: order.id,
@@ -205,7 +248,7 @@ checkoutRoutes.post('/webhook', async (c) => {
 
       // Deduct inventory and update availability
       for (const product of orderedProducts) {
-        const qty = productQuantities[product.id] || 1;
+        const qty = productQuantities[product.id] || productQuantities[product.slug] || 1;
 
         if (product.trackInventory) {
           const newQuantity = Math.max(0, product.quantity - qty);

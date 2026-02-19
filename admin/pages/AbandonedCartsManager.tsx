@@ -107,15 +107,15 @@ function StatCard({
 }) {
   return (
     <div
-      className="bg-white rounded-xl border border-stone-200 p-4 flex items-center gap-4"
+      className="bg-white rounded-xl border border-stone-200 px-4 py-2.5 flex items-center gap-3"
       style={{ borderLeftWidth: '4px', borderLeftColor: borderColor }}
     >
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${accent}`}>
-        <Icon size={18} />
+      <div className={`w-7 h-7 rounded-md flex items-center justify-center ${accent}`}>
+        <Icon size={14} />
       </div>
       <div>
-        <p className="text-2xl font-semibold text-stone-900">{value}</p>
-        <p className="text-xs text-stone-500">{label}</p>
+        <p className="text-xl font-semibold text-stone-900 leading-tight">{value}</p>
+        <p className="text-[11px] text-stone-500">{label}</p>
       </div>
     </div>
   );
@@ -303,12 +303,18 @@ export default function AbandonedCartsManager() {
         },
       });
 
-      if (!res.ok) throw new Error('Failed to send reminder');
+      const data = await res.json().catch(() => null);
 
-      toast.success('Recovery email sent successfully');
+      if (!res.ok) {
+        const errorMsg = data?.error || 'Failed to send recovery email';
+        toast.error(errorMsg);
+        return;
+      }
+
+      toast.success(data?.message || 'Recovery email sent successfully');
       fetchCarts();
     } catch {
-      toast.error('Failed to send recovery email');
+      toast.error('Failed to send recovery email — check your network connection');
     } finally {
       setSendingReminder(null);
     }

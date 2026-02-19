@@ -17,6 +17,8 @@ import {
   Eye,
   Pencil,
   Package,
+  FileText,
+  AlertTriangle,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -61,6 +63,25 @@ const PAGE_SIZE = 25;
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
+
+function StatCard({
+  icon: Icon, label, value, borderColor, accent,
+}: {
+  icon: React.ElementType; label: string; value: string | number; borderColor: string; accent: string;
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-stone-200 px-4 py-2.5 flex items-center gap-3"
+      style={{ borderLeftWidth: '4px', borderLeftColor: borderColor }}>
+      <div className={`w-7 h-7 rounded-md flex items-center justify-center ${accent}`}>
+        <Icon size={14} />
+      </div>
+      <div>
+        <p className="text-xl font-semibold text-stone-900 leading-tight">{value}</p>
+        <p className="text-[11px] text-stone-500">{label}</p>
+      </div>
+    </div>
+  );
+}
 
 function StatusBadge({ status }: { status: ProductStatus }) {
   const styles: Record<ProductStatus, string> = {
@@ -160,6 +181,36 @@ function RowActionsMenu({
   );
 }
 
+function SortHeader({
+  label,
+  column,
+  activeColumn,
+  direction,
+  onClick,
+}: {
+  label: string;
+  column: string;
+  activeColumn: string;
+  direction: 'asc' | 'desc';
+  onClick: (col: string) => void;
+}) {
+  const isActive = activeColumn === column;
+  return (
+    <th
+      className="px-4 py-2.5 text-left text-[11px] font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700 select-none"
+      onClick={() => onClick(column)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {isActive && (
+          <span className="text-stone-900">{direction === 'asc' ? '\u25b2' : '\u25bc'}</span>
+        )}
+        {!isActive && <span className="text-stone-300">{'\u25b2'}</span>}
+      </span>
+    </th>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
@@ -174,6 +225,15 @@ export default function ProductsManager() {
     page: 1, limit: PAGE_SIZE, total: 0, totalPages: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<{
+    active: number;
+    draft: number;
+    archived: number;
+    inStock: number;
+    soldOut: number;
+    byCategory: Array<{ category: string; count: number }>;
+    byType: Array<{ productType: string; count: number }>;
+  } | null>(null);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -183,6 +243,10 @@ export default function ProductsManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<string>('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Selection & Bulk
@@ -233,6 +297,7 @@ export default function ProductsManager() {
 
       const data = await res.json();
       setProducts(data.products || []);
+      if (data.stats) setStats(data.stats);
       setPagination(data.pagination || { page: 1, limit: PAGE_SIZE, total: 0, totalPages: 0 });
     } catch {
       showToast('error', 'Could not load products. Please try again.');
@@ -254,6 +319,24 @@ export default function ProductsManager() {
     return [...WEARABLE_CATEGORIES, ...WALL_ART_CATEGORIES];
   }, [typeFilter]);
 
+  const sortedProducts = useMemo(() => {
+    if (!sortColumn) return products;
+    return [...products].sort((a, b) => {
+      let aVal: any, bVal: any;
+      switch (sortColumn) {
+        case 'name': aVal = a.name?.toLowerCase() || ''; bVal = b.name?.toLowerCase() || ''; break;
+        case 'category': aVal = a.category?.toLowerCase() || ''; bVal = b.category?.toLowerCase() || ''; break;
+        case 'inventory': aVal = a.quantity || 0; bVal = b.quantity || 0; break;
+        case 'price': aVal = parseFloat(a.price || '0'); bVal = parseFloat(b.price || '0'); break;
+        case 'status': aVal = a.status || ''; bVal = b.status || ''; break;
+        default: return 0;
+      }
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [products, sortColumn, sortDirection]);
+
   // ---------- Selection ----------
 
   const allSelected = products.length > 0 && products.every((p) => selectedIds.has(p.id));
@@ -273,6 +356,15 @@ export default function ProductsManager() {
       else next.add(id);
       return next;
     });
+  };
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
   };
 
   // ---------- Bulk actions ----------
@@ -414,6 +506,26 @@ export default function ProductsManager() {
           Add Product
         </button>
       </div>
+
+      {/* Stats tiles */}
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-4">
+          <StatCard icon={Package} label="Active" value={stats.active} borderColor="#16a34a" accent="bg-green-100 text-green-700" />
+          <StatCard icon={FileText} label="Draft" value={stats.draft} borderColor="#d97706" accent="bg-amber-100 text-amber-700" />
+          <StatCard icon={Package} label="In Stock" value={stats.inStock} borderColor="#059669" accent="bg-emerald-100 text-emerald-700" />
+          <StatCard icon={AlertTriangle} label="Sold Out" value={stats.soldOut} borderColor="#dc2626" accent="bg-red-100 text-red-700" />
+          {(stats.byType || []).map((item) => (
+            <StatCard
+              key={item.productType}
+              icon={Package}
+              label={item.productType === 'wearable' ? 'Wearable' : item.productType === 'wall-art' ? 'Wall Art' : item.productType}
+              value={item.count}
+              borderColor="#6366f1"
+              accent="bg-indigo-100 text-indigo-700"
+            />
+          ))}
+        </div>
+      )}
 
       {/* Status & Inventory tabs */}
       <div className="flex items-center gap-1 mb-4 border-b border-stone-200">
@@ -617,16 +729,16 @@ export default function ProductsManager() {
                       />
                     </th>
                     <th className="px-4 py-2.5 w-14" />
-                    <th className="px-4 py-2.5 text-left text-[11px] font-medium text-stone-500 uppercase tracking-wider">Product</th>
-                    <th className="px-4 py-2.5 text-left text-[11px] font-medium text-stone-500 uppercase tracking-wider">Category</th>
-                    <th className="px-4 py-2.5 text-left text-[11px] font-medium text-stone-500 uppercase tracking-wider">Inventory</th>
-                    <th className="px-4 py-2.5 text-left text-[11px] font-medium text-stone-500 uppercase tracking-wider">Price</th>
-                    <th className="px-4 py-2.5 text-left text-[11px] font-medium text-stone-500 uppercase tracking-wider">Status</th>
+                    <SortHeader label="Product" column="name" activeColumn={sortColumn} direction={sortDirection} onClick={handleSort} />
+                    <SortHeader label="Category" column="category" activeColumn={sortColumn} direction={sortDirection} onClick={handleSort} />
+                    <SortHeader label="Inventory" column="inventory" activeColumn={sortColumn} direction={sortDirection} onClick={handleSort} />
+                    <SortHeader label="Price" column="price" activeColumn={sortColumn} direction={sortDirection} onClick={handleSort} />
+                    <SortHeader label="Status" column="status" activeColumn={sortColumn} direction={sortDirection} onClick={handleSort} />
                     <th className="px-4 py-2.5 w-12" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
-                  {products.map((product) => (
+                  {sortedProducts.map((product) => (
                     <tr
                       key={product.id}
                       className={`hover:bg-stone-50 cursor-pointer transition ${
@@ -668,16 +780,12 @@ export default function ProductsManager() {
                         {product.trackInventory ? (
                           <div className="flex items-center gap-1.5">
                             <span className={`w-1.5 h-1.5 rounded-full ${
-                              product.availability?.toLowerCase().includes('sold out')
+                              product.availability?.toLowerCase().includes('sold out') || product.quantity <= 0
                                 ? 'bg-red-500'
-                                : product.quantity <= 0
-                                  ? 'bg-red-500'
-                                  : product.quantity <= 3
-                                    ? 'bg-amber-500'
-                                    : 'bg-green-500'
+                                : 'bg-green-500'
                             }`} />
                             <span className="text-stone-600">
-                              {product.availability?.toLowerCase().includes('sold out')
+                              {product.availability?.toLowerCase().includes('sold out') || product.quantity <= 0
                                 ? 'Sold out'
                                 : `${product.quantity} in stock`}
                             </span>

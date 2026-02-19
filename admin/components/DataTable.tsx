@@ -206,7 +206,7 @@ export default function DataTable<T>({
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
-          <tr className="bg-stone-50/80">
+          <tr className="bg-stone-50">
             {draggable && <th className="px-2 py-2.5 w-10"></th>}
             {columns.map((col) => (
               <th

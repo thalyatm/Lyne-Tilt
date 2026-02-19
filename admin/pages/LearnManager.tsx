@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { BookOpen, CalendarDays } from 'lucide-react';
 import DataTable from '../components/DataTable';
 import FormModal, { FormField } from '../components/FormModal';
 import AccordionSection from '../components/AccordionSection';
@@ -13,6 +14,7 @@ interface LearnItem {
   price: string;
   image: string;
   description: string;
+  status: 'draft' | 'scheduled' | 'published' | 'archived';
 }
 
 interface LearnSettings {
@@ -46,6 +48,25 @@ const formFields: FormField[] = [
   { name: 'image', label: 'Image', type: 'image', required: true },
 ];
 
+function StatCard({
+  icon: Icon, label, value, borderColor, accent,
+}: {
+  icon: React.ElementType; label: string; value: string | number; borderColor: string; accent: string;
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-stone-200 px-4 py-2.5 flex items-center gap-3"
+      style={{ borderLeftWidth: '4px', borderLeftColor: borderColor }}>
+      <div className={`w-7 h-7 rounded-md flex items-center justify-center ${accent}`}>
+        <Icon size={14} />
+      </div>
+      <div>
+        <p className="text-xl font-semibold text-stone-900 leading-tight">{value}</p>
+        <p className="text-[11px] text-stone-500">{label}</p>
+      </div>
+    </div>
+  );
+}
+
 const inputClass = 'w-full border border-stone-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1';
 const labelClass = 'block text-sm font-medium text-stone-700 mb-1.5';
 
@@ -61,6 +82,9 @@ export default function LearnManager() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
 
+  // --- Filter state ---
+  const [statusFilter, setStatusFilter] = useState<string>('published');
+
   // --- Tab state ---
   const [activeTab, setActiveTab] = useState<'items' | 'settings'>('items');
 
@@ -69,6 +93,24 @@ export default function LearnManager() {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(false);
+  const [upcomingCohorts, setUpcomingCohorts] = useState(0);
+
+  // Fetch upcoming cohort count
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/cohorts?status=open&pageSize=1`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUpcomingCohorts(data.total || 0);
+        }
+      } catch {
+        // silently handle
+      }
+    })();
+  }, [accessToken]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -202,6 +244,13 @@ export default function LearnManager() {
     }
   };
 
+  const STATUS_STYLES: Record<string, string> = {
+    published: 'bg-emerald-50 text-emerald-700',
+    draft: 'bg-amber-50 text-amber-700',
+    scheduled: 'bg-indigo-50 text-indigo-700',
+    archived: 'bg-stone-100 text-stone-500',
+  };
+
   const columns = [
     { key: 'image', label: 'Image', render: (item: LearnItem) => (
       <img src={resolveImageUrl(item.image)} alt={item.title} className="w-12 h-12 object-cover rounded" />
@@ -209,6 +258,11 @@ export default function LearnManager() {
     { key: 'title', label: 'Title' },
     { key: 'type', label: 'Type' },
     { key: 'price', label: 'Price' },
+    { key: 'status', label: 'Status', render: (item: LearnItem) => (
+      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full capitalize ${STATUS_STYLES[item.status] || 'bg-stone-100 text-stone-600'}`}>
+        {item.status}
+      </span>
+    )},
   ];
 
   // --- Settings field updater ---
@@ -229,8 +283,14 @@ export default function LearnManager() {
     <div>
       {/* Page header */}
       <div className="mb-6">
-        <h1 className="text-lg font-semibold text-stone-900">Workshops</h1>
-        <p className="text-sm text-stone-500 mt-1">Manage your courses, workshops, and learn page settings.</p>
+        <h1 className="text-lg font-semibold text-stone-900">Workshops & Courses</h1>
+        <p className="text-sm text-stone-500 mt-1">Manage your courses, workshops, and page settings.</p>
+      </div>
+
+      {/* Stats tiles */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <StatCard icon={BookOpen} label="Active Courses" value={items.filter(i => i.status === 'published').length} borderColor="#2563eb" accent="bg-blue-100 text-blue-700" />
+        <StatCard icon={CalendarDays} label="Upcoming Cohorts" value={upcomingCohorts} borderColor="#7c3aed" accent="bg-violet-100 text-violet-700" />
       </div>
 
       {/* Tabs */}
@@ -262,9 +322,31 @@ export default function LearnManager() {
       {/* Courses & Workshops tab */}
       {activeTab === 'items' && (
         <>
+          {/* Status filter pills */}
+          <div className="flex gap-1 mb-4">
+            {[
+              { label: 'All', value: '' },
+              { label: 'Published', value: 'published' },
+              { label: 'Draft', value: 'draft' },
+              { label: 'Scheduled', value: 'scheduled' },
+              { label: 'Archived', value: 'archived' },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setStatusFilter(opt.value)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-full transition ${
+                  statusFilter === opt.value
+                    ? 'bg-stone-900 text-white'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
           <DataTable
             title="Learn Items"
-            data={items}
+            data={statusFilter ? items.filter(i => i.status === statusFilter) : items}
             columns={columns}
             loading={loading}
             onAdd={handleAdd}

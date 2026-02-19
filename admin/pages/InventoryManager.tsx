@@ -137,20 +137,9 @@ function AvailabilityBadge({ availability }: { availability: string }) {
 }
 
 function StockLevelBar({ quantity }: { quantity: number }) {
-  // Color coding: green >= 10, amber 1-9, red = 0
-  const color =
-    quantity >= 10
-      ? 'bg-green-500'
-      : quantity > 0
-        ? 'bg-amber-500'
-        : 'bg-red-500';
-
-  const textColor =
-    quantity >= 10
-      ? 'text-green-700'
-      : quantity > 0
-        ? 'text-amber-700'
-        : 'text-red-700';
+  // Color coding: green > 0, red = 0 (most items are one-of-a-kind with qty 1)
+  const color = quantity > 0 ? 'bg-green-500' : 'bg-red-500';
+  const textColor = quantity > 0 ? 'text-green-700' : 'text-red-700';
 
   // Progress bar max at 30 for visual purposes
   const percent = Math.min((quantity / 30) * 100, 100);
@@ -594,7 +583,6 @@ export default function InventoryManager() {
 
   const getRowBg = (product: InventoryProduct) => {
     if (product.quantity === 0) return 'bg-red-50/60';
-    if (product.quantity > 0 && product.quantity < 10) return 'bg-amber-50/60';
     return '';
   };
 
@@ -629,15 +617,6 @@ export default function InventoryManager() {
           iconColor="text-green-600"
           active={stockFilter === 'in'}
           onClick={() => handleStatClick('in')}
-        />
-        <StatCard
-          icon={AlertTriangle}
-          label="Low Stock"
-          value={stats.lowStock}
-          accent="bg-amber-100"
-          iconColor="text-amber-600"
-          active={stockFilter === 'low'}
-          onClick={() => handleStatClick('low')}
         />
         <StatCard
           icon={XCircle}

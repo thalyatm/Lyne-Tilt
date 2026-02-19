@@ -41,9 +41,11 @@ export interface Product {
   id: string;
   name: string;
   price: number;
+  compareAtPrice?: number;
   currency: string;
   category: ProductCategory;
   colours: ProductColour[];
+  materials?: string[];
   shortDescription: string;
   longDescription: string;
   image: string;
@@ -113,7 +115,7 @@ export interface BlogPost {
 export interface FAQItem {
   question: string;
   answer: string;
-  category: 'Shop' | 'Coaching' | 'Learn' | 'General';
+  category: 'Shipping' | 'Handmade Work' | 'Colour Accuracy' | 'Returns + Exchanges' | 'Product Care' | 'Coaching + Services' | 'General';
 }
 
 export interface WallArtProduct {

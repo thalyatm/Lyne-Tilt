@@ -278,8 +278,8 @@ export default function DataExport() {
         <p className="text-stone-500">Download your data as CSV files</p>
       </div>
 
-      {/* Export cards grid */}
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-5">
+      {/* Compact export list */}
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border border-stone-200 divide-y divide-stone-100">
         {EXPORT_CARDS.map((card) => {
           const Icon = card.icon;
           const isDownloading = downloading[card.filename] || false;
@@ -288,57 +288,30 @@ export default function DataExport() {
           return (
             <div
               key={card.key}
-              className="bg-white rounded-lg shadow-sm border border-stone-200 p-6 flex flex-col"
+              className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition"
             >
-              <div className="flex items-start gap-4 mb-4">
-                {/* Icon */}
-                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-stone-100 flex items-center justify-center">
-                  <Icon size={20} className="text-stone-600" />
-                </div>
-
-                {/* Title + description */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-semibold text-stone-800">{card.title}</h3>
-                  <p className="text-sm text-stone-500 mt-0.5 leading-snug">
-                    {card.description}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between mt-auto pt-3 border-t border-stone-100">
-                {/* Record count */}
-                <div className="text-sm text-stone-500">
-                  {countsLoading ? (
-                    <span className="flex items-center gap-1.5">
-                      <Loader2 size={14} className="animate-spin text-stone-400" />
-                      Loading...
-                    </span>
-                  ) : (
-                    <span>
-                      <span className="font-medium text-stone-700">{count}</span> records
-                    </span>
-                  )}
-                </div>
-
-                {/* Download button */}
-                <button
-                  onClick={() => handleDownload(card.endpoint, card.filename)}
-                  disabled={isDownloading}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white bg-[#8d3038] hover:bg-[#6b2228] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isDownloading ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      Exporting...
-                    </>
-                  ) : (
-                    <>
-                      <Download size={16} />
-                      Download CSV
-                    </>
-                  )}
-                </button>
-              </div>
+              <Icon size={16} className="text-stone-400 flex-shrink-0" />
+              <span className="text-sm font-medium text-stone-800 w-32 flex-shrink-0">{card.title}</span>
+              <span className="text-xs text-stone-400 flex-1 min-w-0 truncate hidden sm:block">{card.description}</span>
+              <span className="text-xs text-stone-500 w-20 text-right flex-shrink-0 tabular-nums">
+                {countsLoading ? (
+                  <Loader2 size={12} className="animate-spin text-stone-300 ml-auto" />
+                ) : (
+                  <>{count}</>
+                )}
+              </span>
+              <button
+                onClick={() => handleDownload(card.endpoint, card.filename)}
+                disabled={isDownloading}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-stone-600 hover:text-[#8d3038] hover:bg-stone-100 disabled:opacity-50 disabled:cursor-not-allowed transition flex-shrink-0"
+              >
+                {isDownloading ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Download size={12} />
+                )}
+                CSV
+              </button>
             </div>
           );
         })}

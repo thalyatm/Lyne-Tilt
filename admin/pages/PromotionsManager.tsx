@@ -197,21 +197,24 @@ function StatCard({
   icon: Icon,
   label,
   value,
+  borderColor,
   accent,
 }: {
   icon: React.ElementType;
   label: string;
   value: number | string;
+  borderColor: string;
   accent: string;
 }) {
   return (
-    <div className="bg-white rounded-lg border border-stone-200 p-4 flex items-center gap-4">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${accent}`}>
-        <Icon size={18} />
+    <div className="bg-white rounded-xl border border-stone-200 px-4 py-2.5 flex items-center gap-3"
+      style={{ borderLeftWidth: '4px', borderLeftColor: borderColor }}>
+      <div className={`w-7 h-7 rounded-md flex items-center justify-center ${accent}`}>
+        <Icon size={14} />
       </div>
       <div>
-        <p className="text-2xl font-semibold text-stone-900">{value}</p>
-        <p className="text-xs text-stone-500">{label}</p>
+        <p className="text-xl font-semibold text-stone-900 leading-tight">{value}</p>
+        <p className="text-[11px] text-stone-500">{label}</p>
       </div>
     </div>
   );
@@ -621,22 +624,25 @@ export default function PromotionsManager() {
       {/* Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <StatCard
+          icon={Tag}
+          label="Total Codes"
+          value={stats.totalCodes}
+          borderColor="#6366f1"
+          accent="bg-indigo-100 text-indigo-700"
+        />
+        <StatCard
           icon={ToggleRight}
-          label="Active Codes"
+          label="Active"
           value={stats.totalActive}
+          borderColor="#16a34a"
           accent="bg-green-100 text-green-700"
         />
         <StatCard
           icon={TrendingUp}
           label="Total Redemptions"
           value={stats.totalUsage}
-          accent="bg-blue-100 text-blue-700"
-        />
-        <StatCard
-          icon={Tag}
-          label="Total Codes"
-          value={stats.totalCodes}
-          accent="bg-stone-100 text-stone-600"
+          borderColor="#d97706"
+          accent="bg-amber-100 text-amber-700"
         />
       </div>
 
@@ -699,7 +705,7 @@ export default function PromotionsManager() {
       </div>
 
       {/* Data Table */}
-      <div className="bg-white rounded-lg border border-stone-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-stone-200">
         {loading ? (
           <div className="p-12 text-center">
             <div className="w-6 h-6 border-2 border-stone-200 border-t-stone-600 rounded-full animate-spin mx-auto mb-3" />

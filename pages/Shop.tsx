@@ -39,6 +39,7 @@ const Shop = () => {
           id: p.slug || p.id,
           name: p.name,
           price: parseFloat(p.price),
+          compareAtPrice: p.compareAtPrice ? parseFloat(p.compareAtPrice) : undefined,
           currency: p.currency || 'AUD',
           category: p.category as ProductCategory,
           colours: [],
@@ -69,6 +70,7 @@ const Shop = () => {
   const [colourFilter, setColourFilter] = useState<ProductColour>(ProductColour.All);
   const [priceFilter, setPriceFilter] = useState<PriceRange>(PriceRange.All);
   const [availabilityFilter, setAvailabilityFilter] = useState<Availability>(Availability.All);
+  const [saleFilter, setSaleFilter] = useState(false);
 
   // Filter by category
   const filterByCategory = (products: Product[]) => {
@@ -110,11 +112,19 @@ const Shop = () => {
     }
   };
 
+  // Filter by sale
+  const filterBySale = (products: Product[]) => {
+    if (!saleFilter) return products;
+    return products.filter(p => p.compareAtPrice && p.compareAtPrice < p.price);
+  };
+
   // Apply all filters
-  const filteredProducts = filterByAvailability(
-    filterByPrice(
-      filterByColour(
-        filterByCategory(products)
+  const filteredProducts = filterBySale(
+    filterByAvailability(
+      filterByPrice(
+        filterByColour(
+          filterByCategory(products)
+        )
       )
     )
   );
@@ -138,13 +148,15 @@ const Shop = () => {
     categoryFilter !== ProductCategory.All ||
     colourFilter !== ProductColour.All ||
     priceFilter !== PriceRange.All ||
-    availabilityFilter !== Availability.All;
+    availabilityFilter !== Availability.All ||
+    saleFilter;
 
   const clearAllFilters = () => {
     setCategoryFilter(ProductCategory.All);
     setColourFilter(ProductColour.All);
     setPriceFilter(PriceRange.All);
     setAvailabilityFilter(Availability.All);
+    setSaleFilter(false);
   };
 
   return (
@@ -197,6 +209,16 @@ const Shop = () => {
           options={availabilities}
           onChange={(v) => setAvailabilityFilter(v as Availability)}
         />
+        <button
+          onClick={() => setSaleFilter(!saleFilter)}
+          className={`px-4 py-2 text-xs uppercase tracking-widest border rounded-full transition-colors ${
+            saleFilter
+              ? 'bg-clay text-white border-clay'
+              : 'bg-white text-stone-500 border-stone-200 hover:border-stone-400'
+          }`}
+        >
+          On Sale
+        </button>
       </div>
 
       {/* Clear Filters & Results Count */}

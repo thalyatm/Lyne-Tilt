@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, Menu, X, User, ChevronDown, LogOut, Package, Heart, MapPin } from 'lucide-react';
+import { ShoppingBag, Menu, X, User, ChevronDown, LogOut, Package, Heart, MapPin, Check } from 'lucide-react';
 import GlobalBackground from './GlobalBackground';
 import LeadMagnet from './LeadMagnet';
 import AuthModal from './AuthModal';
 import { useCart } from '../context/CartContext';
+import { resolveImageUrl } from '../config/api';
 import { useSettings } from '../context/SettingsContext';
 import { useCustomerAuth } from '../context/CustomerAuthContext';
 
@@ -19,7 +20,7 @@ const Layout = () => {
   const [mobileAccordion, setMobileAccordion] = useState<string | null>(null);
   const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const location = useLocation();
-  const { cartCount } = useCart();
+  const { cartCount, cartNotification, dismissNotification } = useCart();
   const { user, isAuthenticated, logout, openAuthModal } = useCustomerAuth();
 
   // Active page detection
@@ -233,12 +234,41 @@ const Layout = () => {
               </button>
             )}
 
-            <Link to="/checkout" className="relative text-stone-200 hover:text-clay transition-colors group">
-              <ShoppingBag size={18} />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-2 bg-stone-700 group-hover:bg-clay transition-colors text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{cartCount}</span>
+            <div className="relative">
+              <Link to="/checkout" className="relative text-stone-200 hover:text-clay transition-colors group">
+                <ShoppingBag size={18} />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-2 bg-stone-700 group-hover:bg-clay transition-colors text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{cartCount}</span>
+                )}
+              </Link>
+              {/* Added to Bag notification popup */}
+              {cartNotification && (
+                <div className="absolute right-0 top-full mt-3 w-64 bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-stone-900/5 z-50 animate-in slide-in-from-top-2 duration-300">
+                  <div className="p-3">
+                    <div className="flex items-center gap-3">
+                      {cartNotification.product.image && (
+                        <div className="w-14 h-14 rounded-lg overflow-hidden bg-stone-100 flex-shrink-0">
+                          <img src={resolveImageUrl(cartNotification.product.image)} alt={cartNotification.product.name} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <Check size={12} className="text-green-600 flex-shrink-0" />
+                          <span className="text-xs font-medium text-green-700">Added to Bag</span>
+                        </div>
+                        <p className="text-sm text-stone-800 font-medium truncate">{cartNotification.product.name}</p>
+                      </div>
+                      <button onClick={dismissNotification} className="text-stone-400 hover:text-stone-600 p-0.5 flex-shrink-0">
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <Link to="/checkout" onClick={dismissNotification} className="block mt-2.5 text-center py-2 bg-stone-900 text-white text-xs uppercase tracking-widest font-bold rounded-lg hover:bg-clay transition-colors">
+                      View Bag
+                    </Link>
+                  </div>
+                </div>
               )}
-            </Link>
+            </div>
           </div>
           </div>
 
@@ -253,12 +283,38 @@ const Layout = () => {
                 <User size={20} />
               </button>
             )}
-            <Link to="/checkout" className="relative text-stone-200 hover:text-clay transition-colors">
-              <ShoppingBag size={20} />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-2 bg-clay text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{cartCount}</span>
+            <div className="relative">
+              <Link to="/checkout" className="relative text-stone-200 hover:text-clay transition-colors">
+                <ShoppingBag size={20} />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-2 bg-clay text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{cartCount}</span>
+                )}
+              </Link>
+              {/* Mobile Added to Bag notification */}
+              {cartNotification && (
+                <div className="absolute right-0 top-full mt-3 w-60 bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-stone-900/5 z-50 animate-in slide-in-from-top-2 duration-300">
+                  <div className="p-3">
+                    <div className="flex items-center gap-3">
+                      {cartNotification.product.image && (
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-stone-100 flex-shrink-0">
+                          <img src={resolveImageUrl(cartNotification.product.image)} alt={cartNotification.product.name} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <Check size={12} className="text-green-600 flex-shrink-0" />
+                          <span className="text-[10px] font-medium text-green-700">Added to Bag</span>
+                        </div>
+                        <p className="text-xs text-stone-800 font-medium truncate">{cartNotification.product.name}</p>
+                      </div>
+                    </div>
+                    <Link to="/checkout" onClick={dismissNotification} className="block mt-2 text-center py-1.5 bg-stone-900 text-white text-[10px] uppercase tracking-widest font-bold rounded-lg hover:bg-clay transition-colors">
+                      View Bag
+                    </Link>
+                  </div>
+                </div>
               )}
-            </Link>
+            </div>
             <button
               aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileMenuOpen}

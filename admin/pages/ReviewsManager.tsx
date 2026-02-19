@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../config/api';
 import {
+  AlertTriangle,
   MessageSquare,
   Clock,
   CheckCircle,
@@ -33,6 +34,8 @@ interface Review {
   body: string;
   status: ReviewStatus;
   isVerifiedPurchase: boolean;
+  featured: boolean;
+  theme: string | null;
   adminResponse: string | null;
   respondedAt: string | null;
   createdAt: string;
@@ -148,6 +151,29 @@ function StatusBadge({ status }: { status: ReviewStatus }) {
 }
 
 // ---------------------------------------------------------------------------
+// ThemeBadge
+// ---------------------------------------------------------------------------
+
+function ThemeBadge({ theme }: { theme: string | null }) {
+  if (!theme) return null;
+  const styles: Record<string, string> = {
+    'wearable': 'bg-purple-50 text-purple-700',
+    'wall-art': 'bg-blue-50 text-blue-700',
+    'digital': 'bg-cyan-50 text-cyan-700',
+  };
+  const labels: Record<string, string> = {
+    'wearable': 'Wearable',
+    'wall-art': 'Wall Art',
+    'digital': 'Digital',
+  };
+  return (
+    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${styles[theme] || 'bg-stone-100 text-stone-600'}`}>
+      {labels[theme] || theme}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
 
@@ -168,6 +194,7 @@ export default function ReviewsManager() {
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [ratingFilter, setRatingFilter] = useState<string>('all');
+  const [themeFilter, setThemeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -176,6 +203,9 @@ export default function ReviewsManager() {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [replySaving, setReplySaving] = useState(false);
+
+  // Action Required filter
+  const [actionRequired, setActionRequired] = useState(false);
 
   // Action loading
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -208,6 +238,7 @@ export default function ReviewsManager() {
       const params = new URLSearchParams();
       if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter);
       if (ratingFilter && ratingFilter !== 'all') params.set('rating', ratingFilter);
+      if (themeFilter && themeFilter !== 'all') params.set('theme', themeFilter);
       if (debouncedSearch) params.set('search', debouncedSearch);
 
       const res = await fetch(`${API_BASE}/reviews?${params}`, {
@@ -226,7 +257,7 @@ export default function ReviewsManager() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, statusFilter, ratingFilter, debouncedSearch]);
+  }, [accessToken, statusFilter, ratingFilter, themeFilter, debouncedSearch]);
 
   useEffect(() => {
     fetchReviews();
@@ -306,6 +337,57 @@ export default function ReviewsManager() {
     }
   };
 
+  const toggleFeatured = async (id: string) => {
+    const review = reviews.find((r) => r.id === id);
+    if (!review) return;
+    const newFeatured = !review.featured;
+    setActionLoading(id);
+    try {
+      const res = await fetch(`${API_BASE}/reviews/${id}/featured`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ featured: newFeatured }),
+      });
+
+      if (!res.ok) throw new Error('Failed to toggle featured');
+
+      setReviews((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, featured: newFeatured } : r))
+      );
+      showToast(newFeatured ? 'Review will show on home page.' : 'Review removed from home page.');
+    } catch {
+      showToast('Could not update featured status.', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const updateTheme = async (id: string, theme: string | null) => {
+    setActionLoading(id);
+    try {
+      const res = await fetch(`${API_BASE}/reviews/${id}/theme`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ theme }),
+      });
+      if (!res.ok) throw new Error('Failed to update theme');
+      setReviews((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, theme } : r))
+      );
+      showToast('Theme updated.');
+    } catch {
+      showToast('Could not update theme.', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const submitReply = async (id: string) => {
     if (!replyText.trim()) return;
     setReplySaving(true);
@@ -356,6 +438,12 @@ export default function ReviewsManager() {
     { key: 'approved', label: 'Approved' },
     { key: 'rejected', label: 'Rejected' },
   ];
+
+  // ---------- Displayed reviews (filtered by Action Required) ----------
+
+  const displayedReviews = actionRequired
+    ? reviews.filter(r => r.status === 'pending')
+    : reviews;
 
   // ---------- Render ----------
 
@@ -459,14 +547,50 @@ export default function ReviewsManager() {
           <option value="2">2 stars</option>
           <option value="1">1 star</option>
         </select>
+
+        {/* Theme filter */}
+        <select
+          value={themeFilter}
+          onChange={(e) => setThemeFilter(e.target.value)}
+          className="bg-white border border-stone-200 rounded-md px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
+        >
+          <option value="all">All themes</option>
+          <option value="wearable">Wearable</option>
+          <option value="wall-art">Wall Art</option>
+          <option value="digital">Digital</option>
+        </select>
       </div>
+
+      {/* Action Required toggle */}
+      <button
+        onClick={() => {
+          const next = !actionRequired;
+          setActionRequired(next);
+          if (next) setStatusFilter('all');
+        }}
+        className={`mb-3 inline-flex items-center gap-2 px-3.5 py-1.5 text-sm font-medium rounded-full border transition-colors ${
+          actionRequired
+            ? 'bg-amber-50 border-amber-300 text-amber-800'
+            : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300'
+        }`}
+      >
+        <AlertTriangle size={14} className={actionRequired ? 'text-amber-600' : 'text-stone-400'} />
+        Action Required
+        {stats.pending > 0 && (
+          <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-semibold rounded-full ${
+            actionRequired ? 'bg-amber-200 text-amber-800' : 'bg-amber-100 text-amber-700'
+          }`}>
+            {stats.pending}
+          </span>
+        )}
+      </button>
 
       {/* Status tabs */}
       <div className="flex items-center gap-1 mb-4 border-b border-stone-200">
         {statusTabs.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setStatusFilter(tab.key)}
+            onClick={() => { setStatusFilter(tab.key); setActionRequired(false); }}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
               statusFilter === tab.key
                 ? 'border-stone-900 text-stone-900'
@@ -489,25 +613,25 @@ export default function ReviewsManager() {
           <Loader2 size={24} className="animate-spin mx-auto mb-3 text-stone-400" />
           <p className="text-stone-500 text-sm">Loading reviews...</p>
         </div>
-      ) : reviews.length === 0 ? (
+      ) : displayedReviews.length === 0 ? (
         <div className="bg-white rounded-lg border border-stone-200 p-12 text-center">
           <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-3">
             <MessageSquare size={24} className="text-stone-400" />
           </div>
           <p className="text-stone-600 font-medium">
-            {debouncedSearch || statusFilter !== 'all' || ratingFilter !== 'all'
+            {debouncedSearch || statusFilter !== 'all' || ratingFilter !== 'all' || themeFilter !== 'all' || actionRequired
               ? 'No reviews match your filters'
               : 'No reviews yet'}
           </p>
           <p className="text-sm text-stone-400 mt-1">
-            {debouncedSearch || statusFilter !== 'all' || ratingFilter !== 'all'
+            {debouncedSearch || statusFilter !== 'all' || ratingFilter !== 'all' || themeFilter !== 'all' || actionRequired
               ? 'Try adjusting your search or filters.'
               : 'Reviews will appear here once customers start leaving feedback.'}
           </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {reviews.map((review) => (
+          {displayedReviews.map((review) => (
             <div
               key={review.id}
               className={`bg-white rounded-lg border border-stone-200 shadow-sm overflow-hidden ${
@@ -532,6 +656,15 @@ export default function ReviewsManager() {
                   )}
 
                   <StatusBadge status={review.status} />
+
+                  <ThemeBadge theme={review.theme} />
+
+                  {review.featured && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                      <Star size={12} className="fill-amber-400" />
+                      Home Page
+                    </span>
+                  )}
 
                   <span className="text-xs text-stone-400 ml-auto">
                     {relativeTime(review.createdAt)}
@@ -663,6 +796,23 @@ export default function ReviewsManager() {
                     </button>
                   )}
 
+                  {/* Featured toggle */}
+                  {review.status === 'approved' && (
+                    <button
+                      onClick={() => toggleFeatured(review.id)}
+                      disabled={actionLoading === review.id}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors disabled:opacity-50 ${
+                        review.featured
+                          ? 'text-amber-700 bg-amber-50 hover:bg-amber-100'
+                          : 'text-stone-500 hover:bg-stone-100'
+                      }`}
+                      title={review.featured ? 'Remove from home page' : 'Feature on home page'}
+                    >
+                      <Star size={14} className={review.featured ? 'fill-amber-400' : ''} />
+                      {review.featured ? 'Featured' : 'Feature'}
+                    </button>
+                  )}
+
                   {/* Reply button */}
                   {replyingTo !== review.id && (
                     <button
@@ -673,6 +823,19 @@ export default function ReviewsManager() {
                       {review.adminResponse ? 'Edit Reply' : 'Reply'}
                     </button>
                   )}
+
+                  {/* Theme selector */}
+                  <select
+                    value={review.theme || ''}
+                    onChange={(e) => updateTheme(review.id, e.target.value || null)}
+                    disabled={actionLoading === review.id}
+                    className="text-sm border border-stone-200 rounded-md px-2 py-1 text-stone-600 bg-white focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1 disabled:opacity-50"
+                  >
+                    <option value="">No theme</option>
+                    <option value="wearable">Wearable</option>
+                    <option value="wall-art">Wall Art</option>
+                    <option value="digital">Digital</option>
+                  </select>
 
                   {/* Delete button */}
                   <button

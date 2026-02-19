@@ -16,6 +16,9 @@ import {
   Loader2,
   Pencil,
   Sparkles,
+  Calendar,
+  Copy,
+  RefreshCw,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -170,7 +173,7 @@ function RowActionsMenu({
         <MoreHorizontal size={16} className="text-stone-400" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-20 bg-white rounded-lg shadow-lg border border-stone-200 py-1 w-44">
+        <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-stone-200 py-1 w-44">
           <button
             onClick={() => {
               onEdit();
@@ -277,11 +280,16 @@ export default function CoachingManager() {
   const [loading, setLoading] = useState(true);
 
   // Filters
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('published');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sortValue, setSortValue] = useState('updatedAt_desc');
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // Calendar sync
+  const [calendarToken, setCalendarToken] = useState<string | null>(null);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarCopied, setCalendarCopied] = useState(false);
 
   // Status counts
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({
@@ -371,6 +379,53 @@ export default function CoachingManager() {
     fetchItems(page);
   }, [fetchItems, page]);
 
+  // Calendar sync
+  const fetchCalendarToken = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/coaching/calendar-sync`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCalendarToken(data.token);
+      }
+    } catch {
+      // silently fail
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    fetchCalendarToken();
+  }, [fetchCalendarToken]);
+
+  const regenerateToken = async () => {
+    if (!window.confirm('Regenerating the token will invalidate any existing calendar subscriptions. Continue?')) return;
+    setCalendarLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/coaching/calendar-sync/regenerate`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCalendarToken(data.token);
+        success('Calendar sync token regenerated.');
+      }
+    } catch {
+      error('Could not regenerate token.');
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  const copyCalendarUrl = () => {
+    if (!calendarToken) return;
+    const url = `${window.location.origin}/api/coaching/calendar.ics?token=${calendarToken}`;
+    navigator.clipboard.writeText(url);
+    setCalendarCopied(true);
+    setTimeout(() => setCalendarCopied(false), 2000);
+  };
+
   // Actions
   const handlePublish = async (offer: CoachingOffer) => {
     try {
@@ -450,6 +505,44 @@ export default function CoachingManager() {
           New Offer
         </button>
       </div>
+
+      {/* Calendar Sync */}
+      {calendarToken && (
+        <div className="mb-6 bg-white rounded-lg border border-stone-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Calendar size={16} className="text-stone-500" />
+              <h3 className="text-sm font-medium text-stone-800">Calendar Sync</h3>
+            </div>
+            <button
+              onClick={regenerateToken}
+              disabled={calendarLoading}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-stone-500 hover:text-stone-700 hover:bg-stone-50 rounded-md transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={12} className={calendarLoading ? 'animate-spin' : ''} />
+              Regenerate Token
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              readOnly
+              value={`${window.location.origin}/api/coaching/calendar.ics?token=${calendarToken}`}
+              className="flex-1 bg-stone-50 border border-stone-200 rounded-md px-3 py-1.5 text-xs text-stone-600 font-mono truncate"
+            />
+            <button
+              onClick={copyCalendarUrl}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-stone-900 text-white hover:bg-stone-800 rounded-md transition-colors"
+            >
+              <Copy size={12} />
+              {calendarCopied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+          <p className="text-[11px] text-stone-400 mt-2">
+            Paste this URL into Google Calendar (Other calendars &gt; From URL) or Apple Calendar (File &gt; New Calendar Subscription).
+          </p>
+        </div>
+      )}
 
       {/* Status filter tabs */}
       <div className="flex items-center gap-1 mb-4">
@@ -575,7 +668,7 @@ export default function CoachingManager() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div>
               <table className="w-full">
                 <thead>
                   <tr className="bg-stone-50/80">

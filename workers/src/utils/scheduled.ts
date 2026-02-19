@@ -164,12 +164,37 @@ export async function processAbandonedCarts(env: Bindings, db: DB) {
       const firstItem = items[0];
       const recoveryUrl = `${baseUrl}/#/checkout?recover=${cart.recoveryToken}`;
 
-      await triggerAutomation(db, 'cart_abandoned', cart.email, cart.customerName || undefined, {
+      const queued = await triggerAutomation(db, 'cart_abandoned', cart.email, cart.customerName || undefined, {
         cart_recovery_url: recoveryUrl,
         product_name: firstItem.productName,
         price: cart.totalValue,
         qty: String(cart.itemCount),
       });
+
+      // If no automation configured, send direct email
+      if (!queued) {
+        const customerName = cart.customerName || 'there';
+        await sendEmail(
+          env,
+          cart.email,
+          `You left something behind — ${firstItem.productName}`,
+          `<div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+            <h1 style="color: #1c1917; font-size: 24px;">Hi ${customerName},</h1>
+            <p style="color: #57534e; font-size: 16px; line-height: 1.6;">
+              It looks like you left something in your cart: <strong>${firstItem.productName}</strong>
+            </p>
+            <p style="color: #57534e; font-size: 16px; line-height: 1.6;">
+              Each piece is one-of-a-kind, and I'd hate for you to miss out.
+            </p>
+            <a href="${recoveryUrl}" style="display: inline-block; background: #8d3038; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600; margin-top: 16px;">
+              Complete Your Order
+            </a>
+            <p style="color: #a8a29e; font-size: 12px; margin-top: 32px;">
+              If you have any questions, feel free to reply to this email.
+            </p>
+          </div>`
+        );
+      }
 
       // Mark as emailed
       await db.update(abandonedCarts)

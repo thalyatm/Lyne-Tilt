@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { User, Package, Heart, MapPin, Lock, Mail, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { User, Package, Heart, MapPin, Lock, Mail, AlertCircle, CheckCircle, Loader2, Trash2 } from 'lucide-react';
 import { useCustomerAuth } from '../context/CustomerAuthContext';
+import { useWishlist } from '../context/WishlistContext';
+import { API_BASE, resolveImageUrl } from '../config/api';
 
 type TabType = 'profile' | 'orders' | 'wishlist' | 'addresses';
 
@@ -231,17 +233,87 @@ const OrdersTab = () => {
 
 // Wishlist Tab
 const WishlistTab = () => {
+  const { accessToken } = useCustomerAuth();
+  const { toggleWishlist } = useWishlist();
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchWishlist = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const res = await fetch(`${API_BASE}/wishlist`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.items || []);
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken]);
+
+  useEffect(() => { fetchWishlist(); }, [fetchWishlist]);
+
+  const handleRemove = async (productId: string) => {
+    setItems((prev) => prev.filter((i) => i.productId !== productId));
+    await toggleWishlist(productId);
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <Loader2 size={24} className="mx-auto text-stone-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Heart size={48} className="mx-auto text-stone-300 mb-4" />
+        <h3 className="font-serif text-xl text-stone-900 mb-2">Your wishlist is empty</h3>
+        <p className="text-stone-500 mb-6">Save items you love by clicking the heart icon on any product.</p>
+        <Link
+          to="/shop"
+          className="inline-block bg-stone-900 text-white px-8 py-3 uppercase tracking-widest text-xs font-bold hover:bg-clay transition-colors"
+        >
+          Explore Collection
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="text-center py-12">
-      <Heart size={48} className="mx-auto text-stone-300 mb-4" />
-      <h3 className="font-serif text-xl text-stone-900 mb-2">Your wishlist is empty</h3>
-      <p className="text-stone-500 mb-6">Save items you love by clicking the heart icon on any product.</p>
-      <Link
-        to="/shop"
-        className="inline-block bg-stone-900 text-white px-8 py-3 uppercase tracking-widest text-xs font-bold hover:bg-clay transition-colors"
-      >
-        Explore Collection
-      </Link>
+    <div className="space-y-4">
+      <p className="text-sm text-stone-500">{items.length} item{items.length !== 1 ? 's' : ''} saved</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {items.map((item) => (
+          <div key={item.id} className="flex gap-4 bg-white border border-stone-200 p-4 group">
+            <Link to={`/shop/${item.slug || item.productId}`} className="w-20 h-20 bg-stone-200 overflow-hidden flex-shrink-0">
+              <img src={resolveImageUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />
+            </Link>
+            <div className="flex-1 min-w-0">
+              <Link to={`/shop/${item.slug || item.productId}`} className="font-medium text-stone-900 hover:text-clay transition-colors text-sm block truncate">
+                {item.name}
+              </Link>
+              <p className="text-stone-600 text-sm mt-1">${item.price} {item.currency}</p>
+              {item.availability === 'Sold out' && (
+                <span className="text-[10px] text-stone-400 uppercase tracking-wider font-medium">Sold Out</span>
+              )}
+            </div>
+            <button
+              onClick={() => handleRemove(item.productId)}
+              className="text-stone-300 hover:text-red-500 transition-colors self-start"
+              title="Remove from wishlist"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

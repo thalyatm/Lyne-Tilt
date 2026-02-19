@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import CoachingCard from '../components/CoachingCard';
 import CoachingApplicationModal from '../components/CoachingApplicationModal';
 import SubNav from '../components/SubNav';
@@ -54,6 +55,16 @@ const Coaching = () => {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [coachingFaqs, setCoachingFaqs] = useState<FAQItem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Auto-open modal if ?apply=true
+  useEffect(() => {
+    if (searchParams.get('apply') === 'true') {
+      setIsModalOpen(true);
+      searchParams.delete('apply');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -226,7 +237,7 @@ const Coaching = () => {
           <div className="max-w-2xl mx-auto text-center">
             <div className="w-10 h-[2px] bg-clay mx-auto mb-6"></div>
             <p className="font-serif text-xl md:text-2xl text-stone-900 italic leading-relaxed mb-4">
-              "Clients describe my coaching as clear, grounded, and deeply human."
+              "My clients say I cut through the noise and keep things honest."
             </p>
             <p className="text-stone-500 text-sm leading-relaxed">
               You'll get real-world insight, tools that work, and accountability that feels supportive, not stressful.
@@ -364,7 +375,7 @@ const Coaching = () => {
             <div className="relative z-10">
               <h2 className="font-serif text-xl md:text-2xl text-white mb-3">Apply For Coaching</h2>
               <p className="text-stone-400 text-sm leading-relaxed max-w-lg mx-auto mb-6">
-                Coaching is personal. Let's start with a short conversation to see if we're the right fit. This isn't a sales call, it's a real chat about where you're at and whether coaching can help.
+                Every creative path is different. A short, no-pressure conversation is the best way to see if we'd work well together.
               </p>
               <div className="flex justify-center">
                 <button

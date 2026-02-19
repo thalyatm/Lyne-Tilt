@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "vite build && npx wrangler pages deploy dist --project-name=lyne-tilt --commit-dirty=true"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

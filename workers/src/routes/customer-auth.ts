@@ -3,7 +3,26 @@ import { eq } from 'drizzle-orm';
 import { compare, hash } from 'bcryptjs';
 import { customerUsers, customerRefreshTokens } from '../db/schema';
 import { signJwt, customerAuth } from '../middleware/auth';
+import { sendEmail } from '../utils/email';
 import type { Bindings, Variables } from '../index';
+
+function verificationEmailHtml(firstName: string, verifyUrl: string): string {
+  return `<div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1c1917;">
+    <h1 style="font-size: 24px; margin-bottom: 8px;">Welcome to Lyne Tilt, ${firstName}!</h1>
+    <p style="color: #57534e; font-size: 16px; line-height: 1.6;">
+      Thanks for creating an account. Please verify your email address by clicking the button below.
+    </p>
+    <a href="${verifyUrl}" style="display: inline-block; background: #8d3038; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600; margin: 24px 0;">
+      Verify My Email
+    </a>
+    <p style="color: #a8a29e; font-size: 13px; line-height: 1.5;">
+      This link expires in 24 hours. If you didn&rsquo;t create an account, you can safely ignore this email.
+    </p>
+    <p style="color: #a8a29e; font-size: 12px; margin-top: 32px; border-top: 1px solid #e7e5e4; padding-top: 16px;">
+      Lyne Tilt Studio &mdash; Wearable Art &amp; Creative Coaching
+    </p>
+  </div>`;
+}
 
 export const customerAuthRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -37,7 +56,19 @@ customerAuthRoutes.post('/register', async (c) => {
     emailVerified: false,
   }).returning().get();
 
-  // TODO: Send verification email via Resend
+  // Send verification email
+  const baseUrl = c.env.FRONTEND_URL || 'https://lyne-tilt.pages.dev';
+  const verifyUrl = `${baseUrl}/#/verify-email?token=${verificationToken}`;
+  try {
+    await sendEmail(
+      c.env,
+      email,
+      'Verify your Lyne Tilt account',
+      verificationEmailHtml(firstName || 'there', verifyUrl),
+    );
+  } catch (err) {
+    console.error('Failed to send verification email:', err);
+  }
 
   return c.json({
     id: user.id,
@@ -200,7 +231,57 @@ customerAuthRoutes.post('/resend-verification', customerAuth, async (c) => {
     })
     .where(eq(customerUsers.id, customerUser!.id));
 
-  // TODO: Send verification email via Resend
+  // Send verification email
+  const baseUrl = c.env.FRONTEND_URL || 'https://lyne-tilt.pages.dev';
+  const verifyUrl = `${baseUrl}/#/verify-email?token=${verificationToken}`;
+  try {
+    await sendEmail(
+      c.env,
+      customerUser!.email,
+      'Verify your Lyne Tilt account',
+      verificationEmailHtml(customerUser!.firstName || 'there', verifyUrl),
+    );
+  } catch (err) {
+    console.error('Failed to send verification email:', err);
+  }
+
+  return c.json({ success: true });
+});
+
+// POST /api/customer/reset-password — Reset password using token
+customerAuthRoutes.post('/reset-password', async (c) => {
+  const db = c.get('db');
+  const { token, password } = await c.req.json();
+
+  if (!token || !password) {
+    return c.json({ error: 'Token and password are required' }, 400);
+  }
+
+  if (password.length < 10) {
+    return c.json({ error: 'Password must be at least 10 characters' }, 400);
+  }
+
+  const user = await db.select().from(customerUsers).where(eq(customerUsers.resetToken, token)).get();
+
+  if (!user) {
+    return c.json({ error: 'Invalid or expired reset token' }, 400);
+  }
+
+  if (user.resetTokenExpiry && new Date(user.resetTokenExpiry) < new Date()) {
+    return c.json({ error: 'Reset token has expired' }, 400);
+  }
+
+  const passwordHash = await hash(password, 12);
+
+  await db.update(customerUsers)
+    .set({
+      passwordHash,
+      resetToken: null,
+      resetTokenExpiry: null,
+      emailVerified: true,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(customerUsers.id, user.id));
 
   return c.json({ success: true });
 });
@@ -252,6 +333,7 @@ customerAuthRoutes.post('/google', async (c) => {
       firstName: googleUser.given_name || googleUser.name?.split(' ')[0] || 'User',
       lastName: googleUser.family_name || googleUser.name?.split(' ').slice(1).join(' ') || '',
       emailVerified: true, // Google emails are pre-verified
+      authProvider: 'google',
       createdAt: now,
       updatedAt: now,
       lastLoginAt: now,

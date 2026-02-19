@@ -19,7 +19,15 @@ import {
   MessageSquare,
   Loader2,
   Save,
+  ExternalLink,
+  DollarSign,
+  Send,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Link as LinkIcon,
 } from 'lucide-react';
+import BookSessionModal from '../components/BookSessionModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -79,6 +87,32 @@ interface CoachingPackage {
   title: string;
 }
 
+type ContractStatus = 'draft' | 'sent' | 'viewed' | 'agreed' | 'paid' | 'cancelled' | 'expired';
+
+interface ContractData {
+  id: string;
+  clientId: string;
+  packageId: string | null;
+  title: string;
+  description: string | null;
+  amount: string;
+  currency: string;
+  status: ContractStatus;
+  paymentToken: string;
+  contractTerms: string;
+  paymentInstructions: string | null;
+  stripePaymentLink: string | null;
+  sentAt: string | null;
+  viewedAt: string | null;
+  agreedAt: string | null;
+  paidAt: string | null;
+  paidMethod: string | null;
+  paidReference: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -127,12 +161,33 @@ const NOTE_TYPE_STYLES: Record<string, { bg: string; label: string }> = {
   goal: { bg: 'bg-green-100 text-green-700', label: 'Goal' },
 };
 
-type TabKey = 'journey' | 'sessions' | 'notes' | 'profile';
+const CONTRACT_STATUS_STYLES: Record<ContractStatus, string> = {
+  draft: 'bg-stone-100 text-stone-600',
+  sent: 'bg-blue-100 text-blue-700',
+  viewed: 'bg-purple-100 text-purple-700',
+  agreed: 'bg-amber-100 text-amber-700',
+  paid: 'bg-green-100 text-green-700',
+  cancelled: 'bg-red-100 text-red-600',
+  expired: 'bg-stone-100 text-stone-500',
+};
+
+const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
+  draft: 'Draft',
+  sent: 'Sent',
+  viewed: 'Viewed',
+  agreed: 'Agreed',
+  paid: 'Paid',
+  cancelled: 'Cancelled',
+  expired: 'Expired',
+};
+
+type TabKey = 'journey' | 'sessions' | 'notes' | 'payments' | 'profile';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'journey', label: 'Journey' },
   { key: 'sessions', label: 'Sessions' },
   { key: 'notes', label: 'Notes' },
+  { key: 'payments', label: 'Payments' },
   { key: 'profile', label: 'Profile' },
 ];
 
@@ -185,6 +240,24 @@ export default function ClientDetail() {
   const [notFound, setNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('journey');
   const [copied, setCopied] = useState(false);
+
+  // Contracts
+  const [contracts, setContracts] = useState<ContractData[]>([]);
+  const [showContractModal, setShowContractModal] = useState(false);
+  const [savingContract, setSavingContract] = useState(false);
+  const [sendingContractId, setSendingContractId] = useState<string | null>(null);
+  const [contractForm, setContractForm] = useState({
+    title: '',
+    description: '',
+    amount: '',
+    contractTerms: 'I understand and accept the coaching terms outlined in this agreement. I commit to the programme as described and acknowledge the payment obligations. Sessions must be rescheduled with at least 24 hours notice. Refunds are available within 14 days of purchase if no sessions have been attended.',
+    paymentInstructions: '',
+    stripePaymentLink: '',
+    packageId: '',
+  });
+
+  // Book session modal
+  const [bookModalOpen, setBookModalOpen] = useState(false);
 
   // Header inline editing
   const [editingHeader, setEditingHeader] = useState(false);
@@ -289,11 +362,26 @@ export default function ClientDetail() {
     }
   }, [accessToken]);
 
+  const fetchContracts = useCallback(async () => {
+    if (!id || !accessToken) return;
+    try {
+      const res = await fetch(`${API_BASE}/clients/${id}/contracts`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setContracts(data);
+    } catch {
+      // silent
+    }
+  }, [id, accessToken]);
+
   useEffect(() => {
     fetchClient();
     fetchNotes();
     fetchPackages();
-  }, [fetchClient, fetchNotes, fetchPackages]);
+    fetchContracts();
+  }, [fetchClient, fetchNotes, fetchPackages, fetchContracts]);
 
   // =========================================================================
   // HANDLERS
@@ -443,6 +531,139 @@ export default function ClientDetail() {
     }
   };
 
+  // -- Create contract --
+  const handleCreateContract = async () => {
+    if (!id || !accessToken || !contractForm.title.trim() || !contractForm.amount.trim() || !contractForm.contractTerms.trim()) return;
+    setSavingContract(true);
+    try {
+      const res = await fetch(`${API_BASE}/clients/${id}/contracts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          title: contractForm.title,
+          description: contractForm.description || null,
+          amount: contractForm.amount,
+          contractTerms: contractForm.contractTerms,
+          paymentInstructions: contractForm.paymentInstructions || null,
+          stripePaymentLink: contractForm.stripePaymentLink || null,
+          packageId: contractForm.packageId || null,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to create contract');
+      setShowContractModal(false);
+      setContractForm({
+        title: '',
+        description: '',
+        amount: '',
+        contractTerms: 'I understand and accept the coaching terms outlined in this agreement. I commit to the programme as described and acknowledge the payment obligations. Sessions must be rescheduled with at least 24 hours notice. Refunds are available within 14 days of purchase if no sessions have been attended.',
+        paymentInstructions: '',
+        stripePaymentLink: '',
+        packageId: '',
+      });
+      fetchContracts();
+    } catch {
+      // silent
+    } finally {
+      setSavingContract(false);
+    }
+  };
+
+  // -- Send contract email --
+  const handleSendContract = async (contractId: string) => {
+    if (!id || !accessToken) return;
+    setSendingContractId(contractId);
+    try {
+      const res = await fetch(`${API_BASE}/clients/${id}/contracts/${contractId}/send`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) throw new Error('Failed to send contract');
+      fetchContracts();
+    } catch {
+      // silent
+    } finally {
+      setSendingContractId(null);
+    }
+  };
+
+  // -- Mark contract as paid --
+  const handleMarkPaid = async (contractId: string) => {
+    if (!id || !accessToken) return;
+    const method = window.prompt('Payment method (e.g. bank transfer, Stripe, cash):');
+    if (method === null) return;
+    const reference = window.prompt('Payment reference (optional):') || '';
+    try {
+      const res = await fetch(`${API_BASE}/clients/${id}/contracts/${contractId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          status: 'paid',
+          paidMethod: method || 'manual',
+          paidReference: reference || null,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to update contract');
+      fetchContracts();
+    } catch {
+      // silent
+    }
+  };
+
+  // -- Cancel contract --
+  const handleCancelContract = async (contractId: string) => {
+    if (!id || !accessToken) return;
+    if (!window.confirm('Cancel this contract? The client will no longer be able to access the link.')) return;
+    try {
+      const res = await fetch(`${API_BASE}/clients/${id}/contracts/${contractId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ status: 'cancelled' }),
+      });
+      if (!res.ok) throw new Error('Failed to cancel contract');
+      fetchContracts();
+    } catch {
+      // silent
+    }
+  };
+
+  // -- Copy contract link --
+  const handleCopyContractLink = async (token: string) => {
+    const url = `${window.location.origin}/#/contract/${token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // fallback
+    }
+  };
+
+  // -- Change session status --
+  const handleSessionStatusChange = async (sessionId: string, newStatus: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/bookings/${sessionId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        fetchClient(); // refresh
+      }
+    } catch {
+      // silent
+    }
+  };
+
   // =========================================================================
   // BUILD TIMELINE EVENTS
   // =========================================================================
@@ -504,6 +725,30 @@ export default function ClientDetail() {
         detail: statusLabel,
         dotColor,
       });
+    }
+
+    // Contracts
+    for (const ct of contracts) {
+      if (ct.status === 'paid' && ct.paidAt) {
+        events.push({
+          date: ct.paidAt,
+          label: `Payment: ${ct.title}`,
+          detail: `$${parseFloat(ct.amount).toLocaleString('en-AU', { minimumFractionDigits: 2 })}`,
+          dotColor: 'bg-green-500',
+        });
+      } else if (ct.status === 'agreed' && ct.agreedAt) {
+        events.push({
+          date: ct.agreedAt,
+          label: `Contract agreed: ${ct.title}`,
+          dotColor: 'bg-amber-500',
+        });
+      } else if (ct.sentAt) {
+        events.push({
+          date: ct.sentAt,
+          label: `Contract sent: ${ct.title}`,
+          dotColor: 'bg-blue-400',
+        });
+      }
     }
 
     // Sort chronologically (oldest first)
@@ -783,6 +1028,7 @@ export default function ClientDetail() {
 
       {/* ─────────────────── Sessions Tab ─────────────────── */}
       {activeTab === 'sessions' && (
+        <>
         <div className="bg-white rounded-lg border border-stone-200 shadow-sm">
           <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
             <h2
@@ -792,7 +1038,7 @@ export default function ClientDetail() {
               Sessions
             </h2>
             <button
-              onClick={() => navigate('/admin/bookings')}
+              onClick={() => setBookModalOpen(true)}
               className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors text-white"
               style={{ backgroundColor: '#8d3038' }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#6b2228')}
@@ -803,72 +1049,190 @@ export default function ClientDetail() {
             </button>
           </div>
 
-          {sessions.length === 0 ? (
-            <div className="p-8 text-center">
-              <Calendar className="w-8 h-8 text-stone-300 mx-auto mb-2" />
-              <p className="text-sm text-stone-400">No sessions yet</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-stone-100">
-                    <th className="text-left text-xs font-medium text-stone-500 uppercase tracking-wider px-6 py-3">
-                      Date
-                    </th>
-                    <th className="text-left text-xs font-medium text-stone-500 uppercase tracking-wider px-6 py-3">
-                      Time
-                    </th>
-                    <th className="text-left text-xs font-medium text-stone-500 uppercase tracking-wider px-6 py-3">
-                      Package
-                    </th>
-                    <th className="text-left text-xs font-medium text-stone-500 uppercase tracking-wider px-6 py-3">
-                      Status
-                    </th>
-                    <th className="text-left text-xs font-medium text-stone-500 uppercase tracking-wider px-6 py-3">
-                      Notes
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sessions.map((s) => {
-                    const upcoming = isUpcoming(s.sessionDate) && (s.status === 'pending' || s.status === 'confirmed');
-                    const statusStyle = SESSION_STATUS_STYLES[s.status] || 'bg-stone-100 text-stone-600';
-                    return (
-                      <tr
-                        key={s.id}
-                        className={`border-b border-stone-50 last:border-0 transition-colors ${
-                          upcoming ? 'bg-blue-50/40' : 'hover:bg-stone-50'
-                        }`}
-                      >
-                        <td className="px-6 py-3 text-sm text-stone-800">
-                          {formatDate(s.sessionDate)}
-                        </td>
-                        <td className="px-6 py-3 text-sm text-stone-600">
-                          {formatTime(s.startTime)}
-                          {s.endTime ? ` - ${formatTime(s.endTime)}` : ''}
-                        </td>
-                        <td className="px-6 py-3 text-sm text-stone-600">
-                          {s.packageName || '--'}
-                        </td>
-                        <td className="px-6 py-3">
-                          <span
-                            className={`inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full ${statusStyle}`}
+          {(() => {
+            const today = new Date().toISOString().split('T')[0];
+            const upcomingSessions = sessions.filter(
+              (s) => s.sessionDate >= today && ['pending', 'confirmed'].includes(s.status)
+            );
+            const pastSessions = sessions.filter(
+              (s) => !(s.sessionDate >= today && ['pending', 'confirmed'].includes(s.status))
+            );
+
+            return (
+              <div className="p-6 space-y-8">
+                {/* ── Upcoming Sessions ── */}
+                <div>
+                  <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wider mb-3">
+                    Upcoming ({upcomingSessions.length})
+                  </h3>
+                  {upcomingSessions.length === 0 ? (
+                    <div className="text-center py-6">
+                      <Calendar className="w-7 h-7 text-stone-300 mx-auto mb-1.5" />
+                      <p className="text-sm text-stone-400">No upcoming sessions</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {upcomingSessions.map((s) => {
+                        const statusStyle =
+                          SESSION_STATUS_STYLES[s.status] || 'bg-stone-100 text-stone-600';
+                        return (
+                          <div
+                            key={s.id}
+                            className="bg-blue-50/40 border border-blue-100 rounded-lg p-4"
                           >
-                            {s.status.charAt(0).toUpperCase() + s.status.slice(1).replace('_', ' ')}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3 text-sm text-stone-500 max-w-[200px] truncate">
-                          {s.notes || '--'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                            <div className="flex items-start justify-between gap-4">
+                              {/* Left: date, time, package, meeting URL */}
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-stone-800">
+                                  {formatDate(s.sessionDate)}
+                                </p>
+                                <p className="text-sm text-stone-600 mt-0.5">
+                                  {formatTime(s.startTime)}
+                                  {s.endTime ? ` - ${formatTime(s.endTime)}` : ''}
+                                </p>
+                                {s.packageName && (
+                                  <p className="text-xs text-stone-500 mt-1">{s.packageName}</p>
+                                )}
+                                {s.meetingUrl && (
+                                  <a
+                                    href={s.meetingUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs mt-1.5 hover:underline"
+                                    style={{ color: '#8d3038' }}
+                                  >
+                                    Meeting link
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                )}
+                                {s.notes && (
+                                  <p className="text-xs text-stone-500 mt-1.5 line-clamp-2">
+                                    {s.notes}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Right: status badge + status dropdown */}
+                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                <span
+                                  className={`inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full ${statusStyle}`}
+                                >
+                                  {s.status.charAt(0).toUpperCase() +
+                                    s.status.slice(1).replace('_', ' ')}
+                                </span>
+                                <select
+                                  value={s.status}
+                                  onChange={(e) =>
+                                    handleSessionStatusChange(s.id, e.target.value)
+                                  }
+                                  className="text-xs border border-stone-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
+                                >
+                                  <option value="pending">Pending</option>
+                                  <option value="confirmed">Confirmed</option>
+                                  <option value="completed">Completed</option>
+                                  <option value="cancelled">Cancelled</option>
+                                  <option value="no_show">No Show</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Past Sessions ── */}
+                <div>
+                  <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wider mb-3">
+                    Past ({pastSessions.length})
+                  </h3>
+                  {pastSessions.length === 0 ? (
+                    <div className="text-center py-6">
+                      <Calendar className="w-7 h-7 text-stone-300 mx-auto mb-1.5" />
+                      <p className="text-sm text-stone-400">No past sessions</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-stone-100">
+                            <th className="text-left text-xs font-medium text-stone-500 uppercase tracking-wider px-4 py-2.5">
+                              Date
+                            </th>
+                            <th className="text-left text-xs font-medium text-stone-500 uppercase tracking-wider px-4 py-2.5">
+                              Time
+                            </th>
+                            <th className="text-left text-xs font-medium text-stone-500 uppercase tracking-wider px-4 py-2.5">
+                              Package
+                            </th>
+                            <th className="text-left text-xs font-medium text-stone-500 uppercase tracking-wider px-4 py-2.5">
+                              Status
+                            </th>
+                            <th className="text-left text-xs font-medium text-stone-500 uppercase tracking-wider px-4 py-2.5">
+                              Notes
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pastSessions.map((s) => {
+                            const statusStyle =
+                              SESSION_STATUS_STYLES[s.status] || 'bg-stone-100 text-stone-600';
+                            return (
+                              <tr
+                                key={s.id}
+                                className="border-b border-stone-50 last:border-0 hover:bg-stone-50 transition-colors"
+                              >
+                                <td className="px-4 py-3 text-sm text-stone-800">
+                                  {formatDate(s.sessionDate)}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-stone-600">
+                                  {formatTime(s.startTime)}
+                                  {s.endTime ? ` - ${formatTime(s.endTime)}` : ''}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-stone-600">
+                                  {s.packageName || '--'}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span
+                                    className={`inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full ${statusStyle}`}
+                                  >
+                                    {s.status.charAt(0).toUpperCase() +
+                                      s.status.slice(1).replace('_', ' ')}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-stone-500 max-w-[200px] truncate">
+                                  {s.notes || '--'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
+
+        {/* Book Session Modal */}
+        <BookSessionModal
+          open={bookModalOpen}
+          onClose={() => setBookModalOpen(false)}
+          onCreated={() => {
+            setBookModalOpen(false);
+            fetchClient();
+          }}
+          clientId={client?.id}
+          clientName={client?.name}
+          clientEmail={client?.email}
+          packageId={client?.currentPackageId}
+          packageName={client?.packageName}
+          durationMinutes={null}
+        />
+        </>
       )}
 
       {/* ─────────────────── Notes Tab ─────────────────── */}
@@ -1042,6 +1406,300 @@ export default function ClientDetail() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ─────────────────── Payments Tab ─────────────────── */}
+      {activeTab === 'payments' && (
+        <div className="space-y-6">
+          {/* Header with Create button */}
+          <div className="flex items-center justify-between">
+            <h2
+              className="text-lg font-bold text-stone-900"
+              style={{ fontFamily: 'Georgia, serif' }}
+            >
+              Contracts & Payments
+            </h2>
+            <button
+              onClick={() => {
+                // Pre-fill title from package if available
+                if (client?.packageName) {
+                  setContractForm((f) => ({
+                    ...f,
+                    title: client.packageName || '',
+                    packageId: client.currentPackageId || '',
+                  }));
+                }
+                setShowContractModal(true);
+              }}
+              className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors text-white"
+              style={{ backgroundColor: '#8d3038' }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#6b2228')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#8d3038')}
+            >
+              <Plus className="w-4 h-4" />
+              New Contract
+            </button>
+          </div>
+
+          {/* Contracts list */}
+          {contracts.length === 0 ? (
+            <div className="bg-white rounded-lg border border-stone-200 shadow-sm p-12 text-center">
+              <DollarSign className="w-8 h-8 text-stone-300 mx-auto mb-2" />
+              <p className="text-sm text-stone-400">No contracts yet</p>
+              <p className="text-xs text-stone-400 mt-1">Create a contract to generate a payment link</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {contracts.map((contract) => {
+                const statusStyle = CONTRACT_STATUS_STYLES[contract.status] || 'bg-stone-100 text-stone-600';
+                const isSending = sendingContractId === contract.id;
+                const isActive = !['cancelled', 'expired', 'paid'].includes(contract.status);
+
+                return (
+                  <div key={contract.id} className="bg-white rounded-lg border border-stone-200 shadow-sm overflow-hidden">
+                    <div className="px-6 py-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <h3 className="text-sm font-semibold text-stone-800">
+                              {contract.title}
+                            </h3>
+                            <span className={`inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full ${statusStyle}`}>
+                              {CONTRACT_STATUS_LABELS[contract.status]}
+                            </span>
+                          </div>
+                          {contract.description && (
+                            <p className="text-xs text-stone-500 mb-1">{contract.description}</p>
+                          )}
+                          <p className="text-lg font-bold" style={{ color: '#8d3038' }}>
+                            ${parseFloat(contract.amount).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                            <span className="text-xs font-normal text-stone-400 ml-1">{contract.currency}</span>
+                          </p>
+
+                          {/* Timeline */}
+                          <div className="flex items-center gap-3 mt-2 flex-wrap text-xs text-stone-400">
+                            <span>Created {formatDate(contract.createdAt)}</span>
+                            {contract.sentAt && <span>Sent {formatDate(contract.sentAt)}</span>}
+                            {contract.viewedAt && (
+                              <span className="inline-flex items-center gap-0.5">
+                                <Eye className="w-3 h-3" /> Viewed {formatDate(contract.viewedAt)}
+                              </span>
+                            )}
+                            {contract.agreedAt && (
+                              <span className="inline-flex items-center gap-0.5 text-amber-600">
+                                <CheckCircle className="w-3 h-3" /> Agreed {formatDate(contract.agreedAt)}
+                              </span>
+                            )}
+                            {contract.paidAt && (
+                              <span className="inline-flex items-center gap-0.5 text-green-600">
+                                <DollarSign className="w-3 h-3" /> Paid {formatDate(contract.paidAt)}
+                                {contract.paidMethod && ` (${contract.paidMethod})`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {/* Copy link */}
+                          {isActive && (
+                            <button
+                              onClick={() => handleCopyContractLink(contract.paymentToken)}
+                              className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors"
+                              title="Copy contract link"
+                            >
+                              <LinkIcon className="w-3.5 h-3.5 text-stone-400" />
+                            </button>
+                          )}
+
+                          {/* Send email */}
+                          {isActive && contract.status !== 'agreed' && (
+                            <button
+                              onClick={() => handleSendContract(contract.id)}
+                              disabled={isSending}
+                              className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                              title={contract.status === 'draft' ? 'Send to client' : 'Resend to client'}
+                            >
+                              {isSending ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-400" />
+                              ) : (
+                                <Send className="w-3.5 h-3.5 text-blue-500" />
+                              )}
+                            </button>
+                          )}
+
+                          {/* Mark as paid */}
+                          {(contract.status === 'agreed' || contract.status === 'sent' || contract.status === 'viewed') && (
+                            <button
+                              onClick={() => handleMarkPaid(contract.id)}
+                              className="p-1.5 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Mark as paid"
+                            >
+                              <DollarSign className="w-3.5 h-3.5 text-green-500" />
+                            </button>
+                          )}
+
+                          {/* Cancel */}
+                          {isActive && contract.status !== 'paid' && (
+                            <button
+                              onClick={() => handleCancelContract(contract.id)}
+                              className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Cancel contract"
+                            >
+                              <XCircle className="w-3.5 h-3.5 text-red-400" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Create Contract Modal */}
+          {showContractModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setShowContractModal(false)}>
+              <div className="absolute inset-0 bg-black/30" />
+              <div
+                className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
+                  <h3
+                    className="text-lg font-bold text-stone-900"
+                    style={{ fontFamily: 'Georgia, serif' }}
+                  >
+                    New Contract
+                  </h3>
+                  <button
+                    onClick={() => setShowContractModal(false)}
+                    className="p-1 hover:bg-stone-100 rounded-lg transition-colors text-stone-400"
+                  >
+                    <XCircle className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="px-6 py-5 space-y-4">
+                  {/* Title */}
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Title *</label>
+                    <input
+                      type="text"
+                      value={contractForm.title}
+                      onChange={(e) => setContractForm((f) => ({ ...f, title: e.target.value }))}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
+                      placeholder="e.g. 12-Week Coaching Programme"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Description</label>
+                    <input
+                      type="text"
+                      value={contractForm.description}
+                      onChange={(e) => setContractForm((f) => ({ ...f, description: e.target.value }))}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
+                      placeholder="Brief description of the service"
+                    />
+                  </div>
+
+                  {/* Amount */}
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Amount (AUD) *</label>
+                    <input
+                      type="text"
+                      value={contractForm.amount}
+                      onChange={(e) => setContractForm((f) => ({ ...f, amount: e.target.value }))}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
+                      placeholder="e.g. 1200.00"
+                    />
+                  </div>
+
+                  {/* Package */}
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Coaching Package</label>
+                    <select
+                      value={contractForm.packageId}
+                      onChange={(e) => setContractForm((f) => ({ ...f, packageId: e.target.value }))}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1 bg-white"
+                    >
+                      <option value="">None</option>
+                      {packages.map((pkg) => (
+                        <option key={pkg.id} value={pkg.id}>
+                          {pkg.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Contract Terms */}
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Contract Terms *</label>
+                    <textarea
+                      value={contractForm.contractTerms}
+                      onChange={(e) => setContractForm((f) => ({ ...f, contractTerms: e.target.value }))}
+                      rows={5}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1 resize-none"
+                      placeholder="Terms the client must agree to..."
+                    />
+                    <p className="text-[11px] text-stone-400 mt-1">
+                      The client will see: "By clicking I Agree & Accept, you acknowledge that you have read, understood, and agree to the terms..."
+                    </p>
+                  </div>
+
+                  {/* Payment Instructions */}
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Payment Instructions</label>
+                    <textarea
+                      value={contractForm.paymentInstructions}
+                      onChange={(e) => setContractForm((f) => ({ ...f, paymentInstructions: e.target.value }))}
+                      rows={3}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1 resize-none"
+                      placeholder="e.g. BSB: 123-456, Account: 12345678, Reference: [client name]"
+                    />
+                    <p className="text-[11px] text-stone-400 mt-1">Shown to the client after they agree. Leave blank if using Stripe.</p>
+                  </div>
+
+                  {/* Stripe Payment Link (optional) */}
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Stripe Payment Link (optional)</label>
+                    <input
+                      type="url"
+                      value={contractForm.stripePaymentLink}
+                      onChange={(e) => setContractForm((f) => ({ ...f, stripePaymentLink: e.target.value }))}
+                      className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
+                      placeholder="https://buy.stripe.com/..."
+                    />
+                    <p className="text-[11px] text-stone-400 mt-1">If provided, the client will see a "Proceed to Payment" button after agreeing.</p>
+                  </div>
+                </div>
+
+                <div className="px-6 py-4 border-t border-stone-100 flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => setShowContractModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateContract}
+                    disabled={savingContract || !contractForm.title.trim() || !contractForm.amount.trim() || !contractForm.contractTerms.trim()}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-60"
+                    style={{ backgroundColor: '#8d3038' }}
+                    onMouseEnter={(e) => !savingContract && (e.currentTarget.style.backgroundColor = '#6b2228')}
+                    onMouseLeave={(e) => !savingContract && (e.currentTarget.style.backgroundColor = '#8d3038')}
+                  >
+                    {savingContract ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    Create Contract
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

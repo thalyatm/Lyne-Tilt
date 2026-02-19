@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../config/api';
 import {
+  AlertTriangle,
   DollarSign,
   Package,
   Clock,
@@ -34,6 +35,7 @@ interface Order {
   currency: string;
   paymentStatus: PaymentStatus;
   status: OrderStatus;
+  source?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -72,7 +74,9 @@ function formatDate(iso: string): string {
 }
 
 function formatCurrency(amount: number, currency = 'AUD'): string {
-  return `$${amount.toFixed(2)} ${currency}`;
+  if (amount >= 5000) return `$${(amount / 1000).toFixed(1)}K ${currency}`;
+  if (amount === 0) return `$0 ${currency}`;
+  return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${currency}`;
 }
 
 function truncateOrderNumber(orderNumber: string, maxLen = 12): string {
@@ -99,15 +103,15 @@ function StatCard({
 }) {
   return (
     <div
-      className={`bg-white rounded-xl border border-stone-200 p-4 flex items-center gap-4`}
+      className={`bg-white rounded-xl border border-stone-200 px-4 py-2.5 flex items-center gap-3`}
       style={{ borderLeftWidth: '4px', borderLeftColor: borderColor }}
     >
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${accent}`}>
-        <Icon size={18} />
+      <div className={`w-7 h-7 rounded-md flex items-center justify-center ${accent}`}>
+        <Icon size={14} />
       </div>
       <div>
-        <p className="text-2xl font-semibold text-stone-900">{value}</p>
-        <p className="text-xs text-stone-500">{label}</p>
+        <p className="text-xl font-semibold text-stone-900 leading-tight">{value}</p>
+        <p className="text-[11px] text-stone-500">{label}</p>
       </div>
     </div>
   );
@@ -183,6 +187,35 @@ export default function OrdersManager() {
   const [dateTo, setDateTo] = useState('');
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  // Action Required filter
+  const [actionRequired, setActionRequired] = useState(false);
+
+  // Multi-select
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const displayedOrders = actionRequired
+    ? orders.filter(o => o.status === 'pending' || o.status === 'confirmed')
+    : orders;
+
+  const toggleSelectAll = () => {
+    if (displayedOrders.length > 0 && displayedOrders.every(o => selectedIds.has(o.id))) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(displayedOrders.map(o => o.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const [bulkLoading, setBulkLoading] = useState(false);
+
   // ---------- Debounced search ----------
 
   useEffect(() => {
@@ -241,6 +274,7 @@ export default function OrdersManager() {
 
   useEffect(() => {
     fetchOrders(1);
+    setSelectedIds(new Set());
   }, [fetchOrders]);
 
   // ---------- Export CSV ----------
@@ -276,6 +310,28 @@ export default function OrdersManager() {
     }
   };
 
+  const handleBulkAction = async (action: string) => {
+    if (selectedIds.size === 0) return;
+    setBulkLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/orders/bulk`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ ids: Array.from(selectedIds), action }),
+      });
+      if (!res.ok) throw new Error('Bulk action failed');
+      setSelectedIds(new Set());
+      fetchOrders(pagination.page);
+    } catch {
+      // silently handle
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   // ---------- Status tabs ----------
 
   const statusTabs = [
@@ -305,6 +361,39 @@ export default function OrdersManager() {
           <Download size={16} />
           Export CSV
         </button>
+      </div>
+
+      {/* Date filters (above tiles so they apply to stats) */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="bg-white border border-stone-200 rounded-md px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-400"
+            placeholder="From"
+          />
+          <span className="text-stone-400 text-sm">to</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="bg-white border border-stone-200 rounded-md px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-400"
+            placeholder="To"
+          />
+          {(dateFrom || dateTo) && (
+            <button
+              onClick={() => {
+                setDateFrom('');
+                setDateTo('');
+              }}
+              className="p-1.5 hover:bg-stone-100 rounded transition"
+              title="Clear dates"
+            >
+              <X size={14} className="text-stone-400" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats cards */}
@@ -339,12 +428,36 @@ export default function OrdersManager() {
         />
       </div>
 
+      {/* Action Required toggle */}
+      <button
+        onClick={() => {
+          const next = !actionRequired;
+          setActionRequired(next);
+          if (next) setStatusFilter('');
+        }}
+        className={`mb-3 inline-flex items-center gap-2 px-3.5 py-1.5 text-sm font-medium rounded-full border transition-colors ${
+          actionRequired
+            ? 'bg-amber-50 border-amber-300 text-amber-800'
+            : 'bg-white border-stone-200 text-stone-600 hover:border-stone-300'
+        }`}
+      >
+        <AlertTriangle size={14} className={actionRequired ? 'text-amber-600' : 'text-stone-400'} />
+        Action Required
+        {stats.pendingConfirmed > 0 && (
+          <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-semibold rounded-full ${
+            actionRequired ? 'bg-amber-200 text-amber-800' : 'bg-amber-100 text-amber-700'
+          }`}>
+            {stats.pendingConfirmed}
+          </span>
+        )}
+      </button>
+
       {/* Status tabs */}
       <div className="flex items-center gap-1 mb-4 border-b border-stone-200">
         {statusTabs.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setStatusFilter(tab.key)}
+            onClick={() => { setStatusFilter(tab.key); setActionRequired(false); }}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
               statusFilter === tab.key
                 ? 'border-stone-900 text-stone-900'
@@ -356,7 +469,7 @@ export default function OrdersManager() {
         ))}
       </div>
 
-      {/* Search + date filters */}
+      {/* Search */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div className="relative flex-1 max-w-sm">
           <Search
@@ -380,40 +493,53 @@ export default function OrdersManager() {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="bg-white border border-stone-200 rounded-md px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-400"
-            placeholder="From"
-          />
-          <span className="text-stone-400 text-sm">to</span>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="bg-white border border-stone-200 rounded-md px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-400"
-            placeholder="To"
-          />
-          {(dateFrom || dateTo) && (
-            <button
-              onClick={() => {
-                setDateFrom('');
-                setDateTo('');
-              }}
-              className="p-1.5 hover:bg-stone-100 rounded transition"
-              title="Clear dates"
-            >
-              <X size={14} className="text-stone-400" />
-            </button>
-          )}
-        </div>
-
         <span className="text-sm text-stone-400 ml-auto">
-          Showing {pagination.total} order{pagination.total !== 1 ? 's' : ''}
+          Showing {actionRequired ? displayedOrders.length : pagination.total} order{(actionRequired ? displayedOrders.length : pagination.total) !== 1 ? 's' : ''}
         </span>
       </div>
+
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-stone-900 text-white rounded-lg px-4 py-2.5 mb-4 flex items-center gap-4">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleBulkAction('confirm')}
+              disabled={bulkLoading}
+              className="px-3 py-1 text-xs bg-white/20 hover:bg-white/30 rounded-md transition disabled:opacity-50"
+            >
+              Confirm
+            </button>
+            <button
+              onClick={() => handleBulkAction('ship')}
+              disabled={bulkLoading}
+              className="px-3 py-1 text-xs bg-white/20 hover:bg-white/30 rounded-md transition disabled:opacity-50"
+            >
+              Ship
+            </button>
+            <button
+              onClick={() => handleBulkAction('deliver')}
+              disabled={bulkLoading}
+              className="px-3 py-1 text-xs bg-white/20 hover:bg-white/30 rounded-md transition disabled:opacity-50"
+            >
+              Deliver
+            </button>
+            <button
+              onClick={() => handleBulkAction('cancel')}
+              disabled={bulkLoading}
+              className="px-3 py-1 text-xs bg-red-500/80 hover:bg-red-500 rounded-md transition disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="ml-auto text-xs text-white/70 hover:text-white"
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
       {/* Data Table */}
       <div className="bg-white rounded-lg border border-stone-200 overflow-hidden">
@@ -422,18 +548,18 @@ export default function OrdersManager() {
             <div className="w-6 h-6 border-2 border-stone-200 border-t-stone-600 rounded-full animate-spin mx-auto mb-3" />
             <p className="text-stone-500 text-sm">Loading orders...</p>
           </div>
-        ) : orders.length === 0 ? (
+        ) : displayedOrders.length === 0 ? (
           <div className="p-12 text-center">
             <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-3">
               <ShoppingBag size={24} className="text-stone-400" />
             </div>
             <p className="text-stone-600 font-medium">
-              {debouncedSearch || statusFilter || dateFrom || dateTo
+              {debouncedSearch || statusFilter || dateFrom || dateTo || actionRequired
                 ? 'No orders match your filters'
                 : 'No orders yet'}
             </p>
             <p className="text-sm text-stone-400 mt-1">
-              {debouncedSearch || statusFilter || dateFrom || dateTo
+              {debouncedSearch || statusFilter || dateFrom || dateTo || actionRequired
                 ? 'Try adjusting your search or filters.'
                 : 'Orders will appear here once customers start purchasing.'}
             </p>
@@ -444,6 +570,14 @@ export default function OrdersManager() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-stone-50/80">
+                    <th className="px-4 py-2.5 w-10">
+                      <input
+                        type="checkbox"
+                        checked={displayedOrders.length > 0 && displayedOrders.every(o => selectedIds.has(o.id))}
+                        onChange={toggleSelectAll}
+                        className="rounded border-stone-300 text-stone-900 focus:ring-stone-400"
+                      />
+                    </th>
                     <th className="px-4 py-2.5 text-left text-[11px] font-medium text-stone-500 uppercase tracking-wider">
                       Order
                     </th>
@@ -463,23 +597,40 @@ export default function OrdersManager() {
                       Status
                     </th>
                     <th className="px-4 py-2.5 text-left text-[11px] font-medium text-stone-500 uppercase tracking-wider">
+                      Next Action
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-[11px] font-medium text-stone-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
-                  {orders.map((order) => {
+                  {displayedOrders.map((order) => {
                     return (
                       <tr
                         key={order.id}
                         onClick={() => navigate(`/admin/orders/${order.id}`)}
                         className="hover:bg-stone-50/50 transition cursor-pointer"
                       >
+                        {/* Checkbox */}
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(order.id)}
+                            onChange={() => toggleSelect(order.id)}
+                            className="rounded border-stone-300 text-stone-900 focus:ring-stone-400"
+                          />
+                        </td>
                         {/* Order */}
                         <td className="px-4 py-3">
-                          <span className="font-mono text-sm font-semibold text-stone-900 tracking-wide">
-                            {truncateOrderNumber(order.orderNumber)}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-sm font-semibold text-stone-900 tracking-wide">
+                              {truncateOrderNumber(order.orderNumber)}
+                            </span>
+                            {order.source === 'squarespace_migration' && (
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">SQ</span>
+                            )}
+                          </div>
                           <p className="text-xs text-stone-400 mt-0.5">
                             {formatDate(order.createdAt)}
                           </p>
@@ -521,6 +672,14 @@ export default function OrdersManager() {
                         {/* Status */}
                         <td className="px-4 py-3">
                           <OrderStatusBadge status={order.status} />
+                        </td>
+
+                        {/* Next Action */}
+                        <td className="px-4 py-3">
+                          {order.status === 'pending' && <span className="text-xs font-medium text-blue-600">Confirm</span>}
+                          {order.status === 'confirmed' && <span className="text-xs font-medium text-amber-600">Ship</span>}
+                          {order.status === 'shipped' && <span className="text-xs font-medium text-green-600">Mark Delivered</span>}
+                          {(order.status === 'delivered' || order.status === 'cancelled') && <span className="text-xs text-stone-400">&mdash;</span>}
                         </td>
 
                         {/* Actions */}

@@ -12,7 +12,7 @@ import { Product, ProductCategory, Testimonial } from '../types';
 const DEFAULT_TESTIMONIALS: Testimonial[] = [
   { id: 'r1', author: 'Tanya B.', role: 'Coaching Client', text: "Every Time I speak with Lyne it's like the problems I thought I had dissolve and suddenly I realise they're super powers in disguise. When you can flick your limiting beliefs into signposts that guide you towards and away from things it is life (and art)changing. I can't thank you enough Lyne - see you next month for our session!", type: 'coaching', rating: 5 },
   { id: 'r2', author: 'Melanie C.', role: 'Workshop Attendee', text: "I didn't realise how much I was holding back until I started learning with Lyne. Her classes blend practical skill and deep mindset shifts.", type: 'learn', rating: 5 },
-  { id: 'r3', author: 'Sandie M.', role: 'Jewellery Customer', text: "Her jewellery isn't just beautiful—it feels like a part of me. I wear it when I need to feel strong, and when I want to show up fully.", type: 'shop', rating: 5 },
+  { id: 'r3', author: 'Sandie M.', role: 'Jewellery Customer', text: "Her jewellery isn't just beautiful - it feels like a part of me. I wear it when I need to feel strong, and when I want to show up fully.", type: 'shop', rating: 5 },
   { id: 'r4', author: 'Art of Instagram attendee', role: 'Workshop Attendee', text: "I am generally hesitant to pay for a course such as this, from finding someone online. I was comfortable because I knew Lyne, and trusted that it was worth the price.", type: 'learn', rating: 5 },
   { id: 'r5', author: 'Bel Y.', role: 'Workshop Attendee', text: "Lyne is a nurturing teacher. Allowing you to explore without expectation. It's refreshing to attend an art class without feeling like there is any expectation you need to live up to. A night to let go and embrace your inner artist!", type: 'learn', rating: 5 },
   { id: 'r6', author: 'Andréa Z.', role: 'Coaching Client', text: "It was as if I was seen for the first time in my life - from the minute Lyne spoke about common blocks like Imposter Syndrome & limiting beliefs to the practical steps she was able to make accessible to me through her decades of experience coaching and teaching, leading and learning I just felt as if I could breathe again. Funny thing is I didn't know I wasn't. To say I'm grateful is inadequate", type: 'coaching', rating: 5 },
@@ -77,6 +77,7 @@ const Home = () => {
           id: p.slug || p.id,
           name: p.name,
           price: parseFloat(p.price),
+          compareAtPrice: p.compareAtPrice ? parseFloat(p.compareAtPrice) : undefined,
           currency: p.currency || 'AUD',
           category: p.category as ProductCategory,
           colours: [],
@@ -95,19 +96,51 @@ const Home = () => {
     fetchProducts();
   }, []);
 
-  // Fetch testimonials
+  // Fetch testimonials + featured reviews
   useEffect(() => {
-    const fetchTestimonials = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/testimonials`);
-        if (!response.ok) throw new Error('API error');
-        const data = await response.json();
-        setTestimonials(data.length > 0 ? data : DEFAULT_TESTIMONIALS.filter(t => t.text));
-      } catch {
-        setTestimonials(DEFAULT_TESTIMONIALS.filter(t => t.text));
+    const fetchAll = async () => {
+      // Fetch testimonials and featured reviews in parallel
+      const [testimonialsRes, reviewsRes] = await Promise.allSettled([
+        fetch(`${API_BASE}/testimonials`),
+        fetch(`${API_BASE}/reviews/featured`),
+      ]);
+
+      let testimonialsData: Testimonial[] = [];
+      if (testimonialsRes.status === 'fulfilled' && testimonialsRes.value.ok) {
+        const data = await testimonialsRes.value.json();
+        if (data.length > 0) testimonialsData = data;
       }
+
+      // Convert featured reviews to testimonial format
+      let reviewTestimonials: Testimonial[] = [];
+      if (reviewsRes.status === 'fulfilled' && reviewsRes.value.ok) {
+        const reviews = await reviewsRes.value.json();
+        const roleMap: Record<string, { role: string; type: string }> = {
+          'Wearable Art': { role: 'Jewellery Customer', type: 'shop' },
+          'Art Supplies': { role: 'Art Supplies Customer', type: 'shop' },
+          'Creative Coaching': { role: 'Coaching Client', type: 'coaching' },
+          'Workshop': { role: 'Workshop Attendee', type: 'learn' },
+        };
+        reviewTestimonials = reviews
+          .filter((r: any) => r.body)
+          .map((r: any) => {
+            const mapped = roleMap[r.productName] || { role: 'Customer', type: 'shop' };
+            return {
+              id: `review-${r.id}`,
+              author: r.customerName,
+              role: mapped.role,
+              text: r.body,
+              type: mapped.type as 'shop' | 'coaching' | 'learn',
+              rating: r.rating,
+            };
+          });
+      }
+
+      // Merge: featured reviews first, then testimonials
+      const combined = [...reviewTestimonials, ...testimonialsData];
+      setTestimonials(combined.length > 0 ? combined : DEFAULT_TESTIMONIALS.filter(t => t.text));
     };
-    fetchTestimonials();
+    fetchAll();
   }, []);
 
   // Auto-advance carousel
@@ -292,8 +325,7 @@ const Home = () => {
               {/* Context Label */}
               <div className="mb-4">
                 <span className="text-[9px] uppercase tracking-[0.2em] font-medium text-clay bg-clay/10 px-3 py-1 rounded-full">
-                  {testimonials[currentTestimonial].type === 'shop' ? 'About the Jewellery' :
-                   testimonials[currentTestimonial].type === 'coaching' ? 'Coaching Client' : 'Workshop Attendee'}
+                  {testimonials[currentTestimonial].role}
                 </span>
               </div>
 

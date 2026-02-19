@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
+import { eq, and, gte, lte, sql, desc, notInArray } from 'drizzle-orm';
 import {
   orders,
   orderItems,
@@ -161,6 +161,26 @@ function fillDays<T extends Record<string, unknown>>(
   return days.map(d => (map.get(d) ?? { ...defaults, [dateKey]: d }) as T);
 }
 
+/**
+ * Classify an order item's product type using product name when product_id is NULL.
+ * Lyne Tilt's products are primarily wearable art jewelry and art prints.
+ * Items with size indicators (A4, A5, A6) are art prints (wall-art).
+ * Everything else defaults to wearable art.
+ */
+function productTypeClassifier(productTypeCol: any, productNameCol: any) {
+  return sql`COALESCE(
+    ${productTypeCol},
+    CASE
+      WHEN ${productNameCol} LIKE '%Gift Card%' THEN 'digital'
+      WHEN ${productNameCol} LIKE '%Workshop%' OR ${productNameCol} LIKE '%Course%' THEN 'workshop'
+      WHEN ${productNameCol} LIKE '% A4%' OR ${productNameCol} LIKE '% A5%' OR ${productNameCol} LIKE '% A6%'
+        OR ${productNameCol} LIKE '%Size%' OR ${productNameCol} LIKE '%Print%'
+        OR ${productNameCol} LIKE '%Canvas%' OR ${productNameCol} LIKE '%Poster%' THEN 'wall-art'
+      ELSE 'wearable'
+    END
+  )`;
+}
+
 /** Mask email for privacy: j***@example.com */
 function maskEmail(email: string): string {
   const [local, domain] = email.split('@');
@@ -176,6 +196,24 @@ analyticsRoutes.get('/overview', adminAuth, async (c) => {
   const { from, to, fromDate, toDate } = parseDateRange(c);
   const prev = previousPeriod(fromDate, toDate);
   const days = dateRange(fromDate, toDate);
+
+  // Optional filters
+  const productTypeParam = c.req.query('productType');
+  const statusParam = c.req.query('status');
+
+  // Build order-level WHERE conditions
+  const orderConditions = [gte(orders.createdAt, from), lte(orders.createdAt, to), notInArray(orders.status, ['cancelled', 'refunded', 'failed'])];
+  if (statusParam) {
+    // If explicitly filtering by a status, replace the default exclusion
+    orderConditions.pop();
+    orderConditions.push(eq(orders.status, statusParam as any));
+  }
+
+  // Build order-item-level conditions (includes productType)
+  const itemConditions = [...orderConditions];
+  if (productTypeParam) itemConditions.push(eq(products.productType, productTypeParam as any));
+
+  const useItemJoin = !!productTypeParam;
 
   // ── KPIs: current period ──────────────────────────────
   const [
@@ -194,16 +232,30 @@ analyticsRoutes.get('/overview', adminAuth, async (c) => {
     visitorsPrev,
     emailsSentPrev,
   ] = await Promise.all([
-    // Revenue (confirmed orders)
-    db.select({ value: sql<number>`COALESCE(SUM(CAST(${orders.total} AS REAL)), 0)` })
-      .from(orders)
-      .where(and(gte(orders.createdAt, from), lte(orders.createdAt, to), eq(orders.status, 'confirmed')))
-      .get(),
-    // Order count
-    db.select({ value: sql<number>`count(*)` })
-      .from(orders)
-      .where(and(gte(orders.createdAt, from), lte(orders.createdAt, to)))
-      .get(),
+    // Revenue (filtered)
+    useItemJoin
+      ? db.select({ value: sql<number>`COALESCE(SUM(CAST(${orderItems.price} AS REAL) * ${orderItems.quantity}), 0)` })
+          .from(orderItems)
+          .innerJoin(products, eq(orderItems.productId, products.id))
+          .innerJoin(orders, eq(orderItems.orderId, orders.id))
+          .where(and(...itemConditions))
+          .get()
+      : db.select({ value: sql<number>`COALESCE(SUM(CAST(${orders.total} AS REAL)), 0)` })
+          .from(orders)
+          .where(and(...orderConditions))
+          .get(),
+    // Order count (filtered)
+    useItemJoin
+      ? db.select({ value: sql<number>`COUNT(DISTINCT ${orders.id})` })
+          .from(orderItems)
+          .innerJoin(products, eq(orderItems.productId, products.id))
+          .innerJoin(orders, eq(orderItems.orderId, orders.id))
+          .where(and(...itemConditions))
+          .get()
+      : db.select({ value: sql<number>`count(*)` })
+          .from(orders)
+          .where(and(...orderConditions))
+          .get(),
     // Unique visitors (distinct sessions)
     db.select({ value: sql<number>`COUNT(DISTINCT ${analyticsEvents.sessionId})` })
       .from(analyticsEvents)
@@ -266,11 +318,15 @@ analyticsRoutes.get('/overview', adminAuth, async (c) => {
     // ── Previous period comparisons ──
     db.select({ value: sql<number>`COALESCE(SUM(CAST(${orders.total} AS REAL)), 0)` })
       .from(orders)
-      .where(and(gte(orders.createdAt, prev.from), lte(orders.createdAt, prev.to), eq(orders.status, 'confirmed')))
+      .where(and(gte(orders.createdAt, prev.from), lte(orders.createdAt, prev.to),
+        ...(statusParam ? [eq(orders.status, statusParam as any)] : [notInArray(orders.status, ['cancelled', 'refunded', 'failed'])])
+      ))
       .get(),
     db.select({ value: sql<number>`count(*)` })
       .from(orders)
-      .where(and(gte(orders.createdAt, prev.from), lte(orders.createdAt, prev.to)))
+      .where(and(gte(orders.createdAt, prev.from), lte(orders.createdAt, prev.to),
+        ...(statusParam ? [eq(orders.status, statusParam as any)] : [notInArray(orders.status, ['cancelled', 'refunded', 'failed'])])
+      ))
       .get(),
     db.select({ value: sql<number>`COUNT(DISTINCT ${analyticsEvents.sessionId})` })
       .from(analyticsEvents)
@@ -300,17 +356,42 @@ analyticsRoutes.get('/overview', adminAuth, async (c) => {
     ? (revenuePrev?.value ?? 0) / (ordersPrev?.value ?? 0)
     : 0;
 
-  // ── Revenue time series ───────────────────────────────
-  const revDaily = await db.select({
+  // ── Revenue by category time series (always join items+products) ──
+  const catConditions = useItemJoin ? [...itemConditions] : [...orderConditions];
+  const revByCategoryRaw = await db.select({
     date: sql<string>`DATE(${orders.createdAt})`,
-    value: sql<number>`COALESCE(SUM(CAST(${orders.total} AS REAL)), 0)`,
+    category: sql<string>`${productTypeClassifier(products.productType, orderItems.productName)}`,
+    value: sql<number>`COALESCE(SUM(CAST(${orderItems.price} AS REAL) * ${orderItems.quantity}), 0)`,
   })
-    .from(orders)
-    .where(and(gte(orders.createdAt, from), lte(orders.createdAt, to), eq(orders.status, 'confirmed')))
-    .groupBy(sql`DATE(${orders.createdAt})`)
+    .from(orderItems)
+    .leftJoin(products, eq(orderItems.productId, products.id))
+    .innerJoin(orders, eq(orderItems.orderId, orders.id))
+    .where(and(...catConditions))
+    .groupBy(sql`DATE(${orders.createdAt})`, sql`${productTypeClassifier(products.productType, orderItems.productName)}`)
     .all();
 
-  // ── Top 5 products by revenue ─────────────────────────
+  // ── Revenue time series (filtered) ──
+  const revDaily = useItemJoin
+    ? await db.select({
+        date: sql<string>`DATE(${orders.createdAt})`,
+        value: sql<number>`COALESCE(SUM(CAST(${orderItems.price} AS REAL) * ${orderItems.quantity}), 0)`,
+      })
+        .from(orderItems)
+        .innerJoin(products, eq(orderItems.productId, products.id))
+        .innerJoin(orders, eq(orderItems.orderId, orders.id))
+        .where(and(...itemConditions))
+        .groupBy(sql`DATE(${orders.createdAt})`)
+        .all()
+    : await db.select({
+        date: sql<string>`DATE(${orders.createdAt})`,
+        value: sql<number>`COALESCE(SUM(CAST(${orders.total} AS REAL)), 0)`,
+      })
+        .from(orders)
+        .where(and(...orderConditions))
+        .groupBy(sql`DATE(${orders.createdAt})`)
+        .all();
+
+  // ── Top 5 products by revenue (filtered) ──
   const topProducts = await db.select({
     id: products.id,
     name: products.name,
@@ -318,9 +399,9 @@ analyticsRoutes.get('/overview', adminAuth, async (c) => {
     unitsSold: sql<number>`COALESCE(SUM(${orderItems.quantity}), 0)`,
   })
     .from(orderItems)
-    .innerJoin(products, eq(orderItems.productId, products.id))
+    .leftJoin(products, eq(orderItems.productId, products.id))
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
-    .where(and(gte(orders.createdAt, from), lte(orders.createdAt, to)))
+    .where(and(...itemConditions))
     .groupBy(products.id, products.name)
     .orderBy(sql`3 DESC`)
     .limit(5)
@@ -428,6 +509,7 @@ analyticsRoutes.get('/overview', adminAuth, async (c) => {
       days,
       { value: 0 } as any,
     ),
+    revenueByCategoryTimeSeries: revByCategoryRaw,
     topProducts,
     topPosts,
     subscribers: {
@@ -448,6 +530,22 @@ analyticsRoutes.get('/revenue', adminAuth, async (c) => {
   const { from, to, fromDate, toDate } = parseDateRange(c);
   const days = dateRange(fromDate, toDate);
 
+  // Optional filters
+  const productTypeParam = c.req.query('productType');
+  const statusParam = c.req.query('status');
+
+  // Build order-level WHERE conditions (exclude cancelled/refunded unless explicitly filtering)
+  const orderConditions = [gte(orders.createdAt, from), lte(orders.createdAt, to)];
+  if (statusParam) {
+    orderConditions.push(eq(orders.status, statusParam as any));
+  } else {
+    orderConditions.push(notInArray(orders.status, ['cancelled', 'refunded', 'failed']));
+  }
+
+  // Build order-item-level WHERE conditions (includes productType)
+  const itemConditions = [...orderConditions];
+  if (productTypeParam) itemConditions.push(eq(products.productType, productTypeParam as any));
+
   const [
     revenueTrendRaw,
     ordersByStatus,
@@ -455,17 +553,30 @@ analyticsRoutes.get('/revenue', adminAuth, async (c) => {
     productLeaderboard,
     aovTrendRaw,
     lowStock,
+    totalStats,
   ] = await Promise.all([
-    // Revenue trend by day
-    db.select({
-      date: sql<string>`DATE(${orders.createdAt})`,
-      revenue: sql<number>`COALESCE(SUM(CAST(${orders.total} AS REAL)), 0)`,
-      orderCount: sql<number>`count(*)`,
-    })
-      .from(orders)
-      .where(and(gte(orders.createdAt, from), lte(orders.createdAt, to)))
-      .groupBy(sql`DATE(${orders.createdAt})`)
-      .all(),
+    // Revenue trend by day — if productType filter, join through order_items
+    productTypeParam
+      ? db.select({
+          date: sql<string>`DATE(${orders.createdAt})`,
+          revenue: sql<number>`COALESCE(SUM(CAST(${orderItems.price} AS REAL) * ${orderItems.quantity}), 0)`,
+          orderCount: sql<number>`COUNT(DISTINCT ${orders.id})`,
+        })
+          .from(orderItems)
+          .innerJoin(products, eq(orderItems.productId, products.id))
+          .innerJoin(orders, eq(orderItems.orderId, orders.id))
+          .where(and(...itemConditions))
+          .groupBy(sql`DATE(${orders.createdAt})`)
+          .all()
+      : db.select({
+          date: sql<string>`DATE(${orders.createdAt})`,
+          revenue: sql<number>`COALESCE(SUM(CAST(${orders.total} AS REAL)), 0)`,
+          orderCount: sql<number>`count(*)`,
+        })
+          .from(orders)
+          .where(and(...orderConditions))
+          .groupBy(sql`DATE(${orders.createdAt})`)
+          .all(),
 
     // Orders by status
     db.select({
@@ -477,16 +588,16 @@ analyticsRoutes.get('/revenue', adminAuth, async (c) => {
       .groupBy(orders.status)
       .all(),
 
-    // Revenue by product type
+    // Revenue by product type (LEFT JOIN to capture items without products)
     db.select({
-      productType: products.productType,
+      productType: sql<string>`${productTypeClassifier(products.productType, orderItems.productName)}`,
       revenue: sql<number>`COALESCE(SUM(CAST(${orderItems.price} AS REAL) * ${orderItems.quantity}), 0)`,
     })
       .from(orderItems)
-      .innerJoin(products, eq(orderItems.productId, products.id))
+      .leftJoin(products, eq(orderItems.productId, products.id))
       .innerJoin(orders, eq(orderItems.orderId, orders.id))
-      .where(and(gte(orders.createdAt, from), lte(orders.createdAt, to)))
-      .groupBy(products.productType)
+      .where(and(...orderConditions))
+      .groupBy(sql`${productTypeClassifier(products.productType, orderItems.productName)}`)
       .all(),
 
     // Product leaderboard (top 20)
@@ -501,7 +612,7 @@ analyticsRoutes.get('/revenue', adminAuth, async (c) => {
       .from(orderItems)
       .innerJoin(products, eq(orderItems.productId, products.id))
       .innerJoin(orders, eq(orderItems.orderId, orders.id))
-      .where(and(gte(orders.createdAt, from), lte(orders.createdAt, to)))
+      .where(and(...itemConditions))
       .groupBy(products.id, products.name, products.productType, products.rating)
       .orderBy(sql`5 DESC`)
       .limit(20)
@@ -513,7 +624,7 @@ analyticsRoutes.get('/revenue', adminAuth, async (c) => {
       aov: sql<number>`COALESCE(AVG(CAST(${orders.total} AS REAL)), 0)`,
     })
       .from(orders)
-      .where(and(gte(orders.createdAt, from), lte(orders.createdAt, to)))
+      .where(and(...orderConditions))
       .groupBy(sql`DATE(${orders.createdAt})`)
       .all(),
 
@@ -532,9 +643,50 @@ analyticsRoutes.get('/revenue', adminAuth, async (c) => {
       ))
       .orderBy(products.quantity)
       .all(),
+
+    // Total stats for KPI cards
+    productTypeParam
+      ? db.select({
+          totalRevenue: sql<number>`COALESCE(SUM(CAST(${orderItems.price} AS REAL) * ${orderItems.quantity}), 0)`,
+          totalOrders: sql<number>`COUNT(DISTINCT ${orders.id})`,
+        })
+          .from(orderItems)
+          .innerJoin(products, eq(orderItems.productId, products.id))
+          .innerJoin(orders, eq(orderItems.orderId, orders.id))
+          .where(and(...itemConditions))
+          .get()
+      : db.select({
+          totalRevenue: sql<number>`COALESCE(SUM(CAST(${orders.total} AS REAL)), 0)`,
+          totalOrders: sql<number>`count(*)`,
+        })
+          .from(orders)
+          .where(and(...orderConditions))
+          .get(),
   ]);
 
+  const totalRevenue = totalStats?.totalRevenue ?? 0;
+  const totalOrders = totalStats?.totalOrders ?? 0;
+  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+  // Calculate revenue from orders without any order_items (e.g., Squarespace imports)
+  const itemizedRevenue = revenueByType.reduce((sum: number, t: any) => sum + (t.revenue || 0), 0);
+  if (totalRevenue > itemizedRevenue && itemizedRevenue > 0) {
+    const uncatExisting = revenueByType.find((t: any) => t.productType === 'uncategorized');
+    if (uncatExisting) {
+      uncatExisting.revenue += (totalRevenue - itemizedRevenue);
+    } else {
+      revenueByType.push({ productType: 'uncategorized', revenue: totalRevenue - itemizedRevenue });
+    }
+  } else if (itemizedRevenue === 0 && totalRevenue > 0) {
+    revenueByType.push({ productType: 'uncategorized', revenue: totalRevenue });
+  }
+
   return c.json({
+    summary: {
+      totalRevenue,
+      totalOrders,
+      avgOrderValue,
+    },
     revenueTrend: fillDays(
       revenueTrendRaw,
       'date',

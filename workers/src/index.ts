@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { drizzle } from 'drizzle-orm/d1';
+import { eq } from 'drizzle-orm';
 import * as schema from './db/schema';
 
 // Import routes
@@ -41,6 +42,7 @@ import { reviewsRoutes } from './routes/reviews';
 import { abandonedCartsRoutes } from './routes/abandoned-carts';
 import { giftCardsRoutes } from './routes/gift-cards';
 import { waitlistRoutes } from './routes/waitlist';
+import { wishlistRoutes } from './routes/wishlist';
 import { dataExportRoutes } from './routes/data-export';
 import { processScheduledDrafts, processAutomationQueue, processAbandonedCarts } from './utils/scheduled';
 
@@ -138,7 +140,114 @@ app.route('/api/reviews', reviewsRoutes);
 app.route('/api/abandoned-carts', abandonedCartsRoutes);
 app.route('/api/gift-cards', giftCardsRoutes);
 app.route('/api/waitlist', waitlistRoutes);
+app.route('/api/wishlist', wishlistRoutes);
 app.route('/api/data-export', dataExportRoutes);
+
+// ═══════════════════════════════════════════
+// PUBLIC CONTRACT ENDPOINTS (no auth required)
+// ═══════════════════════════════════════════
+
+// ─── GET /api/contracts/:token — Public contract view ────────────────
+app.get('/api/contracts/:token', async (c) => {
+  const db = c.get('db');
+  const token = c.req.param('token');
+
+  const contract = await db
+    .select()
+    .from(schema.coachingContracts)
+    .where(eq(schema.coachingContracts.paymentToken, token))
+    .get();
+
+  if (!contract) {
+    return c.json({ error: 'Contract not found' }, 404);
+  }
+
+  if (contract.status === 'cancelled') {
+    return c.json({ error: 'This contract has been cancelled' }, 410);
+  }
+
+  if (contract.expiresAt && new Date(contract.expiresAt) < new Date()) {
+    // Auto-expire
+    if (contract.status !== 'expired' && contract.status !== 'paid' && contract.status !== 'agreed') {
+      await db
+        .update(schema.coachingContracts)
+        .set({ status: 'expired', updatedAt: new Date().toISOString() })
+        .where(eq(schema.coachingContracts.id, contract.id))
+        .run();
+    }
+    return c.json({ error: 'This contract has expired' }, 410);
+  }
+
+  // Mark as viewed if first time
+  if (contract.status === 'sent' && !contract.viewedAt) {
+    await db
+      .update(schema.coachingContracts)
+      .set({ status: 'viewed', viewedAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+      .where(eq(schema.coachingContracts.id, contract.id))
+      .run();
+  }
+
+  // Get client name for display
+  const client = await db
+    .select({ name: schema.coachingClients.name })
+    .from(schema.coachingClients)
+    .where(eq(schema.coachingClients.id, contract.clientId))
+    .get();
+
+  // Return safe subset (no admin-only fields)
+  return c.json({
+    title: contract.title,
+    description: contract.description,
+    amount: contract.amount,
+    currency: contract.currency,
+    status: contract.status,
+    contractTerms: contract.contractTerms,
+    paymentInstructions: contract.paymentInstructions,
+    stripePaymentLink: contract.stripePaymentLink,
+    agreedAt: contract.agreedAt,
+    clientName: client?.name || null,
+  });
+});
+
+// ─── POST /api/contracts/:token/agree — Client agrees to contract ───
+app.post('/api/contracts/:token/agree', async (c) => {
+  const db = c.get('db');
+  const token = c.req.param('token');
+
+  const contract = await db
+    .select()
+    .from(schema.coachingContracts)
+    .where(eq(schema.coachingContracts.paymentToken, token))
+    .get();
+
+  if (!contract) {
+    return c.json({ error: 'Contract not found' }, 404);
+  }
+
+  if (contract.status === 'cancelled' || contract.status === 'expired') {
+    return c.json({ error: 'This contract is no longer valid' }, 410);
+  }
+
+  if (contract.status === 'agreed' || contract.status === 'paid') {
+    return c.json({ success: true, alreadyAgreed: true });
+  }
+
+  const now = new Date().toISOString();
+  const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+
+  await db
+    .update(schema.coachingContracts)
+    .set({
+      status: 'agreed',
+      agreedAt: now,
+      agreedIp: ip,
+      updatedAt: now,
+    })
+    .where(eq(schema.coachingContracts.id, contract.id))
+    .run();
+
+  return c.json({ success: true });
+});
 
 // 404 handler
 app.notFound((c) => {

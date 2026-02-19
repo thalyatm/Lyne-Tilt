@@ -3,6 +3,7 @@ import { eq, and, desc, sql, lte, isNotNull } from 'drizzle-orm';
 import { abandonedCarts, abandonedCartItems, orders } from '../db/schema';
 import { adminAuth } from '../middleware/auth';
 import { triggerAutomation } from '../utils/automations';
+import { sendEmail } from '../utils/email';
 import type { Bindings, Variables } from '../index';
 
 export const abandonedCartsRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -279,24 +280,60 @@ abandonedCartsRoutes.post('/:id/send-reminder', adminAuth, async (c) => {
   const baseUrl = c.env.FRONTEND_URL || 'https://lyne-tilt.pages.dev';
   const recoveryUrl = `${baseUrl}/#/checkout?recover=${cart.recoveryToken}`;
 
-  await triggerAutomation(db, 'cart_abandoned', cart.email, cart.customerName || undefined, {
-    cart_recovery_url: recoveryUrl,
-    product_name: firstItem.productName,
-    price: cart.totalValue,
-    qty: String(cart.itemCount),
-  });
+  try {
+    const queued = await triggerAutomation(db, 'cart_abandoned', cart.email, cart.customerName || undefined, {
+      cart_recovery_url: recoveryUrl,
+      product_name: firstItem.productName,
+      price: cart.totalValue,
+      qty: String(cart.itemCount),
+    });
 
-  // Update email tracking
-  const now = new Date().toISOString();
-  await db.update(abandonedCarts)
-    .set({
-      emailSentAt: now,
-      emailCount: sql`${abandonedCarts.emailCount} + 1`,
-      updatedAt: now,
-    })
-    .where(eq(abandonedCarts.id, id));
+    // If no automation is configured, send a default recovery email directly
+    if (!queued) {
+      const customerName = cart.customerName || 'there';
+      const itemSummary = items.map((i: any) => `${i.productName} ($${i.price})`).join(', ');
+      await sendEmail(
+        c.env,
+        cart.email,
+        `You left something behind — ${firstItem.productName}`,
+        `<div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+          <h1 style="color: #1c1917; font-size: 24px;">Hi ${customerName},</h1>
+          <p style="color: #57534e; font-size: 16px; line-height: 1.6;">
+            It looks like you left something in your cart: <strong>${itemSummary}</strong>
+          </p>
+          <p style="color: #57534e; font-size: 16px; line-height: 1.6;">
+            Each piece is one-of-a-kind, and I'd hate for you to miss out.
+          </p>
+          <a href="${recoveryUrl}" style="display: inline-block; background: #8d3038; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600; margin-top: 16px;">
+            Complete Your Order
+          </a>
+          <p style="color: #a8a29e; font-size: 12px; margin-top: 32px;">
+            If you have any questions, feel free to reply to this email.
+          </p>
+        </div>`
+      );
+    }
 
-  return c.json({ success: true, message: 'Recovery email queued' });
+    // Update email tracking
+    const now = new Date().toISOString();
+    await db.update(abandonedCarts)
+      .set({
+        emailSentAt: now,
+        emailCount: sql`${abandonedCarts.emailCount} + 1`,
+        updatedAt: now,
+      })
+      .where(eq(abandonedCarts.id, id));
+
+    return c.json({ success: true, message: queued ? 'Recovery email queued via automation' : 'Recovery email sent directly' });
+  } catch (err: any) {
+    const msg = err?.message || '';
+    // Resend returns specific errors for unsubscribed/blocked recipients
+    if (msg.includes('unsubscribe') || msg.includes('complaint') || msg.includes('bounced') || msg.includes('suppressed')) {
+      return c.json({ error: `Cannot send to ${cart.email} — this recipient has unsubscribed or been blocked by the email provider. They need to re-subscribe first.` }, 422);
+    }
+    console.error('Failed to send recovery email:', msg);
+    return c.json({ error: `Failed to send email: ${msg || 'Unknown error'}` }, 500);
+  }
 });
 
 // ─── DELETE /:id — Delete an abandoned cart and its items ──

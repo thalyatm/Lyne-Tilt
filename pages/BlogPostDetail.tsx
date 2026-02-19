@@ -294,7 +294,7 @@ const BlogPostDetail = () => {
       <div className="max-w-xl mx-auto px-6 py-12 text-center">
         <Feather className="text-clay mx-auto mb-4" size={20} />
         <p className="text-stone-600 text-sm mb-4">
-          Enjoyed this? Oxygen Notes brings honest thoughts, clarity tools, and gently rebellious insight — occasionally dispatched with care.
+          Enjoyed this? Oxygen Notes brings honest thoughts, clarity tools, and gently rebellious insight - occasionally dispatched with care.
         </p>
         <Link
           to="/oxygennotes"

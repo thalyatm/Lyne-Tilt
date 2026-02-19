@@ -122,6 +122,48 @@ productsRoutes.get('/', async (c) => {
     db.select({ count: sql<number>`count(*)` }).from(products).where(where).get(),
   ]);
 
+  // Compute stats for admin dashboard tiles (only when admin requests drafts/archived)
+  let stats = undefined;
+  if (includeDrafts || includeArchived) {
+    const baseConditions = [isNull(products.deletedAt)];
+    const [
+      totalActive,
+      totalDraft,
+      totalArchived,
+      inStockCount,
+      soldOutCount,
+      byCategory,
+      byType,
+    ] = await Promise.all([
+      db.select({ count: sql<number>`count(*)` }).from(products)
+        .where(and(...baseConditions, eq(products.status, 'active'))).get(),
+      db.select({ count: sql<number>`count(*)` }).from(products)
+        .where(and(...baseConditions, eq(products.status, 'draft'))).get(),
+      db.select({ count: sql<number>`count(*)` }).from(products)
+        .where(and(...baseConditions, eq(products.status, 'archived'))).get(),
+      db.select({ count: sql<number>`count(*)` }).from(products)
+        .where(and(...baseConditions, eq(products.status, 'active'), eq(products.trackInventory, true), sql`${products.quantity} > 0`)).get(),
+      db.select({ count: sql<number>`count(*)` }).from(products)
+        .where(and(...baseConditions, eq(products.status, 'active'), eq(products.trackInventory, true), sql`${products.quantity} <= 0`)).get(),
+      db.select({ category: products.category, count: sql<number>`count(*)` }).from(products)
+        .where(and(...baseConditions, eq(products.status, 'active')))
+        .groupBy(products.category).all(),
+      db.select({ productType: products.productType, count: sql<number>`count(*)` }).from(products)
+        .where(and(...baseConditions, eq(products.status, 'active')))
+        .groupBy(products.productType).all(),
+    ]);
+
+    stats = {
+      active: totalActive?.count ?? 0,
+      draft: totalDraft?.count ?? 0,
+      archived: totalArchived?.count ?? 0,
+      inStock: inStockCount?.count ?? 0,
+      soldOut: soldOutCount?.count ?? 0,
+      byCategory,
+      byType,
+    };
+  }
+
   return c.json({
     products: result,
     pagination: {
@@ -130,6 +172,7 @@ productsRoutes.get('/', async (c) => {
       total: countResult?.count || 0,
       totalPages: Math.ceil((countResult?.count || 0) / limit),
     },
+    ...(stats && { stats }),
   });
 });
 
@@ -268,9 +311,12 @@ productsRoutes.post('/', adminAuth, async (c) => {
     taxable: body.taxable !== false,
     shortDescription: body.shortDescription || '',
     longDescription: body.longDescription || '',
+    careDescription: body.careDescription || null,
     category: body.category || '',
     tags: body.tags || [],
     badge: body.badge || null,
+    materials: body.materials || [],
+    colours: body.colours || [],
     weightGrams: body.weightGrams || null,
     dimensions: body.dimensions || null,
     trackInventory: body.trackInventory !== false,
@@ -305,20 +351,22 @@ productsRoutes.put('/:id', adminAuth, async (c) => {
     return c.json({ error: 'Product not found' }, 404);
   }
 
-  // Handle slug changes on active products
-  if (body.slug && body.slug !== current.slug && current.status === 'active') {
+  // Handle slug changes — always ensure uniqueness
+  if (body.slug && body.slug !== current.slug) {
     const uniqueSlug = await resolveUniqueSlug(db, body.slug, id);
     body.slug = uniqueSlug;
 
-    // Create redirect from old slug
-    await db.insert(slugRedirects).values({
-      oldSlug: current.slug,
-      newSlug: uniqueSlug,
-      productType: current.productType,
-    }).onConflictDoUpdate({
-      target: slugRedirects.oldSlug,
-      set: { newSlug: uniqueSlug },
-    });
+    // Create redirect from old slug (only for active/published products)
+    if (current.status === 'active') {
+      await db.insert(slugRedirects).values({
+        oldSlug: current.slug,
+        newSlug: uniqueSlug,
+        productType: current.productType,
+      }).onConflictDoUpdate({
+        target: slugRedirects.oldSlug,
+        set: { newSlug: uniqueSlug },
+      });
+    }
   }
 
   // Lock product type after first publish
@@ -341,8 +389,8 @@ productsRoutes.put('/:id', adminAuth, async (c) => {
 
   const allowedFields = [
     'name', 'slug', 'productType', 'price', 'compareAtPrice', 'costPrice',
-    'currency', 'taxable', 'shortDescription', 'longDescription', 'category',
-    'tags', 'badge', 'weightGrams', 'dimensions', 'trackInventory', 'quantity',
+    'currency', 'taxable', 'shortDescription', 'longDescription', 'careDescription', 'category',
+    'tags', 'badge', 'materials', 'colours', 'weightGrams', 'dimensions', 'trackInventory', 'quantity',
     'continueSelling', 'availability', 'image', 'detailImages', 'metaTitle',
     'metaDescription', 'ogImage', 'displayOrder',
   ];
@@ -522,9 +570,12 @@ productsRoutes.post('/:id/duplicate', adminAuth, async (c) => {
     taxable: source.taxable,
     shortDescription: source.shortDescription,
     longDescription: source.longDescription,
+    careDescription: source.careDescription,
     category: source.category,
     tags: source.tags,
     badge: source.badge,
+    materials: source.materials,
+    colours: source.colours,
     weightGrams: source.weightGrams,
     dimensions: source.dimensions,
     trackInventory: source.trackInventory,

@@ -7,7 +7,7 @@ interface FAQ {
   id: string;
   question: string;
   answer: string;
-  category: 'Shop' | 'Coaching' | 'General';
+  category: string;
 }
 
 import { API_BASE } from '../config/api';
@@ -22,8 +22,12 @@ const formFields: FormField[] = [
   { name: 'question', label: 'Question', type: 'text', required: true },
   { name: 'answer', label: 'Answer', type: 'textarea', rows: 4, required: true },
   { name: 'category', label: 'Category', type: 'select', required: true, options: [
-    { value: 'Shop', label: 'Shop' },
-    { value: 'Coaching', label: 'Coaching' },
+    { value: 'Shipping', label: 'Shipping' },
+    { value: 'Handmade Work', label: 'Handmade Work' },
+    { value: 'Colour Accuracy', label: 'Colour Accuracy' },
+    { value: 'Returns + Exchanges', label: 'Returns + Exchanges' },
+    { value: 'Product Care', label: 'Product Care' },
+    { value: 'Coaching + Services', label: 'Coaching + Services' },
     { value: 'General', label: 'General' },
   ]},
 ];
@@ -140,8 +144,12 @@ export default function FAQsManager() {
 
   const catOptions = [
     { value: 'all', label: 'All' },
-    { value: 'Shop', label: 'Shop' },
-    { value: 'Coaching', label: 'Coaching' },
+    { value: 'Shipping', label: 'Shipping' },
+    { value: 'Handmade Work', label: 'Handmade Work' },
+    { value: 'Colour Accuracy', label: 'Colour Accuracy' },
+    { value: 'Returns + Exchanges', label: 'Returns + Exchanges' },
+    { value: 'Product Care', label: 'Product Care' },
+    { value: 'Coaching + Services', label: 'Coaching + Services' },
     { value: 'General', label: 'General' },
   ];
 

@@ -6,6 +6,11 @@ interface CartItem extends Product {
   quantity: number;
 }
 
+interface CartNotification {
+  product: Product;
+  timestamp: number;
+}
+
 interface CartContextType {
   cart: CartItem[];
   addToCart: (product: Product) => void;
@@ -14,12 +19,15 @@ interface CartContextType {
   clearCart: () => void;
   cartCount: number;
   cartTotal: number;
+  cartNotification: CartNotification | null;
+  dismissNotification: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartNotification, setCartNotification] = useState<CartNotification | null>(null);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -33,6 +41,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     localStorage.setItem('lynetilt_cart', JSON.stringify(cart));
   }, [cart]);
+
+  // Auto-dismiss notification after 4 seconds
+  useEffect(() => {
+    if (!cartNotification) return;
+    const timer = setTimeout(() => setCartNotification(null), 4000);
+    return () => clearTimeout(timer);
+  }, [cartNotification]);
+
+  const dismissNotification = () => setCartNotification(null);
 
   const addToCart = (product: Product) => {
     setCart(prevCart => {
@@ -50,6 +67,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       return [...prevCart, { ...product, quantity: 1 }];
     });
+    // Show notification
+    setCartNotification({ product, timestamp: Date.now() });
   };
 
   const removeFromCart = (productId: string) => {
@@ -85,7 +104,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateQuantity,
         clearCart,
         cartCount,
-        cartTotal
+        cartTotal,
+        cartNotification,
+        dismissNotification,
       }}
     >
       {children}

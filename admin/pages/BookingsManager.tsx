@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../config/api';
+import BookSessionModal from '../components/BookSessionModal';
 import {
   CalendarDays,
   Clock,
@@ -14,10 +15,6 @@ import {
   Trash2,
   Edit3,
   Calendar,
-  User,
-  Mail,
-  Video,
-  FileText,
   ToggleLeft,
   ToggleRight,
   AlertTriangle,
@@ -203,16 +200,6 @@ export default function BookingsManager() {
 
   // Create booking modal
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({
-    customerName: '',
-    customerEmail: '',
-    sessionDate: '',
-    startTime: '09:00',
-    endTime: '10:00',
-    meetingUrl: '',
-    notes: '',
-  });
-  const [createSaving, setCreateSaving] = useState(false);
 
   // Status update state
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
@@ -323,45 +310,6 @@ export default function BookingsManager() {
   // =========================================================================
   // BOOKING ACTIONS
   // =========================================================================
-  const handleCreateBooking = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreateSaving(true);
-    try {
-      const res = await fetch(`${API_BASE}/bookings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          customerName: createForm.customerName,
-          customerEmail: createForm.customerEmail,
-          sessionDate: createForm.sessionDate,
-          startTime: createForm.startTime,
-          endTime: createForm.endTime,
-          meetingUrl: createForm.meetingUrl || undefined,
-          notes: createForm.notes || undefined,
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to create booking');
-      setCreateModalOpen(false);
-      setCreateForm({
-        customerName: '',
-        customerEmail: '',
-        sessionDate: '',
-        startTime: '09:00',
-        endTime: '10:00',
-        meetingUrl: '',
-        notes: '',
-      });
-      fetchBookings();
-    } catch {
-      // silently handle
-    } finally {
-      setCreateSaving(false);
-    }
-  };
-
   const handleStatusChange = async (bookingId: string, newStatus: BookingStatus, reason?: string) => {
     setStatusUpdating(bookingId);
     try {
@@ -600,136 +548,14 @@ export default function BookingsManager() {
       )}
 
       {/* Create Booking Modal */}
-      {createModalOpen && (
-        <ModalOverlay onClose={() => setCreateModalOpen(false)}>
-          <form onSubmit={handleCreateBooking} className="space-y-4">
-            <h2 className="text-lg font-serif font-semibold text-stone-900 mb-4">New Booking</h2>
-
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                <User size={14} className="inline mr-1 -mt-0.5" />
-                Customer Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={createForm.customerName}
-                onChange={(e) => setCreateForm((f) => ({ ...f, customerName: e.target.value }))}
-                className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                <Mail size={14} className="inline mr-1 -mt-0.5" />
-                Customer Email <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="email"
-                required
-                value={createForm.customerEmail}
-                onChange={(e) => setCreateForm((f) => ({ ...f, customerEmail: e.target.value }))}
-                className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">
-                  <Calendar size={14} className="inline mr-1 -mt-0.5" />
-                  Session Date
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={createForm.sessionDate}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, sessionDate: e.target.value }))}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">
-                  Start Time
-                </label>
-                <input
-                  type="time"
-                  required
-                  value={createForm.startTime}
-                  onChange={(e) =>
-                    setCreateForm((f) => ({
-                      ...f,
-                      startTime: e.target.value,
-                      endTime: addMinutesToTime(e.target.value, 60),
-                    }))
-                  }
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">
-                  End Time
-                </label>
-                <input
-                  type="time"
-                  required
-                  value={createForm.endTime}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, endTime: e.target.value }))}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                <Video size={14} className="inline mr-1 -mt-0.5" />
-                Meeting URL
-              </label>
-              <input
-                type="url"
-                value={createForm.meetingUrl}
-                onChange={(e) => setCreateForm((f) => ({ ...f, meetingUrl: e.target.value }))}
-                placeholder="https://zoom.us/j/..."
-                className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                <FileText size={14} className="inline mr-1 -mt-0.5" />
-                Notes
-              </label>
-              <textarea
-                value={createForm.notes}
-                onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))}
-                rows={3}
-                placeholder="Any additional notes..."
-                className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1 resize-none"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setCreateModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={createSaving}
-                className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors inline-flex items-center gap-1.5 disabled:opacity-60"
-                style={{ backgroundColor: '#8d3038' }}
-                onMouseEnter={(e) => !createSaving && (e.currentTarget.style.backgroundColor = '#6b2228')}
-                onMouseLeave={(e) => !createSaving && (e.currentTarget.style.backgroundColor = '#8d3038')}
-              >
-                {createSaving && <Loader2 size={14} className="animate-spin" />}
-                Create Booking
-              </button>
-            </div>
-          </form>
-        </ModalOverlay>
-      )}
+      <BookSessionModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onCreated={() => {
+          setCreateModalOpen(false);
+          fetchBookings();
+        }}
+      />
 
       {/* Availability Modal */}
       {availModalOpen && (

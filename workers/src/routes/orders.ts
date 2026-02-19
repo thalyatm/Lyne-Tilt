@@ -53,22 +53,18 @@ ordersRoutes.get('/export', async (c) => {
     .orderBy(desc(orders.createdAt))
     .all();
 
-  // Fetch items for all orders to compute item count
-  const allOrderIds = allOrders.map((o) => o.id);
+  // Fetch item counts per order
   let itemCountMap: Record<string, number> = {};
-  if (allOrderIds.length > 0) {
-    const itemCounts = await db
-      .select({
-        orderId: orderItems.orderId,
-        count: sql<number>`count(*)`,
-      })
-      .from(orderItems)
-      .where(sql`${orderItems.orderId} IN (${sql.join(allOrderIds.map((id) => sql`${id}`), sql`, `)})`)
-      .groupBy(orderItems.orderId)
-      .all();
-    for (const row of itemCounts) {
-      itemCountMap[row.orderId] = row.count;
-    }
+  const itemCounts = await db
+    .select({
+      orderId: orderItems.orderId,
+      count: sql<number>`count(*)`,
+    })
+    .from(orderItems)
+    .groupBy(orderItems.orderId)
+    .all();
+  for (const row of itemCounts) {
+    itemCountMap[row.orderId] = row.count;
   }
 
   // Build CSV
@@ -185,7 +181,17 @@ ordersRoutes.get('/', async (c) => {
 
   const total = countResult?.count ?? 0;
 
-  // Compute global stats (across ALL orders, unfiltered) for the dashboard
+  // Build date-only conditions for stats (date filters apply, but not status/search)
+  const statsConditions: any[] = [];
+  if (dateFrom) {
+    statsConditions.push(sql`${orders.createdAt} >= ${dateFrom}`);
+  }
+  if (dateTo) {
+    statsConditions.push(sql`${orders.createdAt} <= ${dateTo}`);
+  }
+  const statsWhere = statsConditions.length > 0 ? and(...statsConditions) : undefined;
+
+  // Compute stats scoped to date range
   const statsResult = await db
     .select({
       totalOrders: sql<number>`count(*)`,
@@ -197,6 +203,7 @@ ordersRoutes.get('/', async (c) => {
       cancelledOrders: sql<number>`sum(CASE WHEN ${orders.status} = 'cancelled' THEN 1 ELSE 0 END)`,
     })
     .from(orders)
+    .where(statsWhere)
     .get();
 
   return c.json({
@@ -217,6 +224,66 @@ ordersRoutes.get('/', async (c) => {
       cancelledOrders: statsResult?.cancelledOrders ?? 0,
     },
   });
+});
+
+// ─── POST /bulk — Bulk update order status ────────────────
+ordersRoutes.post('/bulk', async (c) => {
+  const db = c.get('db');
+  const user = c.get('user');
+  const { ids, action } = await c.req.json();
+
+  if (!ids?.length) {
+    return c.json({ error: 'No order IDs provided' }, 400);
+  }
+
+  const actionToStatus: Record<string, string> = {
+    confirm: 'confirmed',
+    ship: 'shipped',
+    deliver: 'delivered',
+    cancel: 'cancelled',
+  };
+
+  const newStatus = actionToStatus[action];
+  if (!newStatus) {
+    return c.json({ error: `Invalid action. Must be one of: ${Object.keys(actionToStatus).join(', ')}` }, 400);
+  }
+
+  const results = { updated: 0, failed: 0, errors: [] as string[] };
+  const now = new Date().toISOString();
+
+  for (const id of ids) {
+    try {
+      const existing = await db.select().from(orders).where(eq(orders.id, id)).get();
+      if (!existing) {
+        results.failed++;
+        results.errors.push(`Order ${id} not found`);
+        continue;
+      }
+
+      const updateData: Record<string, any> = {
+        status: newStatus,
+        updatedAt: now,
+      };
+
+      if (newStatus === 'shipped') updateData.shippedAt = now;
+      else if (newStatus === 'delivered') updateData.deliveredAt = now;
+      else if (newStatus === 'cancelled') updateData.cancelledAt = now;
+
+      await db.update(orders).set(updateData).where(eq(orders.id, id));
+
+      await logActivity(db, 'update', 'order', { ...existing, ...updateData }, user, {
+        status: { old: existing.status, new: newStatus },
+        bulk: true,
+      });
+
+      results.updated++;
+    } catch (err: any) {
+      results.failed++;
+      results.errors.push(err.message || `Failed to update order ${id}`);
+    }
+  }
+
+  return c.json(results);
 });
 
 // ─── GET /:id — Get single order with its items ──────────

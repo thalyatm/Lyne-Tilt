@@ -88,6 +88,7 @@ export default function SubscriberList() {
   const [totalPages, setTotalPages] = useState(1);
   const [tags, setTags] = useState<string[]>([]);
   const [sources, setSources] = useState<string[]>([]);
+  const [stats, setStats] = useState<{ total: number; active: number; unsubscribed: number; newThisMonth: number } | null>(null);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -136,12 +137,14 @@ export default function SubscriberList() {
     async function loadMeta() {
       try {
         const headers: HeadersInit = { Authorization: `Bearer ${token}` };
-        const [tagsRes, sourcesRes] = await Promise.all([
+        const [tagsRes, sourcesRes, statsRes] = await Promise.all([
           fetch(`${API_BASE}/subscribers/tags`, { headers }),
           fetch(`${API_BASE}/subscribers/sources`, { headers }),
+          fetch(`${API_BASE}/subscribers/stats`, { headers }),
         ]);
         if (tagsRes.ok) setTags(await tagsRes.json());
         if (sourcesRes.ok) setSources(await sourcesRes.json());
+        if (statsRes.ok) setStats(await statsRes.json());
       } catch {
         // Silently fail — filters simply won't be populated
       }
@@ -363,6 +366,32 @@ export default function SubscriberList() {
           </button>
         </div>
       </div>
+
+      {/* ---- Stats Cards ---- */}
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: 'Total Subscribers', value: stats.total, icon: Users, borderColor: '#78716c', accent: 'bg-stone-100 text-stone-600' },
+            { label: 'Active', value: stats.active, icon: Mail, borderColor: '#16a34a', accent: 'bg-green-100 text-green-700' },
+            { label: 'Unsubscribed', value: stats.unsubscribed, icon: UserMinus, borderColor: '#a8a29e', accent: 'bg-stone-100 text-stone-500' },
+            { label: 'New This Month', value: stats.newThisMonth, icon: TrendingUp, borderColor: '#2563eb', accent: 'bg-blue-100 text-blue-700' },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="bg-white rounded-xl border border-stone-200 px-4 py-2.5 flex items-center gap-3"
+              style={{ borderLeftWidth: '4px', borderLeftColor: stat.borderColor }}
+            >
+              <div className={`w-7 h-7 rounded-md flex items-center justify-center ${stat.accent}`}>
+                <stat.icon size={14} />
+              </div>
+              <div>
+                <p className="text-xl font-semibold text-stone-900 leading-tight">{stat.value.toLocaleString()}</p>
+                <p className="text-[11px] text-stone-500">{stat.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ---- Error Banner ---- */}
       {error && (

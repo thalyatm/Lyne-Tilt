@@ -13,10 +13,11 @@ import {
   ArrowLeft,
   RefreshCw,
   AlertCircle,
-  AlertTriangle,
-  ChevronUp,
-  ChevronDown,
-  Star,
+  DollarSign,
+  ShoppingBag,
+  TrendingUp,
+  X,
+  Calendar,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../config/api';
@@ -24,33 +25,22 @@ import { API_BASE } from '../config/api';
 // --- Types ---
 
 interface RevenueData {
+  summary: { totalRevenue: number; totalOrders: number; avgOrderValue: number };
   revenueTrend: Array<{ date: string; revenue: number; orderCount: number }>;
   ordersByStatus: Array<{ status: string; count: number }>;
   revenueByType: Array<{ productType: string; revenue: number }>;
-  productLeaderboard: Array<{
-    id: string;
-    name: string;
-    productType: string;
-    unitsSold: number;
-    revenue: number;
-    avgRating: number | null;
-  }>;
   aovTrend: Array<{ date: string; aov: number }>;
   lowStock: Array<{ id: string; name: string; stock: number; productType: string }>;
 }
 
-type DateRange = '7d' | '30d' | '90d' | 'all';
-type SortField = 'name' | 'productType' | 'unitsSold' | 'revenue' | 'avgRating';
-type SortDir = 'asc' | 'desc';
+type DateRange = '7d' | '30d' | '90d' | 'all' | 'custom';
 
 // --- Formatting helpers ---
 
 function formatCurrency(amount: number): string {
   if (amount === 0) return '$0';
-  if (Number.isInteger(amount)) {
-    return `$${amount.toLocaleString()}`;
-  }
-  return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (amount >= 5000) return `$${(amount / 1000).toFixed(1)}K`;
+  return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function formatNumber(n: number): string {
@@ -62,7 +52,10 @@ function formatChartDate(dateStr: string): string {
   return d.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
 }
 
-function getRangeParams(range: DateRange): { from: string; to: string } {
+function getRangeParams(range: DateRange, customFrom?: string, customTo?: string): { from: string; to: string } {
+  if (range === 'custom' && customFrom && customTo) {
+    return { from: customFrom, to: customTo };
+  }
   const to = new Date();
   const toStr = to.toISOString().split('T')[0];
   if (range === 'all') {
@@ -79,7 +72,7 @@ function getRangeParams(range: DateRange): { from: string; to: string } {
 function RevenueChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm px-3 py-2 text-xs">
+    <div className="bg-white border border-stone-200 rounded-lg shadow-lg px-3 py-2 text-xs">
       <p className="text-stone-500 mb-0.5">{formatChartDate(label)}</p>
       <p className="font-medium text-stone-800">
         {formatCurrency(payload[0].value)}
@@ -94,7 +87,7 @@ function RevenueChartTooltip({ active, payload, label }: any) {
 function AovChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border border-stone-200 rounded-lg shadow-sm px-3 py-2 text-xs">
+    <div className="bg-white border border-stone-200 rounded-lg shadow-lg px-3 py-2 text-xs">
       <p className="text-stone-500 mb-0.5">{formatChartDate(label)}</p>
       <p className="font-medium text-stone-800">
         {formatCurrency(payload[0].value)}
@@ -111,26 +104,45 @@ const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-500',
   processing: 'bg-blue-500',
   shipped: 'bg-indigo-500',
+  delivered: 'bg-emerald-400',
+  confirmed: 'bg-blue-500',
   cancelled: 'bg-red-500',
   refunded: 'bg-stone-400',
   failed: 'bg-red-500',
 };
 
+const STATUS_PHASE_ORDER: string[] = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled', 'refunded'];
+
 const TYPE_COLORS: Record<string, string> = {
   physical: 'bg-blue-500',
   digital: 'bg-violet-500',
+  wearable: 'bg-blue-500',
+  'wall-art': 'bg-rose-500',
   workshop: 'bg-indigo-500',
   coaching: 'bg-amber-500',
   service: 'bg-rose-500',
 };
 
-const TYPE_BADGE_STYLES: Record<string, string> = {
-  physical: 'bg-blue-50 text-blue-700',
-  digital: 'bg-violet-50 text-violet-700',
-  workshop: 'bg-indigo-50 text-indigo-700',
-  coaching: 'bg-amber-50 text-amber-700',
-  service: 'bg-rose-50 text-rose-700',
-};
+
+const PRODUCT_TYPES = [
+  { label: 'All Types', value: '' },
+  { label: 'Wearable Art', value: 'wearable' },
+  { label: 'Wall Art', value: 'wall-art' },
+  { label: 'Digital', value: 'digital' },
+  { label: 'Coaching', value: 'coaching' },
+  { label: 'Workshop', value: 'workshop' },
+  { label: 'Service', value: 'service' },
+];
+
+const ORDER_STATUSES = [
+  { label: 'All Statuses', value: '' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'Confirmed', value: 'confirmed' },
+  { label: 'Shipped', value: 'shipped' },
+  { label: 'Delivered', value: 'delivered' },
+  { label: 'Cancelled', value: 'cancelled' },
+  { label: 'Refunded', value: 'refunded' },
+];
 
 // --- Skeleton loader ---
 
@@ -138,22 +150,23 @@ function RevenueSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
       <div className="flex items-center justify-between">
-        <div className="h-7 w-48 bg-stone-100 rounded-md" />
+        <div className="h-7 w-48 bg-stone-200 rounded-md" />
         <div className="flex gap-1">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-8 w-12 bg-stone-100 rounded-full" />
+            <div key={i} className="h-8 w-12 bg-stone-200 rounded-full" />
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-stone-100 rounded-lg h-64" />
-        <div className="bg-stone-100 rounded-lg h-64" />
+      <div className="bg-stone-200 rounded-lg h-14" />
+      <div className="grid grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-stone-200 rounded-lg h-24" />
+        ))}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-stone-100 rounded-lg h-48" />
-        <div className="bg-stone-100 rounded-lg h-48" />
+        <div className="bg-stone-200 rounded-lg h-64" />
+        <div className="bg-stone-200 rounded-lg h-64" />
       </div>
-      <div className="bg-stone-100 rounded-lg h-72" />
     </div>
   );
 }
@@ -165,17 +178,24 @@ export default function AnalyticsRevenue() {
   const [data, setData] = useState<RevenueData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [range, setRange] = useState<DateRange>('30d');
+  const [range, setRange] = useState<DateRange>('all');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [productType, setProductType] = useState('');
+  const [orderStatus, setOrderStatus] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [sortField, setSortField] = useState<SortField>('revenue');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
+
+  const activeFilterCount = [productType, orderStatus].filter(Boolean).length + (range === 'custom' ? 1 : 0);
 
   const fetchData = useCallback(
     async (signal?: AbortSignal) => {
       if (!token) return;
       try {
-        const { from, to } = getRangeParams(range);
-        const res = await fetch(`${API_BASE}/analytics/revenue?from=${from}&to=${to}`, {
+        const { from, to } = getRangeParams(range, customFrom, customTo);
+        const params = new URLSearchParams({ from, to });
+        if (productType) params.set('productType', productType);
+        if (orderStatus) params.set('status', orderStatus);
+        const res = await fetch(`${API_BASE}/analytics/revenue?${params}`, {
           headers: { Authorization: `Bearer ${token}` },
           signal,
         });
@@ -191,7 +211,7 @@ export default function AnalyticsRevenue() {
         setRefreshing(false);
       }
     },
-    [token, range],
+    [token, range, customFrom, customTo, productType, orderStatus],
   );
 
   useEffect(() => {
@@ -206,6 +226,14 @@ export default function AnalyticsRevenue() {
     fetchData();
   };
 
+  const clearFilters = () => {
+    setProductType('');
+    setOrderStatus('');
+    setRange('all');
+    setCustomFrom('');
+    setCustomTo('');
+  };
+
   const chartTickFormatter = useMemo(() => {
     return (value: string, index: number) => {
       const interval = range === '7d' ? 1 : range === '30d' ? 7 : range === '90d' ? 14 : 30;
@@ -213,36 +241,6 @@ export default function AnalyticsRevenue() {
       return '';
     };
   }, [range]);
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortField(field);
-      setSortDir('desc');
-    }
-  };
-
-  const sortedLeaderboard = useMemo(() => {
-    if (!data) return [];
-    const items = [...data.productLeaderboard];
-    items.sort((a, b) => {
-      let aVal: any = a[sortField];
-      let bVal: any = b[sortField];
-      if (sortField === 'avgRating') {
-        aVal = aVal ?? -1;
-        bVal = bVal ?? -1;
-      }
-      if (typeof aVal === 'string') {
-        aVal = aVal.toLowerCase();
-        bVal = (bVal as string).toLowerCase();
-      }
-      if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
-      return 0;
-    });
-    return items;
-  }, [data, sortField, sortDir]);
 
   const rangeOptions: { label: string; value: DateRange }[] = [
     { label: '7d', value: '7d' },
@@ -281,15 +279,6 @@ export default function AnalyticsRevenue() {
   const maxOrderCount = Math.max(...data.ordersByStatus.map((s) => s.count), 1);
   const maxTypeRevenue = Math.max(...data.revenueByType.map((t) => t.revenue), 1);
 
-  function SortIcon({ field }: { field: SortField }) {
-    if (sortField !== field) return <ChevronDown size={12} className="text-stone-300" />;
-    return sortDir === 'asc' ? (
-      <ChevronUp size={12} className="text-stone-600" />
-    ) : (
-      <ChevronDown size={12} className="text-stone-600" />
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* --- Back link + Header --- */}
@@ -301,9 +290,9 @@ export default function AnalyticsRevenue() {
           <ArrowLeft size={14} />
           Back to Analytics
         </Link>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold text-stone-900">Revenue & Products</h1>
+            <h1 className="text-lg font-semibold text-stone-900">Revenue & Orders</h1>
             <button
               onClick={handleRefresh}
               disabled={refreshing}
@@ -313,6 +302,7 @@ export default function AnalyticsRevenue() {
               <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
             </button>
           </div>
+          {/* Date range pills */}
           <div className="flex gap-1">
             {rangeOptions.map((opt) => (
               <button
@@ -331,6 +321,98 @@ export default function AnalyticsRevenue() {
         </div>
       </div>
 
+      {/* --- Filters bar (always visible) --- */}
+      <div className="bg-white border border-stone-200 rounded-lg p-3">
+        <div className="flex flex-wrap items-end gap-3">
+          {/* Category */}
+          <div className="min-w-[140px]">
+            <label className="block text-[11px] text-stone-400 uppercase tracking-wider mb-1">Category</label>
+            <select
+              value={productType}
+              onChange={(e) => setProductType(e.target.value)}
+              className="w-full px-2.5 py-1.5 text-sm border border-stone-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-stone-300"
+            >
+              {PRODUCT_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          {/* Order status */}
+          <div className="min-w-[130px]">
+            <label className="block text-[11px] text-stone-400 uppercase tracking-wider mb-1">Status</label>
+            <select
+              value={orderStatus}
+              onChange={(e) => setOrderStatus(e.target.value)}
+              className="w-full px-2.5 py-1.5 text-sm border border-stone-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-stone-300"
+            >
+              {ORDER_STATUSES.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+          {/* Date from */}
+          <div className="min-w-[140px]">
+            <label className="block text-[11px] text-stone-400 uppercase tracking-wider mb-1">From</label>
+            <input
+              type="date"
+              value={customFrom}
+              onChange={(e) => {
+                setCustomFrom(e.target.value);
+                if (e.target.value && customTo) setRange('custom');
+              }}
+              className="w-full px-2.5 py-1.5 text-sm border border-stone-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-stone-300"
+            />
+          </div>
+          {/* Date to */}
+          <div className="min-w-[140px]">
+            <label className="block text-[11px] text-stone-400 uppercase tracking-wider mb-1">To</label>
+            <input
+              type="date"
+              value={customTo}
+              onChange={(e) => {
+                setCustomTo(e.target.value);
+                if (customFrom && e.target.value) setRange('custom');
+              }}
+              className="w-full px-2.5 py-1.5 text-sm border border-stone-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-stone-300"
+            />
+          </div>
+          {/* Clear */}
+          {activeFilterCount > 0 && (
+            <button
+              onClick={clearFilters}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-stone-400 hover:text-stone-600 transition"
+            >
+              <X size={12} />
+              Clear
+            </button>
+          )}
+        </div>
+        {/* Active filter tags */}
+        {activeFilterCount > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2.5 pt-2.5 border-t border-stone-100">
+            {productType && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded-full">
+                {PRODUCT_TYPES.find(t => t.value === productType)?.label}
+                <button onClick={() => setProductType('')} className="hover:text-blue-900"><X size={10} /></button>
+              </span>
+            )}
+            {orderStatus && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-amber-50 text-amber-700 rounded-full">
+                {ORDER_STATUSES.find(s => s.value === orderStatus)?.label}
+                <button onClick={() => setOrderStatus('')} className="hover:text-amber-900"><X size={10} /></button>
+              </span>
+            )}
+            {range === 'custom' && customFrom && customTo && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-stone-100 text-stone-700 rounded-full">
+                <Calendar size={10} />
+                {customFrom} to {customTo}
+                <button onClick={() => { setRange('all'); setCustomFrom(''); setCustomTo(''); }} className="hover:text-stone-900"><X size={10} /></button>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* --- Inline error banner --- */}
       {error && data && (
         <div className="p-3 bg-white border border-red-200 rounded-lg text-sm flex items-start gap-3">
@@ -343,6 +425,40 @@ export default function AnalyticsRevenue() {
           </div>
         </div>
       )}
+
+      {/* --- Summary KPI Cards --- */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white border border-stone-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+              <DollarSign size={16} className="text-emerald-600" />
+            </div>
+            <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">Total Revenue</span>
+          </div>
+          <p className="text-2xl font-semibold text-stone-900">{formatCurrency(data.summary.totalRevenue)}</p>
+          <p className="text-xs text-stone-400 mt-1">AUD</p>
+        </div>
+        <div className="bg-white border border-stone-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <ShoppingBag size={16} className="text-blue-600" />
+            </div>
+            <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">Total Orders</span>
+          </div>
+          <p className="text-2xl font-semibold text-stone-900">{formatNumber(data.summary.totalOrders)}</p>
+          <p className="text-xs text-stone-400 mt-1">in selected period</p>
+        </div>
+        <div className="bg-white border border-stone-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+              <TrendingUp size={16} className="text-violet-600" />
+            </div>
+            <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">Avg Order Value</span>
+          </div>
+          <p className="text-2xl font-semibold text-stone-900">{formatCurrency(data.summary.avgOrderValue)}</p>
+          <p className="text-xs text-stone-400 mt-1">AUD</p>
+        </div>
+      </div>
 
       {/* --- Revenue + AOV Charts --- */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -444,7 +560,11 @@ export default function AnalyticsRevenue() {
           </h3>
           <div className="space-y-2.5">
             {data.ordersByStatus.length > 0 ? (
-              data.ordersByStatus.map((item) => (
+              [...data.ordersByStatus].sort((a, b) => {
+                const ai = STATUS_PHASE_ORDER.indexOf(a.status);
+                const bi = STATUS_PHASE_ORDER.indexOf(b.status);
+                return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+              }).map((item) => (
                 <div key={item.status} className="flex items-center gap-3">
                   <span className="text-sm text-stone-600 w-24 capitalize truncate">{item.status}</span>
                   <div className="flex-1 h-5 bg-stone-50 rounded-full overflow-hidden">
@@ -492,128 +612,23 @@ export default function AnalyticsRevenue() {
         </div>
       </div>
 
-      {/* --- Product Leaderboard --- */}
-      <div className="bg-white border border-stone-200 rounded-lg p-4">
-        <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">
-          Product Leaderboard
-        </h3>
-        {sortedLeaderboard.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-stone-200">
-                  <th className="text-left text-xs font-medium text-stone-500 uppercase tracking-wider py-2 px-2 w-8">
-                    #
-                  </th>
-                  <th
-                    className="text-left text-xs font-medium text-stone-500 uppercase tracking-wider py-2 px-2 cursor-pointer select-none hover:text-stone-700 transition"
-                    onClick={() => handleSort('name')}
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      Product <SortIcon field="name" />
-                    </span>
-                  </th>
-                  <th
-                    className="text-left text-xs font-medium text-stone-500 uppercase tracking-wider py-2 px-2 cursor-pointer select-none hover:text-stone-700 transition"
-                    onClick={() => handleSort('productType')}
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      Type <SortIcon field="productType" />
-                    </span>
-                  </th>
-                  <th
-                    className="text-right text-xs font-medium text-stone-500 uppercase tracking-wider py-2 px-2 cursor-pointer select-none hover:text-stone-700 transition"
-                    onClick={() => handleSort('unitsSold')}
-                  >
-                    <span className="inline-flex items-center gap-1 justify-end">
-                      Units Sold <SortIcon field="unitsSold" />
-                    </span>
-                  </th>
-                  <th
-                    className="text-right text-xs font-medium text-stone-500 uppercase tracking-wider py-2 px-2 cursor-pointer select-none hover:text-stone-700 transition"
-                    onClick={() => handleSort('revenue')}
-                  >
-                    <span className="inline-flex items-center gap-1 justify-end">
-                      Revenue <SortIcon field="revenue" />
-                    </span>
-                  </th>
-                  <th
-                    className="text-right text-xs font-medium text-stone-500 uppercase tracking-wider py-2 px-2 cursor-pointer select-none hover:text-stone-700 transition"
-                    onClick={() => handleSort('avgRating')}
-                  >
-                    <span className="inline-flex items-center gap-1 justify-end">
-                      Rating <SortIcon field="avgRating" />
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedLeaderboard.map((product, index) => {
-                  const badgeStyle = TYPE_BADGE_STYLES[product.productType] || 'bg-stone-100 text-stone-600';
-                  return (
-                    <tr
-                      key={product.id}
-                      className={`border-b border-stone-100 last:border-b-0 hover:bg-stone-50 transition ${
-                        index % 2 === 1 ? 'bg-stone-50/50' : ''
-                      }`}
-                    >
-                      <td className="py-2.5 px-2 text-stone-400 font-medium">{index + 1}</td>
-                      <td className="py-2.5 px-2 text-stone-700">{product.name}</td>
-                      <td className="py-2.5 px-2">
-                        <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium capitalize ${badgeStyle}`}>
-                          {product.productType}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-2 text-right text-stone-700">{formatNumber(product.unitsSold)}</td>
-                      <td className="py-2.5 px-2 text-right font-medium text-stone-900">{formatCurrency(product.revenue)}</td>
-                      <td className="py-2.5 px-2 text-right">
-                        {product.avgRating != null && product.avgRating > 0 ? (
-                          <span className="inline-flex items-center gap-1 text-stone-700">
-                            <Star size={12} className="text-amber-400 fill-amber-400" />
-                            {product.avgRating.toFixed(1)}
-                          </span>
-                        ) : (
-                          <span className="text-stone-400">&mdash;</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-xs text-stone-400 py-4 text-center">No product data</p>
-        )}
-      </div>
-
-      {/* --- Low Stock Alerts --- */}
+      {/* --- Low Stock Alert --- */}
       {data.lowStock.length > 0 && (
-        <div className="bg-white border border-amber-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle size={16} className="text-amber-500" />
-            <h3 className="text-xs font-medium text-amber-700 uppercase tracking-wider">
-              Low Stock Alerts
-            </h3>
-          </div>
-          <div className="space-y-0">
-            {data.lowStock.map((item) => {
-              const badgeStyle = TYPE_BADGE_STYLES[item.productType] || 'bg-stone-100 text-stone-600';
-              return (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-3 py-2 border-b border-amber-100 last:border-b-0"
-                >
-                  <span className="flex-1 text-sm text-stone-700">{item.name}</span>
-                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium capitalize ${badgeStyle}`}>
-                    {item.productType}
-                  </span>
-                  <span className="text-sm font-medium text-amber-700">
-                    {item.stock} left
-                  </span>
-                </div>
-              );
-            })}
+        <div className="bg-white border border-stone-200 rounded-lg p-4">
+          <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">
+            Low Stock Alert
+          </h3>
+          <div className="space-y-2">
+            {data.lowStock.map((item) => (
+              <div key={item.id} className="flex items-center justify-between py-1.5">
+                <span className="text-sm text-stone-700">{item.name}</span>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  item.stock === 0 ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
+                }`}>
+                  {item.stock === 0 ? 'Out of stock' : `${item.stock} left`}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}

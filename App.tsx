@@ -4,6 +4,7 @@ import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-d
 import { CartProvider } from './context/CartContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { CustomerAuthProvider } from './context/CustomerAuthContext';
+import { WishlistProvider } from './context/WishlistContext';
 import { trackPageView } from './lib/analytics';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -21,6 +22,8 @@ import FAQ from './pages/FAQ';
 import Contact from './pages/Contact';
 import Account from './pages/Account';
 import VerifyEmail from './pages/VerifyEmail';
+import ResetPassword from './pages/ResetPassword';
+import ContractView from './pages/ContractView';
 
 // Admin imports
 import { AuthProvider } from './admin/context/AuthContext';
@@ -76,6 +79,7 @@ import ReviewsManager from './admin/pages/ReviewsManager';
 import AbandonedCartsManager from './admin/pages/AbandonedCartsManager';
 import GiftCardsManager from './admin/pages/GiftCardsManager';
 import WaitlistManager from './admin/pages/WaitlistManager';
+import WishlistsManager from './admin/pages/WishlistsManager';
 import DataExport from './admin/pages/DataExport';
 import { ToastProvider } from './admin/context/ToastContext';
 import FeedbackWidget from './components/FeedbackWidget';
@@ -93,6 +97,7 @@ const App = () => {
     <AuthProvider>
       <SettingsProvider>
         <CustomerAuthProvider>
+          <WishlistProvider>
           <CartProvider>
             <Router>
             <PageTracker />
@@ -116,7 +121,11 @@ const App = () => {
                 <Route path="contact" element={<Contact />} />
                 <Route path="account" element={<Account />} />
                 <Route path="verify-email" element={<VerifyEmail />} />
+                <Route path="reset-password" element={<ResetPassword />} />
               </Route>
+
+            {/* Public standalone pages (outside Layout) */}
+            <Route path="/contract/:token" element={<ContractView />} />
 
             {/* Admin routes */}
             <Route path="/admin/login" element={<Login />} />
@@ -183,6 +192,7 @@ const App = () => {
               <Route path="coaching/applications" element={<ApplicationsManager />} />
               <Route path="bookings" element={<BookingsManager />} />
               <Route path="reviews" element={<ReviewsManager />} />
+              <Route path="wishlists" element={<WishlistsManager />} />
               <Route path="abandoned-carts" element={<AbandonedCartsManager />} />
               <Route path="gift-cards" element={<GiftCardsManager />} />
               <Route path="waitlist" element={<WaitlistManager />} />
@@ -194,6 +204,7 @@ const App = () => {
             </Routes>
             </Router>
           </CartProvider>
+          </WishlistProvider>
         </CustomerAuthProvider>
       </SettingsProvider>
     </AuthProvider>

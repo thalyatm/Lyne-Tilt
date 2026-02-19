@@ -3,8 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE, resolveImageUrl } from '../config/api';
 import RichTextEditor from '../components/RichTextEditor';
-import SeoFields from '../components/SeoFields';
-import AccordionSection from '../components/AccordionSection';
 import { ImageUploadField } from '../components/FormModal';
 import {
   ArrowLeft,
@@ -51,9 +49,12 @@ interface ProductData {
   taxable: boolean;
   shortDescription: string;
   longDescription: string;
+  careDescription: string;
   category: string;
   tags: string[];
   badge: string;
+  materials: string[];
+  colours: string[];
   weightGrams: number | null;
   dimensions: string;
   trackInventory: boolean;
@@ -81,9 +82,12 @@ const EMPTY_PRODUCT: ProductData = {
   taxable: true,
   shortDescription: '',
   longDescription: '',
+  careDescription: '',
   category: '',
   tags: [],
   badge: '',
+  materials: [],
+  colours: [],
   weightGrams: null,
   dimensions: '',
   trackInventory: true,
@@ -104,6 +108,9 @@ const WEARABLE_CATEGORIES = ['Earrings', 'Brooches', 'Necklaces'];
 const WALL_ART_CATEGORIES = ['Prints', 'Originals', 'Mixed Media'];
 const BADGES = ['ONE OF A KIND', 'LIMITED EDITION', 'NEW', 'BESTSELLER'];
 
+const DEFAULT_MATERIALS = ['Polymer Clay', 'Sterling Silver', 'Stainless Steel', 'Resin', 'Acrylic', 'Glass', 'Wood', 'Brass', 'Gold Plated', 'Leather'];
+const DEFAULT_COLOURS = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Pink', 'Purple', 'Orange', 'Brown', 'Gold', 'Silver', 'Multicolour', 'Neutral', 'Earthy Tones'];
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -116,9 +123,16 @@ function StatusBadge({ status }: { status: ProductStatus }) {
     archived: 'bg-amber-100 text-amber-700',
     discontinued: 'bg-red-100 text-red-700',
   };
+  const labels: Record<ProductStatus, string> = {
+    draft: 'Draft',
+    active: 'Live on site',
+    scheduled: 'Scheduled',
+    archived: 'Hidden from site',
+    discontinued: 'Discontinued',
+  };
   return (
     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${styles[status] || styles.draft}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {labels[status] || status}
     </span>
   );
 }
@@ -126,10 +140,10 @@ function StatusBadge({ status }: { status: ProductStatus }) {
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-lg border border-stone-200">
-      <div className="px-4 py-3 border-b border-stone-100">
+      <div className="px-3 py-2 border-b border-stone-100">
         <h3 className="text-sm font-medium text-stone-800">{title}</h3>
       </div>
-      <div className="p-4 space-y-4">{children}</div>
+      <div className="p-3 space-y-3">{children}</div>
     </div>
   );
 }
@@ -140,6 +154,80 @@ function FieldLabel({ label, required, htmlFor }: { label: string; required?: bo
       {label}
       {required && <span className="text-red-500 ml-0.5">*</span>}
     </label>
+  );
+}
+
+function TagMultiSelect({
+  label,
+  selected,
+  options,
+  onChange,
+}: {
+  label: string;
+  selected: string[];
+  options: string[];
+  onChange: (values: string[]) => void;
+}) {
+  const [customInput, setCustomInput] = useState('');
+  const allOptions = useMemo(() => {
+    const merged = new Set([...options, ...selected]);
+    return Array.from(merged).sort();
+  }, [options, selected]);
+
+  const toggleOption = (opt: string) => {
+    if (selected.includes(opt)) {
+      onChange(selected.filter(s => s !== opt));
+    } else {
+      onChange([...selected, opt]);
+    }
+  };
+
+  const addCustom = () => {
+    const trimmed = customInput.trim();
+    if (trimmed && !selected.includes(trimmed)) {
+      onChange([...selected, trimmed]);
+    }
+    setCustomInput('');
+  };
+
+  return (
+    <div>
+      <FieldLabel label={label} />
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {allOptions.map((opt) => (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => toggleOption(opt)}
+            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+              selected.includes(opt)
+                ? 'bg-stone-900 text-white border-stone-900'
+                : 'bg-white text-stone-600 border-stone-200 hover:border-stone-400'
+            }`}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={customInput}
+          onChange={(e) => setCustomInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } }}
+          placeholder={`Add custom ${label.toLowerCase()}...`}
+          className="flex-1 px-3 py-1.5 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+        />
+        <button
+          type="button"
+          onClick={addCustom}
+          disabled={!customInput.trim()}
+          className="px-3 py-1.5 text-xs font-medium bg-stone-100 text-stone-700 rounded-md hover:bg-stone-200 transition disabled:opacity-40"
+        >
+          Add
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -386,6 +474,9 @@ export default function ProductEditor() {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [errors, setErrors] = useState<string[]>([]);
+  const [errorFields, setErrorFields] = useState<Set<string>>(new Set());
+  const [showQuantityWarning, setShowQuantityWarning] = useState(false);
+  const [pendingQuantity, setPendingQuantity] = useState<number | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -397,8 +488,13 @@ export default function ProductEditor() {
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
-    setTimeout(() => setToast(null), 3500);
+    setTimeout(() => setToast(null), type === 'success' ? 15000 : 5000);
   };
+
+  const fieldBorder = (field: string) =>
+    errorFields.has(field)
+      ? 'border-red-400 ring-2 ring-red-200'
+      : 'border-stone-200';
 
   // ---------- Close actions menu on outside click ----------
 
@@ -436,9 +532,12 @@ export default function ProductEditor() {
           taxable: data.taxable !== false,
           shortDescription: data.shortDescription || '',
           longDescription: data.longDescription || '',
+          careDescription: data.careDescription || '',
           category: data.category || '',
           tags: Array.isArray(data.tags) ? data.tags : (typeof data.tags === 'string' ? JSON.parse(data.tags || '[]') : []),
           badge: data.badge || '',
+          materials: Array.isArray(data.materials) ? data.materials : (typeof data.materials === 'string' ? JSON.parse(data.materials || '[]') : []),
+          colours: Array.isArray(data.colours) ? data.colours : (typeof data.colours === 'string' ? JSON.parse(data.colours || '[]') : []),
           weightGrams: data.weightGrams || null,
           dimensions: data.dimensions || '',
           trackInventory: data.trackInventory !== false,
@@ -456,7 +555,37 @@ export default function ProductEditor() {
         };
 
         setProduct(productData);
-        setMedia(data.media || []);
+
+        // Use media records if available, otherwise build from image/detailImages fields
+        let mediaItems = data.media || [];
+        if (mediaItems.length === 0 && data.image) {
+          const syntheticMedia: MediaItem[] = [];
+          if (data.image) {
+            syntheticMedia.push({
+              id: `legacy-primary`,
+              url: data.image,
+              filename: 'primary.jpg',
+              altText: data.name || '',
+              isPrimary: true,
+              sortOrder: 0,
+            });
+          }
+          const detail = Array.isArray(data.detailImages) ? data.detailImages : [];
+          detail.forEach((url: string, i: number) => {
+            if (url && url !== data.image) {
+              syntheticMedia.push({
+                id: `legacy-${i}`,
+                url,
+                filename: `detail-${i}.jpg`,
+                altText: '',
+                isPrimary: false,
+                sortOrder: i + 1,
+              });
+            }
+          });
+          mediaItems = syntheticMedia;
+        }
+        setMedia(mediaItems);
         setProductId(data.id);
         lastSavedData.current = JSON.stringify(productData);
       } catch {
@@ -552,7 +681,7 @@ export default function ProductEditor() {
       lastSavedData.current = JSON.stringify(product);
       hasChanges.current = false;
       setSaveStatus('saved');
-      if (showFeedback) showToast('success', 'Product saved.');
+      if (showFeedback) showToast('success', 'All changes saved.');
 
       return saved.id;
     } catch (err: any) {
@@ -585,7 +714,18 @@ export default function ProductEditor() {
         const err = await res.json();
         if (err.errors) {
           setErrors(err.errors);
-          showToast('error', 'Cannot publish: ' + err.errors[0]);
+          // Map error messages to field names for highlighting
+          const fields = new Set<string>();
+          for (const msg of err.errors) {
+            if (msg.includes('Name')) fields.add('name');
+            if (msg.includes('Price')) fields.add('price');
+            if (msg.includes('Category')) fields.add('category');
+            if (msg.includes('Short description')) fields.add('shortDescription');
+            if (msg.includes('image')) fields.add('image');
+            if (msg.includes('slug')) fields.add('slug');
+          }
+          setErrorFields(fields);
+          showToast('error', 'Cannot publish — please fix the highlighted fields');
           return;
         }
         throw new Error(err.error || 'Publish failed');
@@ -594,6 +734,7 @@ export default function ProductEditor() {
       const updated = await res.json();
       setProduct(prev => ({ ...prev, status: updated.status, publishedAt: updated.publishedAt }));
       setErrors([]);
+      setErrorFields(new Set());
       showToast('success', 'Product is now live!');
     } catch (err: any) {
       showToast('error', err.message || 'Could not publish product.');
@@ -729,29 +870,21 @@ export default function ProductEditor() {
             <button
               onClick={() => saveProduct(true)}
               disabled={saving}
-              className="bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 rounded-md px-3 h-8 text-sm font-medium transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+              className="bg-stone-900 text-white hover:bg-stone-800 rounded-md px-4 h-8 text-sm font-medium transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
             >
               <Save size={14} />
-              Save
+              Save & Update
             </button>
 
-            {product.status === 'draft' || product.status === 'archived' ? (
+            {(product.status === 'draft' || product.status === 'archived') && (
               <button
                 onClick={handlePublish}
                 disabled={saving}
-                className="bg-stone-900 text-white hover:bg-stone-800 rounded-md px-4 h-8 text-sm font-medium transition-colors disabled:opacity-50"
+                className="bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 rounded-md px-4 h-8 text-sm font-medium transition-colors disabled:opacity-50"
               >
                 Publish
               </button>
-            ) : product.status === 'active' ? (
-              <button
-                onClick={() => saveProduct(true)}
-                disabled={saving}
-                className="bg-stone-900 text-white hover:bg-stone-800 rounded-md px-4 h-8 text-sm font-medium transition-colors disabled:opacity-50"
-              >
-                Update
-              </button>
-            ) : null}
+            )}
 
             {/* Three-dot menu */}
             {productId && (
@@ -814,11 +947,11 @@ export default function ProductEditor() {
       )}
 
       {/* Two-column layout */}
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
           {/* LEFT COLUMN (60%) */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-3 space-y-4">
 
             {/* Title */}
             <Card title="Product Details">
@@ -830,41 +963,52 @@ export default function ProductEditor() {
                 <input
                   type="text"
                   value={product.name}
-                  onChange={(e) => updateField('name', e.target.value)}
+                  onChange={(e) => { updateField('name', e.target.value); setErrorFields(prev => { const n = new Set(prev); n.delete('name'); return n; }); }}
                   placeholder="Product name"
                   maxLength={200}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
+                  className={`w-full px-3 py-2 border ${fieldBorder('name')} rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1`}
                 />
+                {errorFields.has('name') && <p className="text-xs text-red-600 mt-1">Name is required</p>}
               </div>
 
               <div>
-                <div className="flex items-center justify-between">
-                  <FieldLabel label="Short description" required />
-                  <CharCounter current={product.shortDescription.length} max={500} />
-                </div>
+                <FieldLabel label="Short Description" required />
                 <textarea
                   value={product.shortDescription}
-                  onChange={(e) => updateField('shortDescription', e.target.value)}
-                  placeholder="Brief product description"
+                  onChange={(e) => { updateField('shortDescription', e.target.value); setErrorFields(prev => { const n = new Set(prev); n.delete('shortDescription'); return n; }); }}
+                  placeholder="A brief summary shown on product cards and listings..."
                   rows={2}
-                  maxLength={500}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1 resize-none"
+                  maxLength={300}
+                  className={`w-full px-3 py-2 border ${fieldBorder('shortDescription')} rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1 resize-y`}
                 />
+                {errorFields.has('shortDescription') && <p className="text-xs text-red-600 mt-1">Short description is required</p>}
               </div>
 
               <div>
-                <FieldLabel label="Long description" />
+                <FieldLabel label="Description" />
                 <RichTextEditor
                   content={product.longDescription}
                   onChange={(html) => updateField('longDescription', html)}
-                  placeholder="Full product description..."
-                  minHeight="200px"
+                  placeholder="Product description..."
+                  minHeight="160px"
+                />
+              </div>
+
+              <div>
+                <FieldLabel label="Care Description" />
+                <p className="text-xs text-stone-400 mb-1.5">Customise per product, or leave the default.</p>
+                <textarea
+                  value={product.careDescription || `Treat it with love, but not stress.\n\n• Avoid dropping, bending, or scratching\n• Wipe with a soft, damp cloth\n• Avoid chemical exposure (including perfumes or sprays)\n• Store in original packaging to prevent damage or loss`}
+                  onChange={(e) => updateField('careDescription', e.target.value)}
+                  rows={5}
+                  className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1 resize-y"
+                  placeholder="Care instructions for this product..."
                 />
               </div>
             </Card>
 
             {/* Media */}
-            <Card title="Media">
+            <Card title={<span>Media {errorFields.has('image') && <span className="text-red-500 text-xs font-normal ml-2">At least one image is required</span>}</span>}>
               <MediaSection
                 productId={productId}
                 media={media}
@@ -879,26 +1023,10 @@ export default function ProductEditor() {
               />
             </Card>
 
-            {/* SEO */}
-            <AccordionSection title="Search engine listing" description="Customize how this product appears in search results">
-              <SeoFields
-                title={product.metaTitle}
-                description={product.metaDescription}
-                slug={product.slug}
-                image={product.ogImage}
-                onTitleChange={(v) => updateField('metaTitle', v)}
-                onDescriptionChange={(v) => updateField('metaDescription', v)}
-                onSlugChange={(v) => updateField('slug', v)}
-                onImageChange={(v) => updateField('ogImage', v)}
-                showSlug
-                showImage
-                baseUrl={product.productType === 'wall-art' ? 'lynetilt.com/wall-art' : 'lynetilt.com/shop'}
-              />
-            </AccordionSection>
           </div>
 
           {/* RIGHT COLUMN (40%) */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4">
 
             {/* Status card */}
             <Card title="Status">
@@ -914,213 +1042,231 @@ export default function ProductEditor() {
 
             {/* Pricing */}
             <Card title="Pricing">
-              <div>
-                <FieldLabel label="Price" required />
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400">A$</span>
-                  <input
-                    type="number"
-                    value={product.price}
-                    onChange={(e) => updateField('price', e.target.value)}
-                    step="0.01"
-                    min="0"
-                    className="w-full pl-9 pr-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
-                  />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <FieldLabel label="Price" required />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400">A$</span>
+                    <input
+                      type="number"
+                      value={product.price}
+                      onChange={(e) => { updateField('price', e.target.value); setErrorFields(prev => { const n = new Set(prev); n.delete('price'); return n; }); }}
+                      step="0.01"
+                      min="0"
+                      className={`w-full pl-9 pr-3 py-2 border ${fieldBorder('price')} rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1`}
+                    />
+                    {errorFields.has('price') && <p className="text-xs text-red-600 mt-1">Price must be greater than $0</p>}
+                  </div>
+                </div>
+                <div>
+                  <FieldLabel label="Sale price" />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400">A$</span>
+                    <input
+                      type="number"
+                      value={product.compareAtPrice}
+                      onChange={(e) => updateField('compareAtPrice', e.target.value)}
+                      step="0.01"
+                      min="0"
+                      placeholder="Not on sale"
+                      className="w-full pl-9 pr-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
+                    />
+                  </div>
                 </div>
               </div>
-              <div>
-                <FieldLabel label="Compare-at price" />
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400">A$</span>
-                  <input
-                    type="number"
-                    value={product.compareAtPrice}
-                    onChange={(e) => updateField('compareAtPrice', e.target.value)}
-                    step="0.01"
-                    min="0"
-                    placeholder="Original price"
-                    className="w-full pl-9 pr-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
-                  />
-                </div>
-              </div>
-              <div>
-                <FieldLabel label="Cost price" />
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400">A$</span>
-                  <input
-                    type="number"
-                    value={product.costPrice}
-                    onChange={(e) => updateField('costPrice', e.target.value)}
-                    step="0.01"
-                    min="0"
-                    placeholder="Cost"
-                    className="w-full pl-9 pr-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
-                  />
-                </div>
-                {margin !== null && (
-                  <p className="text-xs text-stone-400 mt-1">Margin: {margin}%</p>
-                )}
-              </div>
+              {product.compareAtPrice && parseFloat(product.compareAtPrice) > 0 && parseFloat(product.compareAtPrice) < parseFloat(product.price) && (
+                <p className="text-xs text-green-600">
+                  On sale: <span className="line-through text-stone-400">${parseFloat(product.price).toFixed(2)}</span> → ${parseFloat(product.compareAtPrice).toFixed(2)}
+                </p>
+              )}
             </Card>
 
             {/* Organisation */}
             <Card title="Organisation">
-              <div>
-                <FieldLabel label="Product type" />
-                <select
-                  value={product.productType}
-                  onChange={(e) => {
-                    updateField('productType', e.target.value);
-                    updateField('category', '');
-                  }}
-                  disabled={!!product.publishedAt}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 disabled:opacity-50 disabled:bg-stone-50"
-                >
-                  <option value="wearable">Wearable Art</option>
-                  <option value="wall-art">Wall Art</option>
-                </select>
-                {product.publishedAt && (
-                  <p className="text-xs text-stone-400 mt-1">Cannot change type after publishing.</p>
-                )}
-              </div>
-              <div>
-                <FieldLabel label="Category" required />
-                <select
-                  value={product.category}
-                  onChange={(e) => updateField('category', e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
-                >
-                  <option value="">Select category...</option>
-                  {categoryOptions.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <FieldLabel label="Tags" />
-                <input
-                  type="text"
-                  value={Array.isArray(product.tags) ? product.tags.join(', ') : ''}
-                  onChange={(e) => updateField('tags', e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
-                  placeholder="Comma-separated tags"
-                  className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
-                />
-              </div>
-              <div>
-                <FieldLabel label="Badge" />
-                <select
-                  value={BADGES.includes(product.badge) ? product.badge : product.badge ? '__custom' : ''}
-                  onChange={(e) => {
-                    if (e.target.value === '__custom') return;
-                    updateField('badge', e.target.value);
-                  }}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
-                >
-                  <option value="">No badge</option>
-                  {BADGES.map((b) => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
-                  <option value="__custom">Custom...</option>
-                </select>
-                {(product.badge && !BADGES.includes(product.badge)) && (
-                  <input
-                    type="text"
-                    value={product.badge}
-                    onChange={(e) => updateField('badge', e.target.value)}
-                    placeholder="Custom badge text"
-                    className="w-full mt-2 px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
-                  />
-                )}
-              </div>
-            </Card>
-
-            {/* Inventory */}
-            <Card title="Inventory">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-stone-700">Track inventory</span>
-                <button
-                  type="button"
-                  onClick={() => updateField('trackInventory', !product.trackInventory)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${
-                    product.trackInventory ? 'bg-stone-900' : 'bg-stone-300'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
-                      product.trackInventory ? 'translate-x-5' : ''
-                    }`}
-                  />
-                </button>
-              </div>
-              {product.trackInventory && (
-                <>
-                  <div>
-                    <FieldLabel label="Quantity" />
-                    <input
-                      type="number"
-                      value={product.quantity}
-                      onChange={(e) => updateField('quantity', parseInt(e.target.value) || 0)}
-                      min="0"
-                      className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
-                    />
-                    <div className={`mt-2 flex items-center gap-1.5 text-xs ${
-                      product.quantity <= 0 ? 'text-red-600' : product.quantity <= 3 ? 'text-amber-600' : 'text-green-600'
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        product.quantity <= 0 ? 'bg-red-500' : product.quantity <= 3 ? 'bg-amber-500' : 'bg-green-500'
-                      }`} />
-                      {product.quantity <= 0 ? 'Sold out' : product.quantity <= 3 ? `Low stock (${product.quantity} left)` : 'In stock'}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-stone-700">Continue selling when out of stock</span>
-                    <button
-                      type="button"
-                      onClick={() => updateField('continueSelling', !product.continueSelling)}
-                      className={`relative w-10 h-5 rounded-full transition-colors ${
-                        product.continueSelling ? 'bg-stone-900' : 'bg-stone-300'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
-                          product.continueSelling ? 'translate-x-5' : ''
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </>
-              )}
-            </Card>
-
-            {/* Shipping */}
-            <Card title="Shipping">
-              <div>
-                <FieldLabel label="Weight (grams)" />
-                <input
-                  type="number"
-                  value={product.weightGrams || ''}
-                  onChange={(e) => updateField('weightGrams', e.target.value ? parseInt(e.target.value) : null)}
-                  min="0"
-                  placeholder="Weight in grams"
-                  className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
-                />
-              </div>
-              {product.productType === 'wall-art' && (
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <FieldLabel label="Dimensions" />
+                  <FieldLabel label="Product type" />
+                  <select
+                    value={product.productType}
+                    onChange={(e) => {
+                      updateField('productType', e.target.value);
+                      updateField('category', '');
+                    }}
+                    disabled={!!product.publishedAt}
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 disabled:opacity-50 disabled:bg-stone-50"
+                  >
+                    <option value="wearable">Wearable Art</option>
+                    <option value="wall-art">Wall Art</option>
+                  </select>
+                  {product.publishedAt && (
+                    <p className="text-xs text-stone-400 mt-1">Cannot change type after publishing.</p>
+                  )}
+                </div>
+                <div>
+                  <FieldLabel label="Category" required />
+                  <select
+                    value={product.category}
+                    onChange={(e) => { updateField('category', e.target.value); setErrorFields(prev => { const n = new Set(prev); n.delete('category'); return n; }); }}
+                    className={`w-full px-3 py-2 border ${fieldBorder('category')} rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400`}
+                  >
+                    <option value="">Select category...</option>
+                    {categoryOptions.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <FieldLabel label="Tags" />
                   <input
                     type="text"
-                    value={product.dimensions}
-                    onChange={(e) => updateField('dimensions', e.target.value)}
-                    placeholder="e.g., 30cm x 40cm"
+                    value={Array.isArray(product.tags) ? product.tags.join(', ') : ''}
+                    onChange={(e) => updateField('tags', e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                    placeholder="Comma-separated tags"
                     className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
                   />
                 </div>
-              )}
+                <div>
+                  <FieldLabel label="Badge" />
+                  <select
+                    value={BADGES.includes(product.badge) ? product.badge : product.badge ? '__custom' : ''}
+                    onChange={(e) => {
+                      if (e.target.value === '__custom') return;
+                      updateField('badge', e.target.value);
+                    }}
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                  >
+                    <option value="">No badge</option>
+                    {BADGES.map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                    <option value="__custom">Custom...</option>
+                  </select>
+                  {(product.badge && !BADGES.includes(product.badge)) && (
+                    <input
+                      type="text"
+                      value={product.badge}
+                      onChange={(e) => updateField('badge', e.target.value)}
+                      placeholder="Custom badge text"
+                      className="w-full mt-2 px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                    />
+                  )}
+                </div>
+              </div>
             </Card>
+
+            {/* Materials & Colours */}
+            <Card title="Materials & Colours">
+              <TagMultiSelect
+                label="Materials"
+                selected={product.materials}
+                options={DEFAULT_MATERIALS}
+                onChange={(values) => updateField('materials', values)}
+              />
+              <TagMultiSelect
+                label="Colours"
+                selected={product.colours}
+                options={DEFAULT_COLOURS}
+                onChange={(values) => updateField('colours', values)}
+              />
+            </Card>
+
+            {/* Inventory & Shipping - side by side */}
+            <div className="grid grid-cols-2 gap-4">
+              <Card title="Inventory">
+                <div>
+                  <FieldLabel label="Quantity" />
+                  <input
+                    type="number"
+                    value={product.quantity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 0;
+                      if (val > 1) {
+                        setPendingQuantity(val);
+                        setShowQuantityWarning(true);
+                        return;
+                      }
+                      updateField('quantity', val);
+                    }}
+                    min="0"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                  />
+                  <div className={`mt-1.5 flex items-center gap-1.5 text-xs ${
+                    product.quantity <= 0 ? 'text-red-600' : 'text-green-600'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      product.quantity <= 0 ? 'bg-red-500' : 'bg-green-500'
+                    }`} />
+                    {product.quantity <= 0 ? 'Sold out' : 'In stock'}
+                  </div>
+                </div>
+              </Card>
+
+              <Card title="Shipping">
+                <div>
+                  <FieldLabel label="Weight (grams)" />
+                  <input
+                    type="number"
+                    value={product.weightGrams || ''}
+                    onChange={(e) => updateField('weightGrams', e.target.value ? parseInt(e.target.value) : null)}
+                    min="0"
+                    placeholder="Weight in grams"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                  />
+                </div>
+                {product.productType === 'wall-art' && (
+                  <div>
+                    <FieldLabel label="Dimensions" />
+                    <input
+                      type="text"
+                      value={product.dimensions}
+                      onChange={(e) => updateField('dimensions', e.target.value)}
+                      placeholder="e.g., 30cm x 40cm"
+                      className="w-full px-3 py-2 border border-stone-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                    />
+                  </div>
+                )}
+              </Card>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Quantity Warning Modal */}
+      {showQuantityWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl border border-stone-200 max-w-md w-full mx-4 p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-stone-800">Quantity Warning</h3>
+                <p className="mt-1 text-sm text-stone-500">
+                  You're setting a quantity of <strong>{pendingQuantity}</strong> for a {product.productType === 'wall-art' ? 'wall art' : 'wearable'} product. Each piece is typically one-of-a-kind. Are you sure you want to proceed?
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => { setShowQuantityWarning(false); setPendingQuantity(null); }}
+                className="px-4 py-2 rounded-lg text-sm font-medium border border-stone-200 text-stone-700 hover:bg-stone-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (pendingQuantity !== null) updateField('quantity', pendingQuantity);
+                  setShowQuantityWarning(false);
+                  setPendingQuantity(null);
+                }}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 transition-colors"
+              >
+                Proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && (
@@ -1133,6 +1279,16 @@ export default function ProductEditor() {
             }`}
           >
             <span>{toast.message}</span>
+            {toast.type === 'success' && product.status === 'active' && product.slug && (
+              <a
+                href={`/#/${product.productType === 'wall-art' ? 'wall-art' : 'shop'}/${product.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-700 hover:text-green-900 underline underline-offset-2 whitespace-nowrap inline-flex items-center gap-1"
+              >
+                View on website <ExternalLink size={12} />
+              </a>
+            )}
             <button
               onClick={() => setToast(null)}
               className={toast.type === 'success' ? 'text-green-600 hover:text-green-800' : 'text-red-600 hover:text-red-800'}

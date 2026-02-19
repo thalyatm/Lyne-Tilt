@@ -231,12 +231,6 @@ const Learn = () => {
           >
             Explore
           </button>
-          <button
-            onClick={() => scrollToSection('testimonials')}
-            className="inline-block border border-stone-300 text-stone-600 px-8 py-4 uppercase tracking-widest text-xs font-bold hover:border-stone-900 hover:text-stone-900 transition-colors"
-          >
-            What Students Say
-          </button>
         </div>
         {/* Trust indicators */}
         <div className="flex items-center justify-center gap-6 text-sm text-stone-400">
@@ -450,35 +444,6 @@ const Learn = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section id="testimonials" className="py-16 px-6 bg-stone-900 text-white relative z-10">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <p className="text-xs uppercase tracking-[0.3em] text-stone-400 mb-3">Student Stories</p>
-            <h2 className="text-3xl md:text-4xl font-serif text-white mb-4">What Students Say</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {learnTestimonials.slice(0, 6).map((testimonial) => (
-              <div key={testimonial.id} className="bg-stone-800 p-6 border border-stone-700">
-                <div className="flex text-clay mb-4">
-                  {[...Array(testimonial.rating || 5)].map((_, i) => (
-                    <Star key={i} size={14} fill="currentColor" />
-                  ))}
-                </div>
-                <p className="text-stone-300 text-sm leading-relaxed mb-4 italic">
-                  "{testimonial.text}"
-                </p>
-                <div className="border-t border-stone-700 pt-4">
-                  <p className="font-medium text-white text-sm">{testimonial.author}</p>
-                  <p className="text-stone-500 text-xs">{testimonial.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* FAQ Section - only shown when FAQs exist */}
       {learnFaqs.length > 0 && (
         <section id="faq" className="py-16 px-6 bg-stone-50 relative z-10">
@@ -505,7 +470,7 @@ const Learn = () => {
         <div className="max-w-2xl mx-auto text-center">
           <Mail className="text-clay mx-auto mb-3" size={28} strokeWidth={1} />
           <h3 className="text-xl md:text-2xl font-serif text-stone-900 mb-2">{learn.newsletterSignup.title}</h3>
-          <p className="text-stone-500 text-sm leading-relaxed mb-4" dangerouslySetInnerHTML={{ __html: learn.newsletterSignup.description || "Join <span class='font-medium text-stone-700'>Oxygen Notes</span> — honest thoughts, clarity tools, and gently rebellious insight, occasionally dispatched to your inbox with care." }} />
+          <p className="text-stone-500 text-sm leading-relaxed mb-4" dangerouslySetInnerHTML={{ __html: learn.newsletterSignup.description || "Join <span class='font-medium text-stone-700'>Oxygen Notes</span> - honest thoughts, clarity tools, and gently rebellious insight, occasionally dispatched to your inbox with care." }} />
 
           {subscribed ? (
             <div className="bg-stone-50 p-6 border border-stone-200">

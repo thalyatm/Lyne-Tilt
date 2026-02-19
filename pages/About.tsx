@@ -132,7 +132,7 @@ const About = () => {
           </div>
 
           <p className="text-center text-stone-400 text-sm mt-8 max-w-2xl mx-auto italic">
-            This isn't therapy. It's not "woo." It's mindset and creative strategy with real-world application, delivered by someone who has led thousands of people across decades in education, business, and the creative industries.
+            Practical mindset work and creative strategy, backed by decades of hands-on experience across education, business, and the creative industries.
           </p>
         </div>
 

@@ -57,7 +57,7 @@ const LeadMagnet = () => {
                 </h3>
               </div>
               <p className="text-stone-400 text-sm font-light leading-relaxed">
-                Honest thoughts, clarity tools, and gently rebellious insight — occasionally dispatched to your inbox with care.
+                Honest thoughts, clarity tools, and gently rebellious insight - occasionally dispatched to your inbox with care.
               </p>
             </div>
 

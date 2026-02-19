@@ -54,7 +54,7 @@ export async function triggerAutomation(
   email: string,
   name?: string,
   ctx?: TriggerContext,
-) {
+): Promise<boolean> {
   // Find active, enabled automations matching this trigger
   const activeAutomations = await db.select().from(emailAutomations)
     .where(and(
@@ -63,6 +63,10 @@ export async function triggerAutomation(
       eq(emailAutomations.enabled, true)
     ))
     .all();
+
+  if (activeAutomations.length === 0) return false;
+
+  let queued = false;
 
   for (const automation of activeAutomations) {
     // Check one-time-per-recipient constraint
@@ -99,6 +103,7 @@ export async function triggerAutomation(
         scheduledFor,
       });
 
+      queued = true;
       continue;
     }
 
@@ -123,6 +128,10 @@ export async function triggerAutomation(
         status: 'scheduled',
         scheduledFor,
       });
+
+      queued = true;
     }
   }
+
+  return queued;
 }

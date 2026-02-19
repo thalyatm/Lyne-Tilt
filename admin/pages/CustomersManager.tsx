@@ -13,6 +13,8 @@ import {
   ChevronRight,
   Loader2,
   UserX,
+  MoreHorizontal,
+  KeyRound,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -25,6 +27,8 @@ interface Customer {
   firstName: string;
   lastName: string;
   emailVerified: boolean;
+  authProvider: 'email' | 'google' | 'none';
+  source: string;
   createdAt: string;
   lastLoginAt: string | null;
   orderCount: number;
@@ -46,6 +50,7 @@ interface PaginationInfo {
 }
 
 type StatusFilter = 'all' | 'verified' | 'unverified';
+type SourceFilter = 'all' | 'website' | 'squarespace_migration';
 type SortOption = 'newest' | 'oldest' | 'most-orders' | 'highest-spend';
 
 // ---------------------------------------------------------------------------
@@ -59,11 +64,9 @@ const PAGE_LIMIT = 20;
 // ---------------------------------------------------------------------------
 
 function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(amount);
+  if (amount === 0) return '$0';
+  if (amount >= 5000) return `$${(amount / 1000).toFixed(1)}K`;
+  return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function formatDate(dateString: string): string {
@@ -157,8 +160,13 @@ export default function CustomersManager() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [sortOption, setSortOption] = useState<SortOption>('newest');
   const [page, setPage] = useState(1);
+
+  // Actions dropdown
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [sendingReset, setSendingReset] = useState<string | null>(null);
 
   // ---------- Debounced search ----------
 
@@ -180,6 +188,7 @@ export default function CustomersManager() {
       params.set('limit', String(PAGE_LIMIT));
       if (debouncedSearch) params.set('search', debouncedSearch);
       if (statusFilter !== 'all') params.set('status', statusFilter);
+      if (sourceFilter !== 'all') params.set('source', sourceFilter);
       params.set('sort', sortOption);
 
       const res = await fetch(`${API_BASE}/customers?${params}`, {
@@ -207,7 +216,7 @@ export default function CustomersManager() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, page, debouncedSearch, statusFilter, sortOption]);
+  }, [accessToken, page, debouncedSearch, statusFilter, sourceFilter, sortOption]);
 
   useEffect(() => {
     fetchCustomers();
@@ -236,6 +245,37 @@ export default function CustomersManager() {
     }
   };
 
+  // ---------- Send password reset ----------
+
+  const handleSendReset = async (customerId: string) => {
+    setSendingReset(customerId);
+    try {
+      const res = await fetch(`${API_BASE}/customers/${customerId}/send-reset`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to send reset link');
+      } else {
+        alert(data.message || 'Reset link sent');
+      }
+    } catch {
+      alert('Failed to send reset link');
+    } finally {
+      setSendingReset(null);
+      setOpenDropdownId(null);
+    }
+  };
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!openDropdownId) return;
+    const handler = () => setOpenDropdownId(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [openDropdownId]);
+
   // ---------- Render ----------
 
   return (
@@ -247,10 +287,10 @@ export default function CustomersManager() {
             className="text-2xl font-serif text-stone-800"
             style={{ fontFamily: 'Georgia, serif' }}
           >
-            Customers
+            Site Members
           </h1>
           <p className="text-sm text-stone-500 mt-0.5">
-            {stats.totalCustomers} total customer{stats.totalCustomers !== 1 ? 's' : ''}
+            {stats.totalCustomers} total member{stats.totalCustomers !== 1 ? 's' : ''}
           </p>
         </div>
         <button
@@ -323,6 +363,20 @@ export default function CustomersManager() {
             <option value="unverified">Unverified</option>
           </select>
 
+          {/* Source filter */}
+          <select
+            value={sourceFilter}
+            onChange={(e) => {
+              setSourceFilter(e.target.value as SourceFilter);
+              setPage(1);
+            }}
+            className="px-3 py-2 rounded-lg border border-stone-200 text-sm text-stone-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#8d3038]/20 focus:border-[#8d3038]"
+          >
+            <option value="all">All Sources</option>
+            <option value="website">Website</option>
+            <option value="squarespace_migration">SquareSpace Migration</option>
+          </select>
+
           {/* Sort */}
           <select
             value={sortOption}
@@ -372,6 +426,9 @@ export default function CustomersManager() {
                       Status
                     </th>
                     <th className="px-4 py-2.5 text-left text-[11px] font-medium text-stone-500 uppercase tracking-wider">
+                      Account
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-[11px] font-medium text-stone-500 uppercase tracking-wider">
                       Orders
                     </th>
                     <th className="px-4 py-2.5 text-left text-[11px] font-medium text-stone-500 uppercase tracking-wider">
@@ -382,6 +439,8 @@ export default function CustomersManager() {
                     </th>
                     <th className="px-4 py-2.5 text-left text-[11px] font-medium text-stone-500 uppercase tracking-wider">
                       Last Active
+                    </th>
+                    <th className="px-4 py-2.5 text-right text-[11px] font-medium text-stone-500 uppercase tracking-wider w-12">
                     </th>
                   </tr>
                 </thead>
@@ -425,6 +484,23 @@ export default function CustomersManager() {
                         )}
                       </td>
 
+                      {/* Account type */}
+                      <td className="px-4 py-3">
+                        {customer.source === 'squarespace_migration' ? (
+                          <span className="inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-medium">
+                            SQ Migration
+                          </span>
+                        ) : customer.authProvider === 'google' ? (
+                          <span className="inline-block px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[11px] font-medium">
+                            Google
+                          </span>
+                        ) : (
+                          <span className="inline-block px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 text-[11px] font-medium">
+                            Email
+                          </span>
+                        )}
+                      </td>
+
                       {/* Orders */}
                       <td className="px-4 py-3 text-sm text-stone-600">
                         {customer.orderCount}
@@ -443,6 +519,35 @@ export default function CustomersManager() {
                       {/* Last Active */}
                       <td className="px-4 py-3 text-sm text-stone-500 whitespace-nowrap">
                         {timeAgo(customer.lastLoginAt)}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        {customer.authProvider === 'email' && (
+                          <div className="relative inline-block">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdownId(openDropdownId === customer.id ? null : customer.id);
+                              }}
+                              className="p-1 rounded-md hover:bg-stone-100 transition-colors"
+                            >
+                              <MoreHorizontal className="w-4 h-4 text-stone-400" />
+                            </button>
+                            {openDropdownId === customer.id && (
+                              <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-stone-200 py-1 z-20">
+                                <button
+                                  onClick={() => handleSendReset(customer.id)}
+                                  disabled={sendingReset === customer.id}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors disabled:opacity-50"
+                                >
+                                  <KeyRound className="w-4 h-4 text-stone-400" />
+                                  {sendingReset === customer.id ? 'Sending...' : 'Send Password Reset'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

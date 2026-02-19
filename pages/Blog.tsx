@@ -96,7 +96,7 @@ const Blog = () => {
       <div className="mb-10 text-center animate-fade-in-up max-w-2xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-serif text-clay mb-4">Oxygen Notes</h1>
           <p className="text-base text-stone-500 font-light">
-            Honest thoughts, clarity tools, and gently rebellious insight — occasionally dispatched with care.
+            Honest thoughts, clarity tools, and gently rebellious insight - occasionally dispatched with care.
           </p>
       </div>
 
@@ -270,7 +270,7 @@ const Blog = () => {
         </div>
         <h3 className="text-xl font-serif text-white mb-2">Oxygen Notes</h3>
         <p className="text-stone-400 text-sm mb-6">
-          Honest thoughts, clarity tools, and gently rebellious insight — occasionally dispatched to your inbox with care.
+          Honest thoughts, clarity tools, and gently rebellious insight - occasionally dispatched to your inbox with care.
         </p>
 
         {!subscribed ? (

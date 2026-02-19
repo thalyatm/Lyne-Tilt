@@ -127,9 +127,22 @@ const defaultSettings: SiteSettings = {
       "My professional background spans Fine Art, Literature, Education, Human Behaviour, and most recently, Nutrition and Integrative Health. I hold First Class Honours in Education and completed Honours research through Griffith University examining identity and belonging in adolescent girls. That early work still drives me, because at every stage of life the question remains: what would it take to truly belong to yourself?",
       "As a former educator and wellbeing leader in schools, I've led thousands of people toward more focused, values-aligned ways of living and working. Over the last five years, I've coached more than 200 artists, creatives, and business owners, helping them find their voice, clarify their message, and build with purpose."
     ] },
-    howIShowUp: { cards: [] },
-    journey: { title: "A Background Built for Clarity + Action", description: "I'm a qualified Nutrition Coach and an ICF-eligible professional coach, combining evidence-based mindset and behaviour change approaches with creative strategy and communication.", stats: [], credentials: [] },
-    whoThisIsFor: { title: "Who I Work With", subtitle: "I work with people who are ready to show up with more intention, creatively, professionally, and personally.", items: [] },
+    howIShowUp: { cards: [
+      { title: "As a Maker", description: "If you wear my jewellery or collect my art, you're not just choosing beauty. You're anchoring into something bold and personal.", linkText: "Shop Collection", linkUrl: "/shop" },
+      { title: "As an Educator", description: "If you attend one of my classes or workshops, you're not just learning a skill. You're engaging with your mindset, your capacity, and your creative identity.", linkText: "View Workshops", linkUrl: "/learn" },
+      { title: "As a Coach", description: "If you work with me as a coach, we'll get to the heart of what's holding you back and build the strategy and structure to move through it.", linkText: "Learn More", linkUrl: "/coaching" },
+    ] },
+    journey: { title: "A Background Built for Clarity + Action", description: "I'm a qualified Nutrition Coach and an ICF-eligible professional coach, combining evidence-based mindset and behaviour change approaches with creative strategy and communication.", stats: [
+      { value: "20+", label: "Years in Education" },
+      { value: "200+", label: "Creatives Coached" },
+      { value: "2500+", label: "Students Taught" },
+      { value: "5+", label: "Disciplines" },
+    ], credentials: ["Fine Art", "Education (Hons)", "ICF-Eligible Coach", "Nutrition Coach", "Creative Strategy", "Founder, Studio on Brunswick"] },
+    whoThisIsFor: { title: "Who I Work With", subtitle: "I work with people who are ready to show up with more intention, creatively, professionally, and personally.", items: [
+      "People starting or returning to a creative practice after a long break",
+      "People creating or refining businesses that reflect their values",
+      "People ready to stop playing small in life, work, or leadership",
+    ] },
     cta: { title: "Want to Work With Lyne?", description: "Whether you're looking to book a guest speaker, collaborate on a creative project, or schedule a free 15-minute strategy call.", buttonText: "Get in Touch", buttonUrl: "/contact" }
   },
   coaching: {

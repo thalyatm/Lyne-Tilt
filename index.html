@@ -153,41 +153,353 @@
       .stagger-3 { animation-delay: 0.3s; }
       .stagger-4 { animation-delay: 0.4s; }
 
-      /* Admin dark mode overrides — scoped to .admin-dark wrapper */
-      .admin-dark { background-color: #111110; color: #d6d3d1; }
-      .admin-dark .bg-white { background-color: #1c1917 !important; }
-      .admin-dark .bg-stone-50 { background-color: #151413 !important; }
-      .admin-dark .bg-stone-100 { background-color: #1c1917 !important; }
-      .admin-dark .bg-stone-200 { background-color: #292524 !important; }
-      .admin-dark .text-stone-900 { color: #f5f5f4 !important; }
-      .admin-dark .text-stone-800 { color: #e7e5e4 !important; }
-      .admin-dark .text-stone-700 { color: #d6d3d1 !important; }
-      .admin-dark .text-stone-600 { color: #a8a29e !important; }
-      .admin-dark .text-stone-500 { color: #a8a29e !important; }
-      .admin-dark .text-stone-400 { color: #78716c !important; }
-      .admin-dark .border-stone-200 { border-color: #292524 !important; }
-      .admin-dark .border-stone-100 { border-color: #1c1917 !important; }
-      .admin-dark .border-stone-300 { border-color: #44403c !important; }
-      .admin-dark .divide-stone-200 > :not(:first-child) { border-color: #292524 !important; }
-      .admin-dark .hover\:bg-stone-50:hover { background-color: #1c1917 !important; }
-      .admin-dark .hover\:bg-stone-100:hover { background-color: #292524 !important; }
+      /* ══════════════════════════════════════════════════════
+         Resizable table columns in admin
+         ══════════════════════════════════════════════════════ */
+      main table th {
+        resize: horizontal;
+        overflow: hidden;
+        position: relative;
+      }
+      main table th::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 20%;
+        height: 60%;
+        width: 2px;
+        background: transparent;
+        border-radius: 1px;
+        transition: background 0.15s;
+      }
+      main table th:hover::after {
+        background: #d6d3d1;
+      }
+      main table th:last-child {
+        resize: none;
+      }
+      main table th:last-child::after {
+        display: none;
+      }
+
+      /* ══════════════════════════════════════════════════════
+         Admin dark mode — scoped to .admin-dark wrapper
+         ══════════════════════════════════════════════════════ */
+
+      /* --- Base --- */
+      .admin-dark { background-color: #09090b !important; color: #e4e4e7; }
+      .admin-dark.bg-stone-50 { background-color: #09090b !important; }
+
+      /* --- Stone backgrounds --- */
+      .admin-dark .bg-white { background-color: #111113 !important; }
+      .admin-dark .bg-stone-50 { background-color: #09090b !important; }
+      .admin-dark .bg-stone-100 { background-color: #18181b !important; }
+      .admin-dark .bg-stone-200 { background-color: #27272a !important; }
+      .admin-dark .bg-stone-50\/40 { background-color: rgba(13,13,15,0.6) !important; }
+      .admin-dark .bg-stone-50\/50 { background-color: #0d0d0f !important; }
+      .admin-dark .bg-stone-50\/80 { background-color: #0d0d0f !important; }
+      .admin-dark .bg-stone-200\/60 { background-color: rgba(39,39,42,0.6) !important; }
+
+      /* --- Stone text --- */
+      .admin-dark .text-stone-900 { color: #fafafa !important; }
+      .admin-dark .text-stone-800 { color: #e4e4e7 !important; }
+      .admin-dark .text-stone-700 { color: #d4d4d8 !important; }
+      .admin-dark .text-stone-600 { color: #a1a1aa !important; }
+      .admin-dark .text-stone-500 { color: #a1a1aa !important; }
+      .admin-dark .text-stone-400 { color: #71717a !important; }
+      .admin-dark .text-stone-300 { color: #52525b !important; }
+
+      /* --- Stone borders --- */
+      .admin-dark .border-stone-100 { border-color: #18181b !important; }
+      .admin-dark .border-stone-200 { border-color: #27272a !important; }
+      .admin-dark .border-stone-300 { border-color: #3f3f46 !important; }
+      .admin-dark .divide-stone-200 > :not(:first-child) { border-color: #27272a !important; }
+      .admin-dark .divide-stone-100 > :not(:first-child) { border-color: #18181b !important; }
+
+      /* --- Stone hovers --- */
+      .admin-dark .hover\:bg-stone-50:hover { background-color: #18181b !important; }
+      .admin-dark .hover\:bg-stone-100:hover { background-color: #27272a !important; }
+      .admin-dark .hover\:bg-stone-100\/80:hover { background-color: rgba(27,27,30,0.8) !important; }
+      .admin-dark .hover\:bg-stone-200:hover { background-color: #3f3f46 !important; }
+      .admin-dark .hover\:border-stone-300:hover { border-color: #52525b !important; }
+      .admin-dark .hover\:text-stone-600:hover { color: #d4d4d8 !important; }
+      .admin-dark .hover\:text-stone-700:hover { color: #e4e4e7 !important; }
+
+      /* --- Semantic: emerald (revenue, success) --- */
+      .admin-dark .bg-emerald-50 { background-color: rgba(6,78,59,0.2) !important; }
+      .admin-dark .bg-emerald-100 { background-color: rgba(6,78,59,0.3) !important; }
+      .admin-dark .text-emerald-600 { color: #34d399 !important; }
+      .admin-dark .text-emerald-700 { color: #6ee7b7 !important; }
+      .admin-dark .text-emerald-800 { color: #a7f3d0 !important; }
+      .admin-dark .border-emerald-200 { border-color: rgba(6,78,59,0.35) !important; }
+
+      /* --- Semantic: blue (orders, info) --- */
+      .admin-dark .bg-blue-50 { background-color: rgba(30,58,138,0.2) !important; }
+      .admin-dark .bg-blue-100 { background-color: rgba(30,58,138,0.3) !important; }
+      .admin-dark .text-blue-600 { color: #60a5fa !important; }
+      .admin-dark .text-blue-700 { color: #93bbfd !important; }
+      .admin-dark .text-blue-800 { color: #bfdbfe !important; }
+      .admin-dark .border-blue-200 { border-color: rgba(30,58,138,0.35) !important; }
+
+      /* --- Semantic: violet/indigo (AOV, coaching) --- */
+      .admin-dark .bg-violet-50 { background-color: rgba(76,29,149,0.2) !important; }
+      .admin-dark .bg-violet-100 { background-color: rgba(76,29,149,0.3) !important; }
+      .admin-dark .text-violet-600 { color: #a78bfa !important; }
+      .admin-dark .text-violet-700 { color: #c4b5fd !important; }
+      .admin-dark .bg-indigo-50 { background-color: rgba(49,46,129,0.2) !important; }
+      .admin-dark .bg-indigo-100 { background-color: rgba(49,46,129,0.3) !important; }
+      .admin-dark .text-indigo-700 { color: #a5b4fc !important; }
+
+      /* --- Semantic: amber (warnings, pending) --- */
+      .admin-dark .bg-amber-50 { background-color: rgba(120,53,15,0.2) !important; }
+      .admin-dark .bg-amber-100 { background-color: rgba(120,53,15,0.3) !important; }
+      .admin-dark .text-amber-600 { color: #fbbf24 !important; }
+      .admin-dark .text-amber-700 { color: #fcd34d !important; }
+      .admin-dark .text-amber-800 { color: #fde68a !important; }
+      .admin-dark .border-amber-200 { border-color: rgba(120,53,15,0.35) !important; }
+
+      /* --- Semantic: red (errors, cancelled) --- */
+      .admin-dark .bg-red-50 { background-color: rgba(127,29,29,0.2) !important; }
+      .admin-dark .bg-red-100 { background-color: rgba(127,29,29,0.3) !important; }
+      .admin-dark .text-red-600 { color: #f87171 !important; }
+      .admin-dark .text-red-700 { color: #fca5a5 !important; }
+      .admin-dark .text-red-800 { color: #fecaca !important; }
+      .admin-dark .bg-red-50\/40 { background-color: rgba(127,29,29,0.15) !important; }
+      .admin-dark .border-red-100 { border-color: rgba(127,29,29,0.25) !important; }
+      .admin-dark .border-red-200 { border-color: rgba(127,29,29,0.35) !important; }
+      /* Items needing attention: lighter red in dark mode */
+      .admin-dark .bg-red-100.border.rounded-xl { background-color: rgba(127,29,29,0.12) !important; }
+      .admin-dark .hover\:text-red-600:hover { color: #f87171 !important; }
+
+      /* --- Semantic: rose --- */
+      .admin-dark .bg-rose-50 { background-color: rgba(136,19,55,0.2) !important; }
+      .admin-dark .bg-rose-100 { background-color: rgba(136,19,55,0.3) !important; }
+      .admin-dark .text-rose-600 { color: #fb7185 !important; }
+      .admin-dark .text-rose-700 { color: #fda4af !important; }
+
+      /* --- Semantic: cyan --- */
+      .admin-dark .bg-cyan-50 { background-color: rgba(21,94,117,0.2) !important; }
+      .admin-dark .text-cyan-600 { color: #22d3ee !important; }
+
+      /* --- Semantic: green (status badges) --- */
+      .admin-dark .bg-green-50 { background-color: rgba(20,83,45,0.2) !important; }
+      .admin-dark .bg-green-100 { background-color: rgba(20,83,45,0.3) !important; }
+      .admin-dark .text-green-600 { color: #4ade80 !important; }
+      .admin-dark .text-green-700 { color: #86efac !important; }
+      .admin-dark .text-green-800 { color: #bbf7d0 !important; }
+
+      /* --- Semantic: gray --- */
+      .admin-dark .bg-gray-50 { background-color: rgba(31,41,55,0.2) !important; }
+      .admin-dark .bg-gray-100 { background-color: rgba(31,41,55,0.3) !important; }
+      .admin-dark .text-gray-600 { color: #9ca3af !important; }
+      .admin-dark .text-gray-700 { color: #d1d5db !important; }
+
+      /* --- Form elements --- */
       .admin-dark input, .admin-dark textarea, .admin-dark select {
-        background-color: #1c1917 !important;
-        border-color: #44403c !important;
-        color: #e7e5e4 !important;
+        background-color: #09090b !important;
+        border-color: #27272a !important;
+        color: #e4e4e7 !important;
       }
       .admin-dark input::placeholder, .admin-dark textarea::placeholder {
-        color: #78716c !important;
+        color: #71717a !important;
       }
-      .admin-dark .shadow-sm { box-shadow: 0 1px 2px rgba(0,0,0,0.3) !important; }
-      .admin-dark .shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important; }
-      .admin-dark .shadow-lg { box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important; }
-      .admin-dark .ring-stone-200 { --tw-ring-color: #44403c !important; }
-      .admin-dark table thead { background-color: #1c1917 !important; }
-      .admin-dark table tbody tr { border-color: #292524 !important; }
-      .admin-dark table tbody tr:hover { background-color: #1c1917 !important; }
-      .admin-dark .bg-stone-200\/60 { background-color: rgba(41,37,36,0.6) !important; }
+      .admin-dark input:focus, .admin-dark textarea:focus, .admin-dark select:focus {
+        border-color: #3f3f46 !important;
+        --tw-ring-color: rgba(63,63,70,0.5) !important;
+      }
+      .admin-dark option { background-color: #111113; color: #e4e4e7; }
+      .admin-dark input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(0.7);
+      }
+
+      /* --- Shadows & rings --- */
+      .admin-dark .shadow-sm { box-shadow: 0 1px 2px rgba(0,0,0,0.5) !important; }
+      .admin-dark .shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.6) !important; }
+      .admin-dark .shadow-md { box-shadow: 0 4px 6px rgba(0,0,0,0.6) !important; }
+      .admin-dark .shadow-lg { box-shadow: 0 10px 15px rgba(0,0,0,0.7) !important; }
+      .admin-dark .shadow-xl { box-shadow: 0 20px 25px rgba(0,0,0,0.7) !important; }
+      .admin-dark .ring-stone-200 { --tw-ring-color: #27272a !important; }
+      .admin-dark .ring-stone-300 { --tw-ring-color: #3f3f46 !important; }
+      .admin-dark .focus\:ring-stone-300:focus { --tw-ring-color: #3f3f46 !important; }
+      .admin-dark .focus\:ring-stone-400:focus { --tw-ring-color: #52525b !important; }
+
+      /* --- Tables --- */
+      .admin-dark table thead { background-color: #18181b !important; }
+      .admin-dark table thead tr { background-color: #18181b !important; }
+      .admin-dark thead .bg-stone-50,
+      .admin-dark thead .bg-stone-50\/80,
+      .admin-dark thead .bg-stone-50\/40 { background-color: #18181b !important; }
+      .admin-dark table thead th { color: #a1a1aa !important; }
+      .admin-dark table tbody tr { border-color: #27272a !important; }
+      .admin-dark table tbody tr:hover { background-color: rgba(17,17,19,0.8) !important; }
+      .admin-dark table td { color: #d4d4d8 !important; }
+
+      /* --- Modals & overlays --- */
+      .admin-dark .bg-black\/40 { background-color: rgba(0,0,0,0.65) !important; }
+      .admin-dark .bg-black\/50 { background-color: rgba(0,0,0,0.75) !important; }
+
+      /* --- Sidebar --- */
+      .admin-dark aside { background-color: #09090b !important; border-color: #18181b !important; }
+
+      /* --- Scrollbar --- */
+      .admin-dark ::-webkit-scrollbar { width: 6px; height: 6px; }
+      .admin-dark ::-webkit-scrollbar-track { background: #09090b; }
+      .admin-dark ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+      .admin-dark ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+      /* --- Recharts (charts) --- */
+      .admin-dark .recharts-cartesian-grid line { stroke: #27272a !important; }
+      .admin-dark .recharts-text { fill: #71717a !important; }
+
+      /* --- Resizable columns (dark) --- */
+      .admin-dark main table th:hover::after {
+        background: #3f3f46;
+      }
+
+      /* --- Active nav --- */
+      .admin-dark .bg-stone-900.text-white { background-color: #e4e4e7 !important; color: #09090b !important; }
     </style>
+    <script>
+      // ── Admin table column-width persistence ──────────────────
+      // Saves user-resized <th> widths to localStorage and restores
+      // them when the same admin page is revisited.
+      (function () {
+        var STORAGE_KEY = 'admin-col-widths';
+        var DEBOUNCE_MS = 300;
+
+        function loadWidths() {
+          try {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+          } catch (_) {
+            return {};
+          }
+        }
+
+        function saveWidths(all) {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+          } catch (_) {}
+        }
+
+        // Derive a column key from a <th>: trimmed text content or
+        // fall back to its index within the row.
+        function colKey(th) {
+          var text = (th.textContent || '').trim();
+          return text || String(Array.prototype.indexOf.call(th.parentElement.children, th));
+        }
+
+        // Is this <th> the last in its row? (actions column — skip it)
+        function isLastTh(th) {
+          var siblings = th.parentElement ? th.parentElement.children : [];
+          return siblings.length > 0 && siblings[siblings.length - 1] === th;
+        }
+
+        // Restore saved widths onto a set of <th> elements.
+        function restoreWidths(ths) {
+          var all = loadWidths();
+          var page = location.pathname;
+          var saved = all[page];
+          if (!saved) return;
+          for (var i = 0; i < ths.length; i++) {
+            if (isLastTh(ths[i])) continue;
+            var key = colKey(ths[i]);
+            if (saved[key] != null) {
+              ths[i].style.width = saved[key] + 'px';
+            }
+          }
+        }
+
+        // ── ResizeObserver with debounce ────────────────────────
+        var saveTimer = null;
+        var trackedThs = new Set();
+        // Track which <th>s have been resized by the user so we only
+        // persist intentional changes, not auto-calculated widths.
+        var userResized = new Set();
+
+        var resizeObserver = new ResizeObserver(function (entries) {
+          for (var i = 0; i < entries.length; i++) {
+            userResized.add(entries[i].target);
+          }
+          if (saveTimer) clearTimeout(saveTimer);
+          saveTimer = setTimeout(flushSave, DEBOUNCE_MS);
+        });
+
+        function flushSave() {
+          var all = loadWidths();
+          var page = location.pathname;
+          if (!all[page]) all[page] = {};
+          userResized.forEach(function (th) {
+            if (!document.contains(th)) return;
+            if (isLastTh(th)) return;
+            var key = colKey(th);
+            all[page][key] = Math.round(th.getBoundingClientRect().width);
+          });
+          saveWidths(all);
+        }
+
+        function observeTh(th) {
+          if (trackedThs.has(th)) return;
+          if (isLastTh(th)) return;
+          trackedThs.add(th);
+          resizeObserver.observe(th);
+        }
+
+        // ── Scan a subtree for <main> tables and wire up ────────
+        function processNode(root) {
+          if (!root || !root.querySelectorAll) return;
+          // We only care about tables inside <main>
+          var tables;
+          if (root.matches && root.matches('main table')) {
+            tables = [root];
+          } else if (root.matches && root.matches('main')) {
+            tables = root.querySelectorAll('table');
+          } else {
+            var main = root.querySelector ? root.querySelector('main') : null;
+            if (!main) {
+              // root itself might be inside <main>
+              if (root.closest && root.closest('main')) {
+                tables = root.matches && root.matches('table') ? [root] : (root.querySelectorAll ? root.querySelectorAll('table') : []);
+              } else {
+                // Check if root contains nodes inside <main>
+                tables = root.querySelectorAll ? root.querySelectorAll('main table') : [];
+              }
+            } else {
+              tables = main.querySelectorAll('table');
+            }
+          }
+          for (var t = 0; t < tables.length; t++) {
+            var ths = tables[t].querySelectorAll('th');
+            restoreWidths(ths);
+            for (var j = 0; j < ths.length; j++) {
+              observeTh(ths[j]);
+            }
+          }
+        }
+
+        // ── MutationObserver: detect tables added by React ──────
+        var mutObs = new MutationObserver(function (mutations) {
+          for (var m = 0; m < mutations.length; m++) {
+            var added = mutations[m].addedNodes;
+            for (var n = 0; n < added.length; n++) {
+              if (added[n].nodeType === 1) processNode(added[n]);
+            }
+          }
+        });
+
+        // Start observing once the body exists.
+        function init() {
+          if (!document.body) {
+            document.addEventListener('DOMContentLoaded', init);
+            return;
+          }
+          mutObs.observe(document.body, { childList: true, subtree: true });
+          // Process any tables already in the DOM.
+          processNode(document.body);
+        }
+
+        init();
+      })();
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
   <script type="importmap">
 {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useCart } from '../context/CartContext';
 import { useCustomerAuth } from '../context/CustomerAuthContext';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Trash2, ShoppingBag, Lock, AlertCircle, Mail, Loader2, CreditCard } from 'lucide-react';
+import { Trash2, ShoppingBag, Lock, AlertCircle, Mail, Loader2, CreditCard, User, LogIn } from 'lucide-react';
 import { API_BASE, STRIPE_PUBLIC_KEY, isStripeConfigured, resolveImageUrl } from '../config/api';
 import { trackEvent } from '../lib/analytics';
 import { loadStripe } from '@stripe/stripe-js';
@@ -14,7 +14,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const Checkout = () => {
   const { cart, removeFromCart, cartTotal, clearCart, addToCart } = useCart();
-  const { user, isAuthenticated, isVerified, resendVerification } = useCustomerAuth();
+  const { user, isAuthenticated, isVerified, resendVerification, openAuthModal } = useCustomerAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => { document.title = 'Checkout | Lyne Tilt'; }, []);
@@ -27,6 +27,7 @@ const Checkout = () => {
   const [recoveryNotice, setRecoveryNotice] = useState(false);
   const [guestEmail, setGuestEmail] = useState('');
   const [guestName, setGuestName] = useState('');
+  const [guestCheckoutChosen, setGuestCheckoutChosen] = useState(false);
 
   // --- Abandoned cart capture ---
   const capturedEmailRef = useRef<string | null>(null);
@@ -120,6 +121,12 @@ const Checkout = () => {
       return;
     }
 
+    // Require name for guest checkout
+    if (!isAuthenticated && !guestName.trim()) {
+      setError('Please enter your name to continue.');
+      return;
+    }
+
     if (!isStripeConfigured()) {
       setError('Payment system is not configured. Please contact support.');
       return;
@@ -144,8 +151,8 @@ const Checkout = () => {
         },
         body: JSON.stringify({
           items,
-          successUrl: `${window.location.origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-          cancelUrl: `${window.location.origin}/checkout`,
+          successUrl: `${window.location.origin}/#/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/#/checkout`,
         }),
       });
 
@@ -168,7 +175,10 @@ const Checkout = () => {
     }
   };
 
-  const shippingCost = cartTotal > 100 ? 0 : 15;
+  // Shipping: flat $15 for physical products under $100, free over $100
+  // All products in this store are physical (jewellery/wall art), so shipping always applies once per order
+  const hasPhysicalProducts = cart.length > 0;
+  const shippingCost = hasPhysicalProducts && cartTotal < 100 ? 15 : 0;
   const totalWithShipping = cartTotal + shippingCost;
 
   if (cart.length === 0) {
@@ -228,36 +238,68 @@ const Checkout = () => {
         </div>
       )}
 
-      {/* Guest Email Capture for Abandoned Cart Recovery */}
-      {!isAuthenticated && (
+      {/* Guest vs Sign In choice */}
+      {!isAuthenticated && !guestCheckoutChosen && (
+        <div className="mb-8 p-6 bg-white border border-stone-200">
+          <h3 className="text-lg font-medium text-stone-900 mb-4">How would you like to checkout?</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button
+              onClick={() => setGuestCheckoutChosen(true)}
+              className="flex flex-col items-center gap-3 p-6 border border-stone-200 hover:border-stone-400 transition-colors text-center group"
+            >
+              <User size={24} className="text-stone-400 group-hover:text-stone-700 transition-colors" />
+              <span className="font-medium text-stone-900">Continue as Guest</span>
+              <span className="text-xs text-stone-500">Quick checkout without an account</span>
+            </button>
+            <button
+              onClick={() => openAuthModal('login')}
+              className="flex flex-col items-center gap-3 p-6 border border-stone-200 hover:border-clay transition-colors text-center group"
+            >
+              <LogIn size={24} className="text-stone-400 group-hover:text-clay transition-colors" />
+              <span className="font-medium text-stone-900">Sign In</span>
+              <span className="text-xs text-stone-500">Collect points and track orders</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Guest Contact Information */}
+      {!isAuthenticated && guestCheckoutChosen && (
         <div className="mb-8 p-6 bg-white border border-stone-200">
           <h3 className="text-lg font-medium text-stone-900 mb-1">Contact Information</h3>
-          <p className="text-stone-500 text-sm mb-4">Enter your email so we can save your cart and send you order updates.</p>
+          <p className="text-stone-500 text-sm mb-4">Enter your details so we can send you order updates.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="guest-email" className="block text-xs uppercase tracking-wider text-stone-600 mb-1">Email *</label>
-              <input
-                id="guest-email"
-                type="email"
-                value={guestEmail}
-                onChange={e => setGuestEmail(e.target.value)}
-                onBlur={() => captureAbandonedCart(guestEmail, guestName || undefined)}
-                placeholder="you@example.com"
-                className="w-full border border-stone-300 px-4 py-3 text-sm focus:outline-none focus:border-stone-900 transition-colors"
-              />
-            </div>
-            <div>
-              <label htmlFor="guest-name" className="block text-xs uppercase tracking-wider text-stone-600 mb-1">Name (optional)</label>
+              <label htmlFor="guest-name" className="block text-xs uppercase tracking-wider text-stone-600 mb-1">Name *</label>
               <input
                 id="guest-name"
                 type="text"
                 value={guestName}
                 onChange={e => setGuestName(e.target.value)}
                 placeholder="Your name"
+                required
+                className="w-full border border-stone-300 px-4 py-3 text-sm focus:outline-none focus:border-stone-900 transition-colors"
+              />
+            </div>
+            <div>
+              <label htmlFor="guest-email" className="block text-xs uppercase tracking-wider text-stone-600 mb-1">Email</label>
+              <input
+                id="guest-email"
+                type="email"
+                value={guestEmail}
+                onChange={e => setGuestEmail(e.target.value)}
+                onBlur={() => captureAbandonedCart(guestEmail, guestName || undefined)}
+                placeholder="you@example.com (optional)"
                 className="w-full border border-stone-300 px-4 py-3 text-sm focus:outline-none focus:border-stone-900 transition-colors"
               />
             </div>
           </div>
+          <button
+            onClick={() => setGuestCheckoutChosen(false)}
+            className="mt-3 text-xs text-stone-500 hover:text-clay transition-colors"
+          >
+            Want to sign in instead?
+          </button>
         </div>
       )}
 
@@ -281,11 +323,11 @@ const Checkout = () => {
             <div className="space-y-6">
               {cart.map(item => (
                 <div key={item.id} className="flex gap-4 pb-6 border-b border-stone-200 last:border-b-0 last:pb-0">
-                  <div className="w-24 h-24 bg-stone-200 overflow-hidden flex-shrink-0">
+                  <Link to={`/shop/${item.id}`} className="w-24 h-24 bg-stone-200 overflow-hidden flex-shrink-0 hover:opacity-80 transition-opacity">
                     <img src={resolveImageUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />
-                  </div>
+                  </Link>
                   <div className="flex-1">
-                    <h3 className="text-lg font-medium text-stone-900 mb-1">{item.name}</h3>
+                    <Link to={`/shop/${item.id}`} className="text-lg font-medium text-stone-900 mb-1 hover:text-clay transition-colors">{item.name}</Link>
                     <p className="text-stone-600 mb-2">${item.price} AUD</p>
                     <p className="text-xs text-clay uppercase tracking-wide">One of a kind</p>
                   </div>
@@ -348,9 +390,9 @@ const Checkout = () => {
 
             <button
               onClick={handleCheckout}
-              disabled={isProcessing || (isAuthenticated && !isVerified)}
+              disabled={isProcessing || (isAuthenticated && !isVerified) || (!isAuthenticated && !guestCheckoutChosen)}
               className={`w-full py-5 uppercase tracking-[0.2em] text-sm font-bold flex items-center justify-center gap-2 transition-colors ${
-                isProcessing || (isAuthenticated && !isVerified)
+                isProcessing || (isAuthenticated && !isVerified) || (!isAuthenticated && !guestCheckoutChosen)
                   ? 'bg-stone-400 text-stone-200 cursor-not-allowed'
                   : 'bg-stone-900 text-white hover:bg-clay'
               }`}

@@ -48,12 +48,15 @@ export const customerUsers = sqliteTable('customer_users', {
   resetToken: text('reset_token'),
   resetTokenExpiry: text('reset_token_expiry'),
   stripeCustomerId: text('stripe_customer_id'),
+  authProvider: text('auth_provider', { enum: ['email', 'google', 'none'] }).notNull().default('email'),
+  source: text('source').notNull().default('website'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
   lastLoginAt: text('last_login_at'),
 }, (table) => ({
   emailIdx: uniqueIndex('customer_users_email_idx').on(table.email),
   stripeCustomerIdx: index('customer_users_stripe_customer_idx').on(table.stripeCustomerId),
+  sourceIdx: index('customer_users_source_idx').on(table.source),
 }));
 
 export const customerRefreshTokens = sqliteTable('customer_refresh_tokens', {
@@ -281,6 +284,7 @@ export const orders = sqliteTable('orders', {
   trackingNumber: text('tracking_number'),
   trackingUrl: text('tracking_url'),
   notes: text('notes'),
+  source: text('source').notNull().default('website'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
   paidAt: text('paid_at'),
@@ -292,6 +296,7 @@ export const orders = sqliteTable('orders', {
   userIdIdx: index('orders_user_id_idx').on(table.userId),
   statusIdx: index('orders_status_idx').on(table.status),
   createdAtIdx: index('orders_created_at_idx').on(table.createdAt),
+  sourceIdx: index('orders_source_idx').on(table.source),
 }));
 
 export const orderItems = sqliteTable('order_items', {
@@ -561,7 +566,7 @@ export const faqs = sqliteTable('faqs', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   question: text('question').notNull(),
   answer: text('answer').notNull(),
-  category: text('category', { enum: ['Shop', 'Coaching', 'Learn', 'General'] }).notNull(),
+  category: text('category', { enum: ['Shipping', 'Handmade Work', 'Colour Accuracy', 'Returns + Exchanges', 'Product Care', 'Coaching + Services', 'General'] }).notNull(),
   displayOrder: integer('display_order').default(0),
   published: integer('published', { mode: 'boolean' }).notNull().default(true),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
@@ -1144,6 +1149,7 @@ export const productReviews = sqliteTable('product_reviews', {
   status: text('status', { enum: ['pending', 'approved', 'rejected'] }).notNull().default('pending'),
   isVerifiedPurchase: integer('is_verified_purchase', { mode: 'boolean' }).notNull().default(false),
   featured: integer('featured', { mode: 'boolean' }).notNull().default(false),
+  theme: text('theme'),
   adminResponse: text('admin_response'),
   respondedAt: text('responded_at'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
@@ -1153,6 +1159,7 @@ export const productReviews = sqliteTable('product_reviews', {
   statusIdx: index('reviews_status_idx').on(table.status),
   customerIdx: index('reviews_customer_idx').on(table.customerId),
   featuredIdx: index('reviews_featured_idx').on(table.featured),
+  themeIdx: index('reviews_theme_idx').on(table.theme),
 }));
 
 // ============================================
@@ -1264,9 +1271,13 @@ export const coachingApplications = sqliteTable('coaching_applications', {
   phone: text('phone'),
   reason: text('reason'),
   preferredPackage: text('preferred_package'),
-  status: text('status', { enum: ['new', 'contacted', 'scheduled', 'closed'] }).notNull().default('new'),
+  status: text('status', { enum: ['new', 'contacted_retry', 'contacted_awaiting', 'scheduled', 'complete_promoted', 'complete_closed'] }).notNull().default('new'),
   notes: text('notes'),
+  referredFrom: text('referred_from'),
+  scheduledCallAt: text('scheduled_call_at'),
+  scheduledCallTimezone: text('scheduled_call_timezone').default('Australia/Sydney'),
   clientId: text('client_id').references(() => coachingClients.id, { onDelete: 'set null' }),
+  bookingId: text('booking_id').references(() => coachingBookings.id, { onDelete: 'set null' }),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => ({
@@ -1274,6 +1285,24 @@ export const coachingApplications = sqliteTable('coaching_applications', {
   createdAtIdx: index('coaching_applications_created_at_idx').on(table.createdAt),
   emailIdx: index('coaching_applications_email_idx').on(table.email),
   clientIdIdx: index('applications_client_id_idx').on(table.clientId),
+  bookingIdIdx: index('applications_booking_id_idx').on(table.bookingId),
+}));
+
+// ============================================
+// APPLICATION NOTES
+// ============================================
+
+export const applicationNotes = sqliteTable('application_notes', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  applicationId: text('application_id').notNull().references(() => coachingApplications.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdByName: text('created_by_name'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  applicationIdIdx: index('application_notes_app_id_idx').on(table.applicationId),
+  createdAtIdx: index('application_notes_created_at_idx').on(table.createdAt),
 }));
 
 // ============================================
@@ -1315,6 +1344,40 @@ export const clientNotes = sqliteTable('client_notes', {
 }, (table) => ({
   clientIdIdx: index('client_notes_client_id_idx').on(table.clientId),
   typeIdx: index('client_notes_type_idx').on(table.type),
+}));
+
+// ============================================
+// COACHING CONTRACTS (payment links + terms)
+// ============================================
+
+export const coachingContracts = sqliteTable('coaching_contracts', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: text('client_id').notNull().references(() => coachingClients.id, { onDelete: 'cascade' }),
+  packageId: text('package_id').references(() => coachingPackages.id, { onDelete: 'set null' }),
+  title: text('title').notNull(),
+  description: text('description'),
+  amount: text('amount').notNull(),
+  currency: text('currency').notNull().default('AUD'),
+  status: text('status', { enum: ['draft', 'sent', 'viewed', 'agreed', 'paid', 'cancelled', 'expired'] }).notNull().default('draft'),
+  paymentToken: text('payment_token').unique(),
+  contractTerms: text('contract_terms').notNull(),
+  paymentInstructions: text('payment_instructions'),
+  stripePaymentLink: text('stripe_payment_link'),
+  sentAt: text('sent_at'),
+  viewedAt: text('viewed_at'),
+  agreedAt: text('agreed_at'),
+  agreedIp: text('agreed_ip'),
+  paidAt: text('paid_at'),
+  paidMethod: text('paid_method'),
+  paidReference: text('paid_reference'),
+  expiresAt: text('expires_at'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => ({
+  clientIdIdx: index('coaching_contracts_client_id_idx').on(table.clientId),
+  paymentTokenIdx: index('coaching_contracts_payment_token_idx').on(table.paymentToken),
+  statusIdx: index('coaching_contracts_status_idx').on(table.status),
+  createdAtIdx: index('coaching_contracts_created_at_idx').on(table.createdAt),
 }));
 
 // ============================================

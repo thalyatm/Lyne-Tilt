@@ -12,8 +12,10 @@ export const reviewsRoutes = new Hono<{ Bindings: Bindings; Variables: Variables
 
 async function recalculateProductRating(
   db: ReturnType<typeof import('drizzle-orm/d1').drizzle>,
-  productId: string
+  productId: string | null
 ) {
+  if (!productId) return;
+
   const result = await db
     .select({
       avgRating: avg(productReviews.rating),
@@ -44,6 +46,43 @@ async function recalculateProductRating(
 // ============================================
 // PUBLIC ENDPOINTS
 // ============================================
+
+// GET /api/reviews/featured - Get featured approved reviews for the home page
+reviewsRoutes.get('/featured', async (c) => {
+  const db = c.get('db');
+
+  const reviews = await db
+    .select({
+      id: productReviews.id,
+      productName: productReviews.productName,
+      linkedProductName: products.name,
+      customerName: productReviews.customerName,
+      rating: productReviews.rating,
+      title: productReviews.title,
+      body: productReviews.body,
+      createdAt: productReviews.createdAt,
+    })
+    .from(productReviews)
+    .leftJoin(products, eq(productReviews.productId, products.id))
+    .where(
+      and(
+        eq(productReviews.status, 'approved'),
+        eq(productReviews.featured, true)
+      )
+    )
+    .orderBy(desc(productReviews.createdAt))
+    .all();
+
+  return c.json(reviews.map(r => ({
+    id: r.id,
+    productName: r.linkedProductName || r.productName,
+    customerName: r.customerName,
+    rating: r.rating,
+    title: r.title,
+    body: r.body,
+    createdAt: r.createdAt,
+  })));
+});
 
 // GET /api/reviews/product/:productId - Get approved reviews for a product
 reviewsRoutes.get('/product/:productId', async (c) => {
@@ -107,7 +146,7 @@ reviewsRoutes.post('/product/:productId', async (c) => {
 
   // Verify the product exists
   const product = await db
-    .select({ id: products.id })
+    .select({ id: products.id, name: products.name, productType: products.productType })
     .from(products)
     .where(eq(products.id, productId))
     .get();
@@ -120,7 +159,6 @@ reviewsRoutes.post('/product/:productId', async (c) => {
   let isVerifiedPurchase = false;
   let customerId: string | null = null;
 
-  // Try to find a customer user by email (case-insensitive)
   const customer = await db
     .select({ id: customerUsers.id })
     .from(customerUsers)
@@ -130,7 +168,6 @@ reviewsRoutes.post('/product/:productId', async (c) => {
   if (customer) {
     customerId = customer.id;
 
-    // Check if this customer has any non-cancelled orders containing this product
     const verifiedOrder = await db
       .select({ id: orders.id })
       .from(orders)
@@ -154,6 +191,7 @@ reviewsRoutes.post('/product/:productId', async (c) => {
     .insert(productReviews)
     .values({
       productId,
+      productName: product.name,
       customerId,
       customerName,
       customerEmail,
@@ -162,6 +200,7 @@ reviewsRoutes.post('/product/:productId', async (c) => {
       body: reviewBody || null,
       status: 'pending',
       isVerifiedPurchase,
+      theme: product.productType || null,
     })
     .returning()
     .get();
@@ -199,6 +238,11 @@ reviewsRoutes.get('/', adminAuth, async (c) => {
     conditions.push(eq(productReviews.productId, productIdFilter));
   }
 
+  const themeFilter = c.req.query('theme');
+  if (themeFilter) {
+    conditions.push(eq(productReviews.theme, themeFilter));
+  }
+
   if (search) {
     const searchLower = `%${search.toLowerCase()}%`;
     conditions.push(
@@ -219,6 +263,7 @@ reviewsRoutes.get('/', adminAuth, async (c) => {
       id: productReviews.id,
       productId: productReviews.productId,
       productName: products.name,
+      storedProductName: productReviews.productName,
       customerName: productReviews.customerName,
       customerEmail: productReviews.customerEmail,
       rating: productReviews.rating,
@@ -226,6 +271,8 @@ reviewsRoutes.get('/', adminAuth, async (c) => {
       body: productReviews.body,
       status: productReviews.status,
       isVerifiedPurchase: productReviews.isVerifiedPurchase,
+      featured: productReviews.featured,
+      theme: productReviews.theme,
       adminResponse: productReviews.adminResponse,
       respondedAt: productReviews.respondedAt,
       createdAt: productReviews.createdAt,
@@ -236,6 +283,12 @@ reviewsRoutes.get('/', adminAuth, async (c) => {
     .where(whereClause)
     .orderBy(desc(productReviews.createdAt))
     .all();
+
+  // Map to use linked product name or stored product name
+  const mappedReviews = reviews.map(r => ({
+    ...r,
+    productName: r.productName || r.storedProductName || 'Unknown product',
+  }));
 
   // Calculate stats (all reviews, not filtered)
   const allReviews = await db
@@ -259,7 +312,7 @@ reviewsRoutes.get('/', adminAuth, async (c) => {
   }
 
   return c.json({
-    reviews,
+    reviews: mappedReviews,
     stats: {
       total,
       pending,
@@ -268,6 +321,37 @@ reviewsRoutes.get('/', adminAuth, async (c) => {
       averageRating,
     },
   });
+});
+
+// PATCH /api/reviews/:id/featured - Toggle featured status
+reviewsRoutes.patch('/:id/featured', adminAuth, async (c) => {
+  const db = c.get('db');
+  const id = c.req.param('id');
+  const body = await c.req.json();
+
+  const existing = await db
+    .select()
+    .from(productReviews)
+    .where(eq(productReviews.id, id))
+    .get();
+
+  if (!existing) {
+    return c.json({ error: 'Review not found' }, 404);
+  }
+
+  const featured = body.featured !== undefined ? !!body.featured : !existing.featured;
+
+  const updated = await db
+    .update(productReviews)
+    .set({
+      featured,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(productReviews.id, id))
+    .returning()
+    .get();
+
+  return c.json(updated);
 });
 
 // PATCH /api/reviews/:id/status - Approve or reject a review
@@ -282,7 +366,6 @@ reviewsRoutes.patch('/:id/status', adminAuth, async (c) => {
     return c.json({ error: 'Status must be "approved" or "rejected"' }, 400);
   }
 
-  // Check the review exists
   const existing = await db
     .select()
     .from(productReviews)
@@ -293,7 +376,6 @@ reviewsRoutes.patch('/:id/status', adminAuth, async (c) => {
     return c.json({ error: 'Review not found' }, 404);
   }
 
-  // Update the review status
   const updated = await db
     .update(productReviews)
     .set({
@@ -322,7 +404,6 @@ reviewsRoutes.patch('/:id/response', adminAuth, async (c) => {
     return c.json({ error: 'adminResponse is required' }, 400);
   }
 
-  // Check the review exists
   const existing = await db
     .select()
     .from(productReviews)
@@ -349,12 +430,42 @@ reviewsRoutes.patch('/:id/response', adminAuth, async (c) => {
   return c.json(updated);
 });
 
+// PATCH /api/reviews/:id/theme - Update review theme (admin)
+reviewsRoutes.patch('/:id/theme', adminAuth, async (c) => {
+  const db = c.get('db');
+  const id = c.req.param('id');
+  const body = await c.req.json();
+
+  const { theme } = body;
+
+  const existing = await db
+    .select()
+    .from(productReviews)
+    .where(eq(productReviews.id, id))
+    .get();
+
+  if (!existing) {
+    return c.json({ error: 'Review not found' }, 404);
+  }
+
+  const updated = await db
+    .update(productReviews)
+    .set({
+      theme: theme || null,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(productReviews.id, id))
+    .returning()
+    .get();
+
+  return c.json(updated);
+});
+
 // DELETE /api/reviews/:id - Delete a review (hard delete)
 reviewsRoutes.delete('/:id', adminAuth, async (c) => {
   const db = c.get('db');
   const id = c.req.param('id');
 
-  // Get the review first to know the productId for recalculation
   const existing = await db
     .select()
     .from(productReviews)

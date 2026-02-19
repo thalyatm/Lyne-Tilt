@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { eq, desc, sql } from 'drizzle-orm';
 import { customerUsers, orders, shippingAddresses } from '../db/schema';
 import { adminAuth } from '../middleware/auth';
+import { sendEmail } from '../utils/email';
 import type { Bindings, Variables } from '../index';
 
 export const customersRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -10,13 +11,17 @@ export const customersRoutes = new Hono<{ Bindings: Bindings; Variables: Variabl
 customersRoutes.use('*', adminAuth);
 
 // ─── Helper: build WHERE + ORDER fragments ─────────────────
-function buildFilters(search: string, status: string, sort: string) {
+function buildFilters(search: string, status: string, sort: string, source: string) {
   const whereParts: ReturnType<typeof sql>[] = [];
 
   if (status === 'verified') {
     whereParts.push(sql`cu.email_verified = 1`);
   } else if (status === 'unverified') {
     whereParts.push(sql`cu.email_verified = 0`);
+  }
+
+  if (source && source !== 'all') {
+    whereParts.push(sql`cu.source = ${source}`);
   }
 
   if (search) {
@@ -122,9 +127,10 @@ customersRoutes.get('/', async (c) => {
   const search = (c.req.query('search') || '').trim();
   const status = c.req.query('status') || 'all';
   const sort = c.req.query('sort') || 'newest';
+  const source = c.req.query('source') || 'all';
   const offset = (page - 1) * limit;
 
-  const { whereClause, orderClause } = buildFilters(search, status, sort);
+  const { whereClause, orderClause } = buildFilters(search, status, sort, source);
 
   // Fetch paginated customers with aggregated order data
   const customerRows = await db.all<{
@@ -133,6 +139,8 @@ customersRoutes.get('/', async (c) => {
     firstName: string;
     lastName: string;
     emailVerified: number;
+    authProvider: string;
+    source: string;
     createdAt: string;
     lastLoginAt: string | null;
     orderCount: number;
@@ -144,6 +152,8 @@ customersRoutes.get('/', async (c) => {
       cu.first_name AS firstName,
       cu.last_name AS lastName,
       cu.email_verified AS emailVerified,
+      cu.auth_provider AS authProvider,
+      cu.source,
       cu.created_at AS createdAt,
       cu.last_login_at AS lastLoginAt,
       COUNT(o.id) AS orderCount,
@@ -163,6 +173,8 @@ customersRoutes.get('/', async (c) => {
     firstName: r.firstName,
     lastName: r.lastName,
     emailVerified: Boolean(r.emailVerified),
+    authProvider: r.authProvider || 'email',
+    source: r.source || 'website',
     createdAt: r.createdAt,
     lastLoginAt: r.lastLoginAt,
     orderCount: r.orderCount,
@@ -170,12 +182,14 @@ customersRoutes.get('/', async (c) => {
   }));
 
   // Count total matching customers for pagination
-  // Build simple WHERE for count (no join needed)
   const countWhereParts: ReturnType<typeof sql>[] = [];
   if (status === 'verified') {
     countWhereParts.push(sql`email_verified = 1`);
   } else if (status === 'unverified') {
     countWhereParts.push(sql`email_verified = 0`);
+  }
+  if (source && source !== 'all') {
+    countWhereParts.push(sql`source = ${source}`);
   }
   if (search) {
     const pattern = `%${search.toLowerCase()}%`;
@@ -244,6 +258,8 @@ customersRoutes.get('/:id', async (c) => {
     firstName: string;
     lastName: string;
     emailVerified: number;
+    authProvider: string;
+    source: string;
     stripeCustomerId: string | null;
     createdAt: string;
     updatedAt: string;
@@ -257,6 +273,8 @@ customersRoutes.get('/:id', async (c) => {
       cu.first_name AS firstName,
       cu.last_name AS lastName,
       cu.email_verified AS emailVerified,
+      cu.auth_provider AS authProvider,
+      cu.source,
       cu.stripe_customer_id AS stripeCustomerId,
       cu.created_at AS createdAt,
       cu.updated_at AS updatedAt,
@@ -279,6 +297,8 @@ customersRoutes.get('/:id', async (c) => {
     firstName: customerRow.firstName,
     lastName: customerRow.lastName,
     emailVerified: Boolean(customerRow.emailVerified),
+    authProvider: customerRow.authProvider || 'email',
+    source: customerRow.source || 'website',
     stripeCustomerId: customerRow.stripeCustomerId,
     createdAt: customerRow.createdAt,
     updatedAt: customerRow.updatedAt,
@@ -314,4 +334,61 @@ customersRoutes.get('/:id', async (c) => {
     addresses,
     enrollmentCount: enrollmentResult?.count ?? 0,
   });
+});
+
+// ─── POST /:id/send-reset — Admin sends password reset link ──
+customersRoutes.post('/:id/send-reset', async (c) => {
+  const db = c.get('db');
+  const id = c.req.param('id');
+
+  const customer = await db.select().from(customerUsers).where(eq(customerUsers.id, id)).get();
+  if (!customer) {
+    return c.json({ error: 'Customer not found' }, 404);
+  }
+
+  // Don't send reset to Google-only or SQ import accounts
+  if (customer.authProvider === 'google') {
+    return c.json({ error: 'Cannot reset password for Google accounts' }, 400);
+  }
+  if (customer.authProvider === 'none') {
+    return c.json({ error: 'Cannot reset password for imported accounts without login' }, 400);
+  }
+
+  const resetToken = crypto.randomUUID();
+  const resetTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+  await db.update(customerUsers)
+    .set({ resetToken, resetTokenExpiry: resetTokenExpiry, updatedAt: new Date().toISOString() })
+    .where(eq(customerUsers.id, id));
+
+  const baseUrl = c.env.FRONTEND_URL || 'https://lyne-tilt.pages.dev';
+  const resetUrl = `${baseUrl}/#/reset-password?token=${resetToken}`;
+
+  try {
+    await sendEmail(
+      c.env,
+      customer.email,
+      'Reset your Lyne Tilt password',
+      `<div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1c1917;">
+        <h1 style="font-size: 24px; margin-bottom: 8px;">Password Reset</h1>
+        <p style="color: #57534e; font-size: 16px; line-height: 1.6;">
+          Hi ${customer.firstName || 'there'}, a password reset was requested for your account. Click the button below to set a new password.
+        </p>
+        <a href="${resetUrl}" style="display: inline-block; background: #8d3038; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600; margin: 24px 0;">
+          Reset Password
+        </a>
+        <p style="color: #a8a29e; font-size: 13px; line-height: 1.5;">
+          This link expires in 24 hours. If you didn&rsquo;t request this, you can safely ignore this email.
+        </p>
+        <p style="color: #a8a29e; font-size: 12px; margin-top: 32px; border-top: 1px solid #e7e5e4; padding-top: 16px;">
+          Lyne Tilt Studio &mdash; Wearable Art &amp; Creative Coaching
+        </p>
+      </div>`,
+    );
+  } catch (err) {
+    console.error('Failed to send reset email:', err);
+    return c.json({ error: 'Failed to send email' }, 500);
+  }
+
+  return c.json({ success: true, message: `Reset link sent to ${customer.email}` });
 });

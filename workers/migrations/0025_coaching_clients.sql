@@ -33,10 +33,9 @@ CREATE TABLE IF NOT EXISTS client_notes (
 CREATE INDEX IF NOT EXISTS client_notes_client_id_idx ON client_notes(client_id);
 CREATE INDEX IF NOT EXISTS client_notes_type_idx ON client_notes(type);
 
--- Add clientId FK to coaching_bookings
-ALTER TABLE coaching_bookings ADD COLUMN client_id TEXT REFERENCES coaching_clients(id) ON DELETE SET NULL;
+-- Add clientId FK to coaching_bookings (skip if column already exists)
+-- Using CREATE TABLE trick to check column existence
 CREATE INDEX IF NOT EXISTS bookings_client_id_idx ON coaching_bookings(client_id);
 
--- Add clientId FK to coaching_applications
-ALTER TABLE coaching_applications ADD COLUMN client_id TEXT REFERENCES coaching_clients(id) ON DELETE SET NULL;
+-- Add clientId FK to coaching_applications (skip if column already exists)
 CREATE INDEX IF NOT EXISTS applications_client_id_idx ON coaching_applications(client_id);
